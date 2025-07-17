@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+:root {
+  --background: white;
+  --foreground: black;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: white;
+    --foreground: black;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  font-size: 6vw;
+  font-weight: 600;
+  line-height: 1;
+}
+
+h2 {
+  font-size: 3vw;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 2vw;
+}
+
+h4 {
+  font-size: 1.8vw;
+}
+
+h5 {
+  font-size: 1.2vw;
+}
+
+h6 {
+  font-size: 1vw;
+}
+
+@media (max-width: 1024px) {
+  h5 {
+    font-size: 1.8vw;
+  }
+
+  h6 {
+    font-size: 1.5vw;
+  }
+}
+
+@media (max-width: 769px) {
+  h4 {
+    font-size: 2.5vw;
+  }
+
+  h5 {
+    font-size: 2vw;
+  }
+
+  h6 {
+    font-size: 1.5vw;
+  }
+}
+
+@media (max-width: 426px) {
+  h1 {
+    font-size: 12vw;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 6vw;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-size: 4.2vw;
+  }
+
+  h4 {
+    font-size: 3vw;
+  }
+
+  h5 {
+    font-size: 3vw;
+  }
+
+  h6 {
+    font-size: 2.8vw;
+  }
+}
