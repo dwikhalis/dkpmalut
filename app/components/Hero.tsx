@@ -11,7 +11,7 @@ export default function Hero() {
             Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi
             untuk mewujudkan Ekonomi Biru.
           </h3>
-          <div className="flex gap-5">
+          <div className="flex gap-6">
             <button className="px-[2vw] py-2.5 text-[1.5vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
               Program
             </button>

@@ -91,7 +91,7 @@ export default function SectionOne() {
       </section>
 
       {/* //! TABLET & MOBILE */}
-      <section className="lg:hidden mx-6 my-6">
+      <section className="lg:hidden mx-10 my-6">
         {/* Top Side */}
         <div className="flex flex-col items-center justify-center mb-12">
           <img
@@ -109,7 +109,7 @@ export default function SectionOne() {
         {/* Bottom Side */}
         <div className="flex flex-col w-full gap-3 mt-6">
           <h2 className="text-center">Maju Bersama Membangun Daerah</h2>
-          <h5 className="text-center mx-12">
+          <h5 className="text-center">
             Kami fokus pada program terpadu bersama Kementerian Kelautan dan
             Perikanan, mengingat luas laut Maluku utara yang sangat besar. Kami
             juga konsen dalam pengawasan sumber daya perikanan
