@@ -1,15 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState([false, "hidden"]);
+  const [show, setShow] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setShow(false);
+      } else {
+        setShow(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   return (
     <>
       {/* //! DESKTOP */}
       <nav
-        className="hidden lg:flex sticky z-10 top-0  xl:h-[6vw] h-[8vw] justify-between items-center bg-white w-full"
+        className={`hidden lg:flex sticky z-10 top-0  xl:h-[6vw] h-[8vw] justify-between items-center bg-white w-full transition-transform duration-300 ${
+          show ? "translate-0" : "-translate-y-full"
+        }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
         {/* Logo Home Desktop */}
@@ -72,7 +93,9 @@ export default function Navbar() {
 
       {/* //! TABLET & MOBILE */}
       <nav
-        className="lg:hidden z-10 sticky top-0"
+        className={`lg:hidden z-10 sticky top-0 transition-transform duration-300 ${
+          show ? "translate-0" : "-translate-y-full"
+        }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
         {/* Navigation Bar */}
@@ -113,7 +136,9 @@ export default function Navbar() {
         <div
           className={`md:hidden w-full absolute transform transition-all duration-500 ease-in-out 
     ${
-      isMenuOpen[0] ? "translate-y-0" : "-translate-y-100 pointer-events-none"
+      isMenuOpen[0] && show
+        ? "translate-y-0"
+        : "-translate-y-100 pointer-events-none"
     }`}
         >
           <a href="/Organisasi" className=" text-center">

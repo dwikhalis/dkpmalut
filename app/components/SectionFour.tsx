@@ -4,7 +4,11 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 
-const images = ["/assets/pic_img_1.jpg", "/assets/pic_img_2.jpg"];
+const images = [
+  "/assets/pic_img_1.jpg",
+  "/assets/pic_img_2.jpg",
+  "/assets/pic_card_3.png",
+];
 
 export default function SectionFour() {
   return (

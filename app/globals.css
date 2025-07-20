@@ -53,8 +53,10 @@ h6 {
   font-size: 1vw;
 }
 
-.responsive-text {
-  font-size: clamp(1rem, 1.2vw, 3rem);
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  color: #ffffff80; /* Tailwind 'red-400' equivalent */
+  font-size: 1.5rem; /* optional: resize arrow */
 }
 
 @media (max-width: 1440px) {
