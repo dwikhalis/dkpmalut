@@ -3,12 +3,12 @@ import Carousel from "./Carousel";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
+import data from "../../public/dummyDatabase.json";
 
-const images = [
-  "/assets/pic_img_1.jpg",
-  "/assets/pic_img_2.jpg",
-  "/assets/pic_card_3.png",
-];
+let images: any = [];
+data.forEach((e) => {
+  images.push([e.image, e.content]);
+});
 
 export default function SectionFour() {
   return (

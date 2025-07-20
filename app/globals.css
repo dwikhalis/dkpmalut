@@ -55,8 +55,12 @@ h6 {
 
 .swiper-button-next::after,
 .swiper-button-prev::after {
-  color: #ffffff80; /* Tailwind 'red-400' equivalent */
-  font-size: 1.5rem; /* optional: resize arrow */
+  color: #ffffff50;
+  font-size: 5px;
+}
+
+.swiper-wrapper {
+  align-items: center;
 }
 
 @media (max-width: 1440px) {

@@ -11,8 +11,6 @@ export default function Card(props: Props) {
 
   const { tag, title, content, image, redirect } = data[sel];
 
-  console.log(tag);
-
   return (
     <>
       <div className="flex flex-col 2xl:w-[20vw] 2xl:h-150 md:h-130 w-70 h-120 pt-12 px-6 shadow-2xl hover:shadow-xl justify-between rounded-2xl">
