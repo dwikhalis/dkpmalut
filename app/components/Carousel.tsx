@@ -24,17 +24,17 @@ export default function Carousel({ images }: ImageCarouselProps) {
         modules={[Navigation, Pagination, Autoplay]}
         navigation
         pagination={{ clickable: true }}
-        // autoplay={{ delay: 5000 }}
+        autoplay={{ delay: 5000 }}
         //! Disabled loop, swiper requires more pictures
         // loop={true}
-        className="rounded-2xl h-120 2xl:h-160 overflow-hidden w-full z-20"
+        className="rounded-2xl h-full 2xl:h-160 overflow-hidden w-full z-20"
       >
         {images.map((src, idx) => (
           <SwiperSlide key={idx}>
             <img
               src={src[0]}
               alt={`Slide ${idx}`}
-              className="w-full object-cover h-120 2xl:h-160"
+              className="w-full object-cover h-120 2xl:h-160 mb-12 rounded-2xl"
               onClick={() => (
                 swiperRef.current?.slideTo(idx), setShowImage("fixed")
               )}

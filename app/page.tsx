@@ -7,10 +7,12 @@ import SectionFour from "./components/SectionFour";
 import SectionOne from "./components/SectionOne";
 import SectionThree from "./components/SectionThree";
 import SectionTwo from "./components/SectionTwo";
+import SectionFive from "./components/SectionFive";
 
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
+import SectionSix from "./components/SectionSix";
 
 const images = [
   "/assets/pic_img_1.jpg",
@@ -27,6 +29,8 @@ export default function Page() {
       <SectionTwo />
       <SectionThree />
       <SectionFour />
+      <SectionFive />
+      <SectionSix />
       <Footer />
     </>
   );

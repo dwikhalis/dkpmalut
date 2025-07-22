@@ -129,4 +129,9 @@ h6 {
   h6 {
     font-size: 2.8vw;
   }
+
+  .swiper-button-next::after,
+  .swiper-button-prev::after {
+    color: #00000020;
+  }
 }

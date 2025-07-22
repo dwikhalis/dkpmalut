@@ -9,15 +9,15 @@ export default function Card(props: Props) {
   const { id, data } = props;
   const sel = id - 1;
 
-  const { tag, title, content, image, redirect } = data[sel];
+  const { tag, title, image, redirect } = data[sel];
 
   return (
     <>
-      <div className="flex flex-col 2xl:w-[20vw] 2xl:h-150 md:h-130 w-70 h-120 pt-12 px-6 shadow-2xl hover:shadow-xl justify-between rounded-2xl">
+      <div className="flex flex-col 2xl:w-[20vw] 2xl:h-[35vw] md:h-130 w-70 h-120 lg:p-[1.5vw] p-6  shadow-2xl hover:shadow-xl justify-between rounded-2xl">
         {/* //! CONTENT */}
         <div className="w-full">
           {/* //! IMAGE */}
-          <div className="flex justify-center items-center 2xl:h-50 h-50 mb-3 overflow-hidden">
+          <div className="flex justify-center items-center 2xl:h-[12vw] h-50 mb-3 overflow-hidden">
             <img
               src={image}
               alt="Gambar"
