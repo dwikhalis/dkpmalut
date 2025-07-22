@@ -45,7 +45,7 @@ export default function Carousel({ images }: ImageCarouselProps) {
 
       {/* //! POP ON FOCUS */}
       <div
-        className={`${showImage} inset-0 bg-[rgba(0,0,0,0.8)] flex items-center justify-center z-10`}
+        className={`${showImage} inset-0 flex bg-[rgba(0,0,0,0.8)] items-center justify-center z-20`}
         onClick={() => setShowImage("hidden")}
       >
         <Swiper

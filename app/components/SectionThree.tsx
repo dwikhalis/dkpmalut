@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Card from "./Card";
 import DummyContent from "@/public/dummyDatabase.json";
@@ -57,7 +59,9 @@ export default function SectionThree() {
       </div>
       <div>
         <button className="px-7 py-3 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-          <h5>Lainnya</h5>
+          <a href="/Berita">
+            <h5>Lainnya</h5>
+          </a>
         </button>
       </div>
     </div>

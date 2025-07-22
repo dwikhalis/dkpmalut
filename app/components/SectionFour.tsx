@@ -1,13 +1,10 @@
 import React from "react";
 import Carousel from "./Carousel";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
 import data from "../../public/dummyDatabase.json";
 
 let images: any = [];
 data.forEach((e) => {
-  images.push([e.image, e.content]);
+  images.push([e.image, e.title]);
 });
 
 export default function SectionFour() {
@@ -21,7 +18,9 @@ export default function SectionFour() {
       </div>
       <Carousel images={images} />
       <button className="px-7 py-3 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-        <h5>Lainnya</h5>
+        <a href="/Galeri">
+          <h5>Lainnya</h5>
+        </a>
       </button>
     </div>
   );

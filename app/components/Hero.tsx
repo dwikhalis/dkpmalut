@@ -13,10 +13,10 @@ export default function Hero() {
           </h3>
           <div className="flex gap-6">
             <button className="px-[2vw] py-2.5 text-[1.5vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-              Program
+              <a href="/Organisasi">Program</a>
             </button>
             <button className="px-[2vw] py-2.5 text-[1.5vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-              Organisasi
+              <a href="/Organisasi">Organisasi</a>
             </button>
           </div>
         </div>
