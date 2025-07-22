@@ -63,6 +63,11 @@ h6 {
   align-items: center;
 }
 
+.swiper .swiper-button-prev.swiper-button-disabled,
+.swiper .swiper-button-next.swiper-button-disabled {
+  opacity: 0;
+}
+
 @media (max-width: 1440px) {
   h5 {
     font-size: 1.3vw;

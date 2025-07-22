@@ -7,6 +7,7 @@ import { Swiper as SwiperType } from "swiper";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
+import "../globals.css";
 import { useRef, useState } from "react";
 
 interface ImageCarouselProps {
@@ -23,7 +24,7 @@ export default function Carousel({ images }: ImageCarouselProps) {
         modules={[Navigation, Pagination, Autoplay]}
         navigation
         pagination={{ clickable: true }}
-        autoplay={{ delay: 5000 }}
+        // autoplay={{ delay: 5000 }}
         //! Disabled loop, swiper requires more pictures
         // loop={true}
         className="rounded-2xl h-120 2xl:h-160 overflow-hidden w-full z-20"
