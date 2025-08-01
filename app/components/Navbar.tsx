@@ -36,7 +36,7 @@ export default function Navbar() {
         {/* Logo Home Desktop */}
         <a
           href="/"
-          className="hidden md:flex h-full justify-between items-center ml-12 2xl:ml-24"
+          className="hidden md:flex h-full justify-between items-center ml-12 lg:ml-24"
         >
           <div className="flex justify-center items-center h-auto w-[3.5vw] mr-3">
             <img
@@ -84,7 +84,7 @@ export default function Navbar() {
             <h6>Kontak</h6>
           </a>
           <a href="/Masuk" className="flex justify-center items-center">
-            <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 2xl:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
+            <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
               <h6>Masuk</h6>
             </button>
           </a>

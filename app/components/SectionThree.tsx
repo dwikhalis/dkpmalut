@@ -23,9 +23,9 @@ export default function SectionThree() {
 
       {/* //! DESKTOP */}
       <div className="hidden md:flex flex-wrap gap-6 xl:gap-12 2xl:gap-24 justify-center 2xl:mx-24 mb-12">
-        <Card id={1} data={DummyContent} />
-        <Card id={3} data={DummyContent} />
-        <Card id={4} data={DummyContent} />
+        <Card type="container" id={1} data={DummyContent} />
+        <Card type="container" id={3} data={DummyContent} />
+        <Card type="container" id={4} data={DummyContent} />
       </div>
 
       {/* //! MOBILE */}
@@ -37,22 +37,22 @@ export default function SectionThree() {
         >
           <SwiperSlide>
             <div className="flex justify-center items-center mb-16">
-              <Card id={1} data={DummyContent} />
+              <Card type="container" id={1} data={DummyContent} />
             </div>
           </SwiperSlide>
           <SwiperSlide>
             <div className="flex justify-center items-center mb-16">
-              <Card id={2} data={DummyContent} />
+              <Card type="container" id={2} data={DummyContent} />
             </div>
           </SwiperSlide>
           <SwiperSlide>
             <div className="flex justify-center items-center mb-16">
-              <Card id={3} data={DummyContent} />
+              <Card type="container" id={3} data={DummyContent} />
             </div>
           </SwiperSlide>
           <SwiperSlide>
             <div className="flex justify-center items-center mb-16">
-              <Card id={4} data={DummyContent} />
+              <Card type="container" id={4} data={DummyContent} />
             </div>
           </SwiperSlide>
         </Swiper>

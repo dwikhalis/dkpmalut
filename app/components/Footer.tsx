@@ -3,9 +3,9 @@ import React from "react";
 export default function Footer() {
   return (
     <>
-      {/* DESKTOP */}
+      {/* //! DESKTOP */}
       <hr className="border-t border-gray-300" />
-      <div className="hidden md:flex justify-between p-12 bg-stone-200">
+      <div className="hidden md:flex justify-between py-12 lg:px-24 px-12 bg-stone-200">
         {/* LEFT SIDE */}
         <div className="w-[50%]">
           <h6>© 2025 DKP Malut. All right reserved.</h6>
@@ -73,7 +73,7 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* MOBILE */}
+      {/* //! MOBILE */}
       <div className="md:hidden px-12 py-6 bg-stone-200">
         {/* LEFT SIDE */}
         <div className="flex justify-between">
