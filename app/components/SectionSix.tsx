@@ -1,3 +1,4 @@
+import Image from "next/image";
 import React from "react";
 
 export default function SectionSix() {
@@ -16,7 +17,8 @@ export default function SectionSix() {
 
         {/* //! DESKTOP */}
         <div className="hidden md:flex w-full gap-6 justify-center flex-wrap">
-          <img
+          <Image
+            alt="Gambar"
             src="./assets/pic_office.png"
             className="w-[30vw] h-[20vw] object-cover"
           />
@@ -29,7 +31,8 @@ export default function SectionSix() {
 
         {/* //! MOBILE */}
         <div className="md:hidden flex w-full gap-12 justify-center flex-wrap">
-          <img
+          <Image
+            alt="Gambar"
             src="./assets/pic_office.png"
             className="w-full h-[50vw] object-cover"
           />

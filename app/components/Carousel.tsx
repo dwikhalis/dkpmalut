@@ -9,6 +9,7 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import "../globals.css";
 import { useRef, useState } from "react";
+import Image from "next/image";
 
 interface ImageCarouselProps {
   images: [];
@@ -31,7 +32,7 @@ export default function Carousel({ images }: ImageCarouselProps) {
       >
         {images.map((src, idx) => (
           <SwiperSlide key={idx}>
-            <img
+            <Image
               src={src[0]}
               alt={`Slide ${idx}`}
               className="w-full object-cover h-120 2xl:h-160 mb-12 rounded-2xl"
@@ -59,7 +60,7 @@ export default function Carousel({ images }: ImageCarouselProps) {
           {images.map((src, idx) => (
             <SwiperSlide key={idx}>
               <div className="flex flex-col justify-center items-center">
-                <img
+                <Image
                   src={src[0]}
                   alt={`Slide ${idx}`}
                   className="w-[90%] xl:w-[50%]"

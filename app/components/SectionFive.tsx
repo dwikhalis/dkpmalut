@@ -1,3 +1,4 @@
+import Image from "next/image";
 import React from "react";
 
 export default function SectionFive() {
@@ -17,7 +18,11 @@ export default function SectionFive() {
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
           <div className="rounded-lg bg-stone-300 p-3">
-            <img src="./assets/icon_folder_1.png" className="h-5 w-5" />
+            <Image
+              alt="Gambar"
+              src="./assets/icon_folder_1.png"
+              className="h-5 w-5"
+            />
           </div>
           <h5 className="flex font-bold justify-center items-center gap-6">
             Perikanan Tangkap
@@ -31,7 +36,11 @@ export default function SectionFive() {
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
           <div className="rounded-lg bg-stone-300 p-3">
-            <img src="./assets/icon_folder_1.png" className="h-5 w-5" />
+            <Image
+              alt="Gambar"
+              src="./assets/icon_folder_1.png"
+              className="h-5 w-5"
+            />
           </div>
           <h5 className="flex font-bold justify-center items-center gap-6">
             Budidaya
@@ -45,7 +54,11 @@ export default function SectionFive() {
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
           <div className="rounded-lg bg-stone-300 p-3">
-            <img src="./assets/icon_folder_1.png" className="h-5 w-5" />
+            <Image
+              alt="Gambar"
+              src="./assets/icon_folder_1.png"
+              className="h-5 w-5"
+            />
           </div>
           <h5 className="flex font-bold justify-center items-center gap-6">
             Pemanfaatan Ruang Laut

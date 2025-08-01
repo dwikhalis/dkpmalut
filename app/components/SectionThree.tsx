@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import Card from "./Card";
 import DummyContent from "@/public/dummyDatabase.json";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -59,9 +60,9 @@ export default function SectionThree() {
       </div>
       <div>
         <button className="px-7 py-3 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-          <a href="/Berita">
+          <Link href="/Berita">
             <h5>Lainnya</h5>
-          </a>
+          </Link>
         </button>
       </div>
     </div>

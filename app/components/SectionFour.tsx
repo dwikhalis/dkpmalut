@@ -1,6 +1,7 @@
 import React from "react";
 import Carousel from "./Carousel";
 import data from "../../public/dummyDatabase.json";
+import Link from "next/link";
 
 let images: any = [];
 data.forEach((e) => {
@@ -18,9 +19,9 @@ export default function SectionFour() {
       </div>
       <Carousel images={images} />
       <button className="px-7 py-3 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-        <a href="/Galeri">
+        <Link href="/Galeri">
           <h5>Lainnya</h5>
-        </a>
+        </Link>
       </button>
     </div>
   );

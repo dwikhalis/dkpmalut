@@ -1,4 +1,6 @@
+import Link from "next/link";
 import React from "react";
+import Image from "next/image";
 
 interface Props {
   type: string;
@@ -16,13 +18,13 @@ export default function Card(props: Props) {
     if (type === "container") {
       const { tag, title, image } = data[select];
       return (
-        <a href={`/Berita/${id}`}>
+        <Link href={`/Berita/${id}`}>
           <div className="flex flex-col 2xl:w-[20vw] 2xl:h-[35vw] md:h-130 w-70 h-120 lg:p-[1.5vw] p-6  shadow-2xl hover:shadow-xl justify-between rounded-2xl">
             {/* //! CONTENT */}
             <div className="w-full">
               {/* //! IMAGE */}
               <div className="flex justify-center items-center 2xl:h-[12vw] h-50 mb-3 overflow-hidden">
-                <img
+                <Image
                   src={image}
                   alt="Gambar"
                   className="object-cover w-full h-full"
@@ -42,16 +44,16 @@ export default function Card(props: Props) {
               Selengkapnya &rarr;
             </h5>
           </div>
-        </a>
+        </Link>
       );
     } else if (type === "open") {
       const { tag, title, image, date } = data[select];
 
       return (
-        <a href={`/Berita/${id}`}>
+        <Link href={`/Berita/${id}`}>
           {/* //! IMAGE */}
           <div className="flex justify-center items-center lg:h-[18vw] md:h-35 h-45 mb-3 overflow-hidden">
-            <img
+            <Image
               src={image}
               alt="Gambar"
               className="object-cover w-full h-full rounded-2xl"
@@ -66,7 +68,7 @@ export default function Card(props: Props) {
           {/* //! TITLE */}
 
           <h5 className="font-bold">{title}</h5>
-        </a>
+        </Link>
       );
     }
   }

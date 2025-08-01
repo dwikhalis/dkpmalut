@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 
 export default function Hero() {
@@ -15,19 +17,23 @@ export default function Hero() {
           </h3>
           <div className="flex gap-6">
             <button className="px-[2vw] py-2.5 text-[1.5vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-              <a href="/Organisasi">Program</a>
+              <Link href="/Organisasi">Program</Link>
             </button>
             <button className="px-[2vw] py-2.5 text-[1.5vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-              <a href="/Organisasi">Organisasi</a>
+              <Link href="/Organisasi">Organisasi</Link>
             </button>
           </div>
         </div>
-        <img src="/assets/hero_1.png" className="w-[50%]" />
+        <Image alt="Gambar" src="/assets/hero_1.png" className="w-[50%]" />
       </div>
 
       {/* Mobile Hero */}
       <div className="md:hidden flex flex-col gap-6 justify-between items-center py-10 mx-12">
-        <img src="/assets/hero_1.png" className="w-[100%] mb-3" />
+        <Image
+          alt="Gambar"
+          src="/assets/hero_1.png"
+          className="w-[100%] mb-3"
+        />
         <h1 className="text-center">Mewujudkan Ekonomi Biru</h1>
         <h3 className="text-center">
           Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi

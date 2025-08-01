@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 
 export default function SectionOne() {
@@ -7,7 +9,7 @@ export default function SectionOne() {
       <section className="hidden lg:flex justify-between flex-wrap mx-12 2xl:mx-24 py-20">
         {/* Side Left */}
         <div className="flex flex-col w-[45%] items-center">
-          <img
+          <Image
             src="/assets/pic_kadis.png"
             className="object-contain mb-5 w-[30vw]"
             style={{ filter: "drop-shadow(-15px 10px 9px rgba(0,0,0,0.3))" }}
@@ -31,9 +33,10 @@ export default function SectionOne() {
             {/* VISI */}
             <div className="w-[50%]">
               {/* ICON */}
-              <img
+              <Image
                 src={"/assets/icon_vision.png"}
                 className="w-[5vw] h-[5vw] pb-3"
+                alt="Gambar"
               />
               <h3 className="font-bold">VISI</h3>
               <h5 className="mb-3">Kami memiliki Visi untuk mewujudkan:</h5>
@@ -55,9 +58,10 @@ export default function SectionOne() {
             {/* MISI */}
             <div className="w-[50%]">
               {/* ICON */}
-              <img
+              <Image
                 src={"/assets/icon_mission.png"}
                 className="w-[5vw] h-[5vw] pb-3"
+                alt="Gambar"
               />
               <h3 className="font-bold">MISI</h3>
               <h5 className="mb-3">
@@ -80,11 +84,11 @@ export default function SectionOne() {
             </div>
           </div>
           <div className="flex">
-            <a href="/Organisasi">
+            <Link href="/Organisasi">
               <h5 className="text-teal-500 hover:text-teal-300 py-3">
                 STRUKTUR ORGANISASI &rarr;
               </h5>
-            </a>
+            </Link>
             <div></div>
           </div>
         </div>
@@ -94,7 +98,7 @@ export default function SectionOne() {
       <section className="lg:hidden mx-10 my-6">
         {/* Top Side */}
         <div className="flex flex-col items-center justify-center mb-12">
-          <img
+          <Image
             src="/assets/pic_kadis.png"
             className="object-contain mb-5 w-[55%]"
             style={{ filter: "drop-shadow(-15px 10px 9px rgba(0,0,0,0.3))" }}
@@ -121,9 +125,10 @@ export default function SectionOne() {
             <div className="mt-6">
               {/* ICON */}
               <div className="flex justify-center items-center">
-                <img
+                <Image
                   src={"/assets/icon_vision.png"}
                   className="w-[8vw] h-[10vw] pb-3"
+                  alt="Gambar"
                 />
               </div>
               <h3 className="text-center font-bold">VISI</h3>
@@ -146,9 +151,10 @@ export default function SectionOne() {
             <div className="mt-6">
               {/* ICON */}
               <div className="flex justify-center items-center">
-                <img
+                <Image
                   src={"/assets/icon_mission.png"}
                   className="w-[8vw] h-[10vw] pb-3"
+                  alt="Gambar"
                 />
               </div>
               <h3 className="text-center font-bold">MISI</h3>
@@ -169,11 +175,11 @@ export default function SectionOne() {
             </div>
           </div>
           <div className="flex justify-center">
-            <a href="/Organisasi">
+            <Link href="/Organisasi">
               <h5 className="text-teal-500 hover:text-teal-300 py-3">
                 STRUKTUR ORGANISASI &rarr;
               </h5>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
