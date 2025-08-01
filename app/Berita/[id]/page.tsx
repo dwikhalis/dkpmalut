@@ -1,6 +1,7 @@
 import Footer from "@/app/components/Footer";
 import Navbar from "@/app/components/Navbar";
 import DummyContent from "@/public/dummyDatabase.json";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 interface Props {
@@ -27,7 +28,7 @@ export default async function page({ params }: Props) {
       <>
         <Navbar />
         <div className="flex flex-col gap-6 mx-12 my-12 p-12">
-          <img src={DummyContent[paramId - 1].image} />
+          <Image alt="Gambar" src={DummyContent[paramId - 1].image} />
           <h6>{DummyContent[paramId - 1].tag}</h6>
           <h2>{DummyContent[paramId - 1].title}</h2>
           <h5 className="whitespace-pre-wrap">
