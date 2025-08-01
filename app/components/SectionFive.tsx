@@ -20,7 +20,9 @@ export default function SectionFive() {
           <div className="rounded-lg bg-stone-300 p-3">
             <Image
               alt="Gambar"
-              src="./assets/icon_folder_1.png"
+              src="/assets/icon_folder_1.png"
+              width={800}
+              height={600}
               className="h-5 w-5"
             />
           </div>
@@ -38,7 +40,9 @@ export default function SectionFive() {
           <div className="rounded-lg bg-stone-300 p-3">
             <Image
               alt="Gambar"
-              src="./assets/icon_folder_1.png"
+              src="/assets/icon_folder_1.png"
+              width={800}
+              height={600}
               className="h-5 w-5"
             />
           </div>
@@ -56,7 +60,9 @@ export default function SectionFive() {
           <div className="rounded-lg bg-stone-300 p-3">
             <Image
               alt="Gambar"
-              src="./assets/icon_folder_1.png"
+              src="/assets/icon_folder_1.png"
+              width={800}
+              height={600}
               className="h-5 w-5"
             />
           </div>

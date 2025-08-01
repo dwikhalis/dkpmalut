@@ -5,7 +5,7 @@ import Link from "next/link";
 import Card from "./Card";
 import DummyContent from "@/public/dummyDatabase.json";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { Pagination, Autoplay } from "swiper/modules";
 
 import "swiper/css";
 import "swiper/css";

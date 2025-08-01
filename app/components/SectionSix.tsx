@@ -19,7 +19,9 @@ export default function SectionSix() {
         <div className="hidden md:flex w-full gap-6 justify-center flex-wrap">
           <Image
             alt="Gambar"
-            src="./assets/pic_office.png"
+            src="/assets/pic_office.png"
+            width={800}
+            height={600}
             className="w-[30vw] h-[20vw] object-cover"
           />
           <iframe
@@ -33,7 +35,9 @@ export default function SectionSix() {
         <div className="md:hidden flex w-full gap-12 justify-center flex-wrap">
           <Image
             alt="Gambar"
-            src="./assets/pic_office.png"
+            src="/assets/pic_office.png"
+            width={800}
+            height={600}
             className="w-full h-[50vw] object-cover"
           />
           <iframe

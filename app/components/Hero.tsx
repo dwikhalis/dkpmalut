@@ -24,7 +24,13 @@ export default function Hero() {
             </button>
           </div>
         </div>
-        <Image alt="Gambar" src="/assets/hero_1.png" className="w-[50%]" />
+        <Image
+          alt="Gambar"
+          src="/assets/hero_1.png"
+          width={800}
+          height={600}
+          className="w-[50%]"
+        />
       </div>
 
       {/* Mobile Hero */}
@@ -32,6 +38,8 @@ export default function Hero() {
         <Image
           alt="Gambar"
           src="/assets/hero_1.png"
+          width={800}
+          height={600}
           className="w-[100%] mb-3"
         />
         <h1 className="text-center">Mewujudkan Ekonomi Biru</h1>

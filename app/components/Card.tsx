@@ -2,9 +2,19 @@ import Link from "next/link";
 import React from "react";
 import Image from "next/image";
 
+interface DataItem {
+  id: number;
+  image: string;
+  tag: string;
+  date: string;
+  title: string;
+  content: string;
+  redirect: string;
+}
+
 interface Props {
   type: string;
-  data: any;
+  data: DataItem[];
   id: number;
 }
 
@@ -27,6 +37,8 @@ export default function Card(props: Props) {
                 <Image
                   src={image}
                   alt="Gambar"
+                  width={800}
+                  height={600}
                   className="object-cover w-full h-full"
                 />
               </div>
@@ -56,6 +68,8 @@ export default function Card(props: Props) {
             <Image
               src={image}
               alt="Gambar"
+              width={800}
+              height={600}
               className="object-cover w-full h-full rounded-2xl"
             />
           </div>

@@ -3,7 +3,7 @@ import Carousel from "./Carousel";
 import data from "../../public/dummyDatabase.json";
 import Link from "next/link";
 
-let images: any = [];
+const images: Array<[string, string]> = [];
 data.forEach((e) => {
   images.push([e.image, e.title]);
 });
@@ -17,7 +17,7 @@ export default function SectionFour() {
           Galeri Kelautan dan Perikanan Maluku Utara
         </h5>
       </div>
-      <Carousel images={images} />
+      <Carousel pictures={images} />
       <button className="px-7 py-3 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
         <Link href="/Galeri">
           <h5>Lainnya</h5>

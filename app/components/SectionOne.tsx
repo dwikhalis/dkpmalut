@@ -11,6 +11,8 @@ export default function SectionOne() {
         <div className="flex flex-col w-[45%] items-center">
           <Image
             src="/assets/pic_kadis.png"
+            width={800}
+            height={600}
             className="object-contain mb-5 w-[30vw]"
             style={{ filter: "drop-shadow(-15px 10px 9px rgba(0,0,0,0.3))" }}
             alt="Kepala Dinas"
@@ -35,6 +37,8 @@ export default function SectionOne() {
               {/* ICON */}
               <Image
                 src={"/assets/icon_vision.png"}
+                width={800}
+                height={600}
                 className="w-[5vw] h-[5vw] pb-3"
                 alt="Gambar"
               />
@@ -60,6 +64,8 @@ export default function SectionOne() {
               {/* ICON */}
               <Image
                 src={"/assets/icon_mission.png"}
+                width={800}
+                height={600}
                 className="w-[5vw] h-[5vw] pb-3"
                 alt="Gambar"
               />
@@ -100,6 +106,8 @@ export default function SectionOne() {
         <div className="flex flex-col items-center justify-center mb-12">
           <Image
             src="/assets/pic_kadis.png"
+            width={800}
+            height={600}
             className="object-contain mb-5 w-[55%]"
             style={{ filter: "drop-shadow(-15px 10px 9px rgba(0,0,0,0.3))" }}
             alt="Kepala Dinas"
@@ -127,6 +135,8 @@ export default function SectionOne() {
               <div className="flex justify-center items-center">
                 <Image
                   src={"/assets/icon_vision.png"}
+                  width={800}
+                  height={600}
                   className="w-[8vw] h-[10vw] pb-3"
                   alt="Gambar"
                 />
@@ -153,6 +163,8 @@ export default function SectionOne() {
               <div className="flex justify-center items-center">
                 <Image
                   src={"/assets/icon_mission.png"}
+                  width={800}
+                  height={600}
                   className="w-[8vw] h-[10vw] pb-3"
                   alt="Gambar"
                 />

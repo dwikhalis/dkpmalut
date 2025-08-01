@@ -40,11 +40,12 @@ export default function Navbar() {
           href="/"
           className="hidden md:flex h-full justify-between items-center ml-12 lg:ml-24"
         >
-          <div className="flex justify-center items-center h-auto w-[3.5vw] mr-3">
+          <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3">
             <Image
               src="/assets/logo_malut.png"
               alt="Logo"
               className="object-contain"
+              fill
             />
           </div>
           <div className="flex flex-col justify-center">
@@ -104,11 +105,12 @@ export default function Navbar() {
         <div className="flex justify-between z-10 relative bg-white w-full h-[12vw]">
           {/* Logo Home Mobile */}
           <Link href="/" className="flex items-center h-full ml-3">
-            <div className="flex justify-center items-center h-auto w-[6vw] mr-3">
+            <div className="flex relative justify-center items-center h-[6vw] w-[6vw] mr-3">
               <Image
                 src="/assets/logo_malut.png"
                 alt="Logo"
                 className="object-contain"
+                fill
               />
             </div>
             <div className="flex flex-col justify-center">
