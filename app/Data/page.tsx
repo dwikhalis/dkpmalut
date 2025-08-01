@@ -6,6 +6,9 @@ const page = () => {
   return (
     <>
       <Navbar />
+      <div className="flex justify-center items-center h-[70vh]">
+        <h1>UNDER CONSTRUCTION</h1>
+      </div>
       <Footer />
     </>
   );
