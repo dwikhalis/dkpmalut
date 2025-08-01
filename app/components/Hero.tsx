@@ -6,7 +6,9 @@ export default function Hero() {
       {/* Desktop Hero */}
       <div className="hidden md:flex justify-between items-center mx-12 2xl:mx-24 mt-10 py-10">
         <div className="flex flex-col gap-6 w-[40%]">
-          <h1>Mewujudkan Ekonomi Biru</h1>
+          <h1>Mewujudkan</h1>
+          <h1>Ekonomi</h1>
+          <h1>Biru</h1>
           <h3>
             Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi
             untuk mewujudkan Ekonomi Biru.
