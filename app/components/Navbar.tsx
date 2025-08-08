@@ -86,7 +86,7 @@ export default function Navbar() {
           >
             <h6>Kontak</h6>
           </Link>
-          <Link href="/Masuk" className="flex justify-center items-center">
+          <Link href="/Admin" className="flex justify-center items-center">
             <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
               <h6>Masuk</h6>
             </button>

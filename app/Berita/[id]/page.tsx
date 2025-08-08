@@ -1,8 +1,9 @@
 import Footer from "@/app/components/Footer";
 import Navbar from "@/app/components/Navbar";
-import DummyContent from "@/public/dummyDatabase.json";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { supabase } from "@/lib/supabase/supabaseClient";
+import { UUID } from "crypto";
 
 interface Props {
   //! In Next 15, these APIs have been made asynchronous.
@@ -11,32 +12,49 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+interface News {
+  id: UUID;
+  image: string;
+  tag: string;
+  date: string;
+  title: string;
+  content: string;
+  source: string;
+}
+
 export default async function page({ params }: Props) {
   const { id } = await params;
-  const paramId = Number(id);
 
-  const dbIds = DummyContent.map((e) => {
-    return Number(e.id);
-  });
+  const { data, error } = await supabase
+    .from("news")
+    .select("*")
+    .eq("id", id)
+    .single<News>();
 
-  const found = dbIds.find((e: number) => e === paramId);
-
-  if (!found) {
+  if (error || !data) {
+    console.error(error);
     redirect("/404");
   } else {
     return (
       <>
         <Navbar />
-        <div className="flex flex-col gap-6 mx-12 my-12 p-12">
-          <Image alt="Gambar" src={DummyContent[paramId - 1].image} />
-          <h6>{DummyContent[paramId - 1].tag}</h6>
-          <h2>{DummyContent[paramId - 1].title}</h2>
-          <h5 className="whitespace-pre-wrap">
-            {DummyContent[paramId - 1].content}
-          </h5>
-          <h5 className="font-bold">
-            Sumber : <span>{DummyContent[paramId - 1].redirect}</span>
-          </h5>
+        <div className="flex flex-col gap-6 mx-12 mt-3 mb-12 p-12">
+          <h2>{data.title}</h2>
+          <h6>
+            {data.tag}/{data.date}
+          </h6>
+          <div className="flex flex-col mb-6 gap-2">
+            <Image
+              alt="Gambar"
+              src={data.image}
+              width={800}
+              height={600}
+              className="h-[100vh] w-full object-cover"
+              quality={100}
+            />
+            <h6 className="text-right">{data.source}</h6>
+          </div>
+          <h5 className="whitespace-pre-wrap">{data.content}</h5>
         </div>
         <Footer />
       </>

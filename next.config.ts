@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "i.imgur.com",
       },
+      {
+        protocol: "https",
+        hostname: process.env.NEXT_IMAGE_SUPABASE_URL!,
+      },
     ],
   },
 };
