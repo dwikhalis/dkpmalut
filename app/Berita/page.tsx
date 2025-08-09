@@ -2,9 +2,11 @@ import React from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Card from "../components/Card";
-import DummyContent from "@/public/dummyDatabase.json";
+import { getNews } from "@/lib/supabase/getNews";
 
-const page = () => {
+const page = async () => {
+  const fetchedData = await getNews();
+
   return (
     <>
       <Navbar />
@@ -17,10 +19,11 @@ const page = () => {
         </div>
         {/* //! DESKTOP */}
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          {DummyContent.map((e, idx) => {
+          {fetchedData.map((e, idx) => {
+            console.log(e.id);
             return (
               <div className="w-[30%]" key={idx}>
-                <Card type="open" data={DummyContent} id={idx + 1} />
+                <Card type="open" data={fetchedData} id={e.id} />
               </div>
             );
           })}
@@ -28,10 +31,8 @@ const page = () => {
 
         {/* //! MOBILE */}
         <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          {DummyContent.map((e, idx) => {
-            return (
-              <Card type="open" data={DummyContent} id={idx + 1} key={idx} />
-            );
+          {fetchedData.map((e, idx) => {
+            return <Card type="open" data={fetchedData} id={e.id} key={idx} />;
           })}
         </div>
       </section>

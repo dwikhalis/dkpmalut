@@ -1,89 +1,85 @@
+"use client";
+
 import Link from "next/link";
 import React from "react";
 import Image from "next/image";
 
 interface DataItem {
-  id: number;
+  id: string;
   image: string;
   tag: string;
   date: string;
   title: string;
   content: string;
-  redirect: string;
 }
 
 interface Props {
   type: string;
-  data: DataItem[];
-  id: number;
+  data: DataItem[] | null;
+  id: string;
+  loading?: boolean; // optional flag
 }
 
-export default function Card(props: Props) {
-  const { type, data, id } = props;
-  if (data === null) {
-    return null;
-  } else {
-    const select = id - 1;
+export default function Card({ type, data, id, loading }: Props) {
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
-    if (type === "container") {
-      const { tag, title, image } = data[select];
-      return (
-        <Link href={`/Berita/${id}`}>
-          <div className="flex flex-col 2xl:w-[20vw] 2xl:h-[35vw] md:h-130 w-70 h-120 lg:p-[1.5vw] p-6  shadow-2xl hover:shadow-xl justify-between rounded-2xl">
-            {/* //! CONTENT */}
-            <div className="w-full">
-              {/* //! IMAGE */}
-              <div className="flex justify-center items-center 2xl:h-[12vw] h-50 mb-3 overflow-hidden">
-                <Image
-                  src={image}
-                  alt="Gambar"
-                  width={800}
-                  height={600}
-                  className="object-cover w-full h-full"
-                />
-              </div>
+  if (!data || data.length === 0) return null;
 
-              {/* //! TAG */}
-              <h6 className="text-stone-500 mb-1">{tag}</h6>
+  const select = data.find((d) => d.id === id);
+  if (!select) return null;
 
-              {/* //! TITLE */}
-
-              <h5 className="font-bold">{title}</h5>
+  if (type === "container") {
+    const { tag, title, image } = select;
+    return (
+      <Link href={`/Berita/${id}`}>
+        <div className="flex flex-col w-70 h-120 p-6 shadow-2xl hover:shadow-xl justify-between rounded-2xl">
+          <div className="w-full">
+            <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
+              <Image
+                src={image}
+                alt="Gambar"
+                width={800}
+                height={600}
+                className="object-cover w-full h-full"
+              />
             </div>
-
-            {/* //! CTA */}
-            <h5 className="text-teal-500 hover:text-teal-300 py-6">
-              Selengkapnya &rarr;
-            </h5>
+            <h6 className="text-stone-500 mb-1">{tag}</h6>
+            <h5 className="font-bold">{title}</h5>
           </div>
-        </Link>
-      );
-    } else if (type === "open") {
-      const { tag, title, image, date } = data[select];
-
-      return (
-        <Link href={`/Berita/${id}`}>
-          {/* //! IMAGE */}
-          <div className="flex justify-center items-center lg:h-[18vw] md:h-35 h-45 mb-3 overflow-hidden">
+          <h5 className="text-teal-500 hover:text-teal-300 py-6">
+            Selengkapnya →
+          </h5>
+        </div>
+      </Link>
+    );
+  } else if (type === "open") {
+    const { tag, title, image, date } = select;
+    return (
+      <Link href={`/Berita/${id}`}>
+        <div className="w-full">
+          <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
             <Image
               src={image}
               alt="Gambar"
               width={800}
               height={600}
-              className="object-cover w-full h-full rounded-2xl"
+              className="object-cover w-full h-full"
             />
           </div>
-
-          {/* //! TAG */}
           <h6 className="text-stone-500 mb-1">
             {tag} / {date}
           </h6>
-
-          {/* //! TITLE */}
-
           <h5 className="font-bold">{title}</h5>
-        </Link>
-      );
-    }
+        </div>
+      </Link>
+    );
   }
+
+  return null;
 }

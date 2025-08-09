@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-export default function SectionOne() {
+export default function SectionOrg() {
   return (
     <>
       {/* //! DESKTOP */}

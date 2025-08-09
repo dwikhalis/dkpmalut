@@ -14,24 +14,24 @@ const Navbar = dynamic(() => import("./components/Navbar"), {
 const Hero = dynamic(() => import("./components/Hero"), {
   loading: () => <Loading />,
 });
-const SectionOne = dynamic(() => import("./components/SectionOne"), {
+const SectionOne = dynamic(() => import("./components/SectionOrg"), {
   loading: () => <Loading />,
 });
-const SectionTwo = dynamic(() => import("./components/SectionTwo"), {
+const SectionTwo = dynamic(() => import("./components/SectionNumber"), {
   loading: () => <Loading />,
 });
 const SectionThree = dynamic(() => import("./components/SectionThree"), {
   loading: () => <Loading />,
 });
-const SectionFour = dynamic(() => import("./components/SectionFour"), {
+const SectionFour = dynamic(() => import("./components/SectionGallery"), {
   loading: () => <Loading />,
 });
-const SectionFive = dynamic(() => import("./components/SectionFive"), {
+const SectionFive = dynamic(() => import("./components/SectionData"), {
   loading: () => <Loading />,
 });
 
 // 🔥 This one takes time, so disable SSR and wrap in Suspense
-const SectionSix = dynamic(() => import("./components/SectionSix"), {
+const SectionSix = dynamic(() => import("./components/SectionAddr"), {
   loading: () => <Loading />,
   ssr: false, // important: load only on client
 });
