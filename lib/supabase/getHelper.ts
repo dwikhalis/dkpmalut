@@ -4,7 +4,7 @@ export const getNews = async () => {
   const { data, error } = await supabase.from("news").select("*");
   if (error) throw error;
 
-  return (data || []).map((item: any) => ({
+  return (data || []).map((item) => ({
     id: item.id ?? "",
     image: item.image ?? "",
     tag: item.tag ?? "",
@@ -16,10 +16,9 @@ export const getNews = async () => {
 
 export const getGallery = async () => {
   const { data, error } = await supabase.from("gallery").select("*");
-  console.log(data);
   if (error) throw error;
 
-  return (data || []).map((item: any) => ({
+  return (data || []).map((item) => ({
     id: item.id ?? "",
     image: item.image ?? "",
     tag: item.tag ?? "",

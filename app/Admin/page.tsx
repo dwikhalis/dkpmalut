@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 import AdminBerita from "../components/AdminBerita";
 import AdminGaleri from "../components/AdminGaleri";
 
-export default function page() {
+export default function Page() {
   const [content, setContent] = useState<string>("Berita");
 
   return (

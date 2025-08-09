@@ -7,8 +7,6 @@ import { getGallery } from "@/lib/supabase/getHelper";
 const page = async () => {
   const images = await getGallery();
 
-  console.log(images);
-
   return (
     <>
       <Navbar />
