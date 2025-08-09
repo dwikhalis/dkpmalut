@@ -2,7 +2,7 @@ import React from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Card from "../components/Card";
-import { getNews } from "@/lib/supabase/getNews";
+import { getNews } from "@/lib/supabase/getHelper";
 
 const page = async () => {
   const fetchedData = await getNews();
@@ -20,7 +20,6 @@ const page = async () => {
         {/* //! DESKTOP */}
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
           {fetchedData.map((e, idx) => {
-            console.log(e.id);
             return (
               <div className="w-[30%]" key={idx}>
                 <Card type="open" data={fetchedData} id={e.id} />

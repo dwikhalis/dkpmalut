@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "./Card";
-import { getNews } from "@/lib/supabase/getNews";
+import { getNews } from "@/lib/supabase/getHelper";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 

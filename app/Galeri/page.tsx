@@ -1,10 +1,14 @@
 import React from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import Card from "../components/Card";
-import DummyContent from "@/public/dummyDatabase.json";
+import Gallery from "../components/Gallery";
+import { getGallery } from "@/lib/supabase/getHelper";
 
-const page = () => {
+const page = async () => {
+  const images = await getGallery();
+
+  console.log(images);
+
   return (
     <>
       <Navbar />
@@ -18,10 +22,10 @@ const page = () => {
         </div>
         {/* //! DESKTOP */}
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          {DummyContent.map((e, idx) => {
+          {images.map((e, idx) => {
             return (
               <div className="w-[30%]" key={idx}>
-                <Card type="open" data={DummyContent} id={idx + 1} />
+                <Gallery type="regular" data={images} id={e.id} />
               </div>
             );
           })}
@@ -29,10 +33,8 @@ const page = () => {
 
         {/* //! MOBILE */}
         <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          {DummyContent.map((e, idx) => {
-            return (
-              <Card type="open" data={DummyContent} id={idx + 1} key={idx} />
-            );
+          {images.map((e, idx) => {
+            return <Gallery type="regular" data={images} id={e.id} key={idx} />;
           })}
         </div>
       </section>
