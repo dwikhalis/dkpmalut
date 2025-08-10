@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import { useRouter } from "next/navigation";
 
 export default function Page() {
   const [email, setEmail] = useState("");
@@ -10,7 +9,6 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const router = useRouter();
 
   // Mode can be: "signin", "register", or "forgot"
   const [mode, setMode] = useState<"signin" | "register" | "forgot">("signin");
@@ -45,7 +43,7 @@ export default function Page() {
     setLoading(true);
     clearMessages();
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -138,7 +136,7 @@ export default function Page() {
                 Forgot password?
               </button>
               <p className="mt-3 text-center">
-                Don't have an account?{" "}
+                Belum punya akun ?{" "}
                 <button
                   onClick={() => {
                     clearMessages();
