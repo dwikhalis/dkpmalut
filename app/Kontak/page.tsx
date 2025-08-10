@@ -1,8 +1,45 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { supabase } from "@/lib/supabase/supabaseClient";
 
 const page = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const insertData = [
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          message: formData.message,
+        },
+      ];
+
+      const { error: insertError } = await supabase
+        .from("message")
+        .insert(insertData);
+
+      if (insertError) throw insertError;
+
+      alert("Pesan terkirim!");
+      setFormData({ name: "", email: "", phone: "", message: "" });
+    } catch (err) {
+      console.error(err);
+      alert("Pengiriman pesan gagal. Terdapat masalah pada server!");
+    }
+  };
+
   return (
     <>
       <Navbar />
@@ -18,7 +55,10 @@ const page = () => {
           </h6>
         </div>
 
-        <form className="flex flex-col p-10 border-1 border-stone-100 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%]">
+        <form
+          className="flex flex-col p-10 border-1 border-stone-100 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%]"
+          onSubmit={handleSubmit}
+        >
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
             htmlFor="name"
@@ -31,6 +71,9 @@ const page = () => {
             name="name"
             placeholder="Nama"
             className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
           />
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -44,6 +87,11 @@ const page = () => {
             name="email"
             placeholder="Email"
             className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
+            required
           />
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -57,6 +105,11 @@ const page = () => {
             name="phone"
             placeholder="Nomor Handphone"
             className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            value={formData.phone}
+            onChange={(e) =>
+              setFormData({ ...formData, phone: e.target.value })
+            }
+            required
           />
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -69,6 +122,11 @@ const page = () => {
             name="message"
             placeholder="Ketik pesan anda"
             className="h-30 mt-2 md:grow text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md md-2 md:mb-6 mb-3"
+            value={formData.message}
+            onChange={(e) =>
+              setFormData({ ...formData, message: e.target.value })
+            }
+            required
           />
           <input
             type="submit"
