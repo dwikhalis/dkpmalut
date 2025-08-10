@@ -45,7 +45,8 @@ export default function Navbar() {
               src="/assets/logo_malut.png"
               alt="Logo"
               className="object-contain"
-              fill
+              height={600}
+              width={800}
             />
           </div>
           <div className="flex flex-col justify-center">
