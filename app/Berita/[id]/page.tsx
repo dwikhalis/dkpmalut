@@ -1,5 +1,3 @@
-import Footer from "@/app/components/Footer";
-import Navbar from "@/app/components/Navbar";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabaseClient";
@@ -37,7 +35,6 @@ export default async function page({ params }: Props) {
   } else {
     return (
       <>
-        <Navbar />
         <div className="flex flex-col gap-6 mx-12 mt-3 mb-12 p-12">
           <h2>{data.title}</h2>
           <h6>
@@ -56,7 +53,6 @@ export default async function page({ params }: Props) {
           </div>
           <h5 className="whitespace-pre-wrap">{data.content}</h5>
         </div>
-        <Footer />
       </>
     );
   }

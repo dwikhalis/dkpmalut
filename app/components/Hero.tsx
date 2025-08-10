@@ -30,6 +30,7 @@ export default function Hero() {
           width={800}
           height={600}
           className="w-[50%]"
+          priority
         />
       </div>
 
@@ -41,6 +42,7 @@ export default function Hero() {
           width={800}
           height={600}
           className="w-[100%] mb-3"
+          priority
         />
         <h1 className="text-center">Mewujudkan Ekonomi Biru</h1>
         <h3 className="text-center">

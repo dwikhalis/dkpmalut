@@ -1,24 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import React, { useEffect, useState } from "react";
 import AdminBerita from "../components/AdminBerita";
 import AdminGaleri from "../components/AdminGaleri";
 import AdminDashboard from "../components/AdminDashboard";
 import AdminOrg from "../components/AdminOrg";
 import AdminData from "../components/AdminData";
+import { supabase } from "@/lib/supabase/supabaseClient";
+import { useRouter } from "next/navigation";
 
 export default function Page() {
+  const router = useRouter();
   const [content, setContent] = useState<string>("Dashboard");
+  const [show, setShow] = useState("hidden");
 
   const selected = "bg-teal-100 text-black font-bold";
   const unselected = "bg-teal-900 text-white";
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.replace("/404");
+      } else {
+        setShow("flex");
+      }
+    });
+  }, [router]);
+
   return (
     <>
-      <Navbar />
-      <div className="flex mr-24">
+      <div className={show}>
         <div className="flex flex-col w-[20vw]">
           <div>
             <h3
@@ -73,7 +84,6 @@ export default function Page() {
           {content === "Data" ? <AdminData /> : null}
         </div>
       </div>
-      <Footer />
     </>
   );
 }

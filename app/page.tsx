@@ -8,55 +8,45 @@ const Loading = () => (
 );
 
 // Dynamically import components
-const Navbar = dynamic(() => import("./components/Navbar"), {
-  loading: () => <Loading />,
-});
 const Hero = dynamic(() => import("./components/Hero"), {
   loading: () => <Loading />,
 });
-const SectionOne = dynamic(() => import("./components/SectionOrg"), {
+const SectionOrg = dynamic(() => import("./components/SectionOrg"), {
   loading: () => <Loading />,
 });
-const SectionTwo = dynamic(() => import("./components/SectionNumber"), {
+const SectionNumber = dynamic(() => import("./components/SectionNumber"), {
   loading: () => <Loading />,
 });
-const SectionThree = dynamic(() => import("./components/SectionNews"), {
+const SectionNews = dynamic(() => import("./components/SectionNews"), {
   loading: () => <Loading />,
 });
-const SectionFour = dynamic(() => import("./components/SectionGallery"), {
+const SectionGallery = dynamic(() => import("./components/SectionGallery"), {
   loading: () => <Loading />,
 });
-const SectionFive = dynamic(() => import("./components/SectionData"), {
+const SectionData = dynamic(() => import("./components/SectionData"), {
   loading: () => <Loading />,
 });
 
 // 🔥 This one takes time, so disable SSR and wrap in Suspense
-const SectionSix = dynamic(() => import("./components/SectionAddr"), {
+const SectionAddr = dynamic(() => import("./components/SectionAddr"), {
   loading: () => <Loading />,
   ssr: false, // important: load only on client
-});
-
-const Footer = dynamic(() => import("./components/Footer"), {
-  loading: () => <Loading />,
 });
 
 export default function Page() {
   return (
     <>
-      <Navbar />
       <Hero />
-      <SectionOne />
-      <SectionTwo />
-      <SectionThree />
-      <SectionFour />
-      <SectionFive />
+      <SectionOrg />
+      <SectionNumber />
+      <SectionNews />
+      <SectionGallery />
+      <SectionData />
 
-      {/* Only SectionSix is suspended */}
+      {/* Only SectionAddr is suspended */}
       <Suspense fallback={<Loading />}>
-        <SectionSix />
+        <SectionAddr />
       </Suspense>
-
-      <Footer />
     </>
   );
 }

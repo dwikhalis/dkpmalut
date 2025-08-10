@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
 export default function Page() {
@@ -42,7 +40,6 @@ export default function Page() {
 
   return (
     <>
-      <Navbar />
       <div className="flex lg:flex-row flex-col">
         <div className="flex lg:h-[80vh] lg:w-[50%] flex-col justify-center items-center lg:items-start mx-12 lg:ml-24 my-8 md:my-12 gap-3">
           <h2 className="text-center md:text-left">Kontak Kami</h2>
@@ -135,7 +132,6 @@ export default function Page() {
           />
         </form>
       </div>
-      <Footer />
     </>
   );
 }

@@ -1,11 +1,8 @@
 import Link from "next/link";
-import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
 
 export default function page() {
   return (
     <>
-      <Navbar />
       <div className="flex items-center justify-center h-[80vh] bg-white">
         <div className="text-center">
           <h1 className="text-5xl font-bold text-red-600">404</h1>
@@ -18,7 +15,6 @@ export default function page() {
           </Link>
         </div>
       </div>
-      <Footer />
     </>
   );
 }

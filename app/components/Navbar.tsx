@@ -1,14 +1,53 @@
 "use client";
 
+import { supabase } from "@/lib/supabase/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState([false, "hidden"]);
   const [show, setShow] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
+  //! CHECK USER LOGIN
+  useEffect(() => {
+    // Initial user fetch
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
+      console.log(user?.user_metadata?.avatar_url);
+    });
+
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setIsLoggedIn(!!session?.user);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  //! LOGOUT
+
+  const handleLogout = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error.message);
+    } else {
+      router.push("/");
+    }
+    setLoading(false);
+  };
+
+  //! Retractable Navbar
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -26,12 +65,15 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  // Avoid flicker by not rendering login buttons until login status resolved
+  if (isLoggedIn === null) return null;
+
   return (
     <>
       {/* //! DESKTOP */}
       <nav
         className={`hidden lg:flex sticky z-10 top-0  xl:h-[6vw] h-[8vw] justify-between items-center bg-white w-full transition-transform duration-300 ${
-          show ? "translate-0" : "-translate-y-full"
+          show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
@@ -87,18 +129,30 @@ export default function Navbar() {
           >
             <h6>Kontak</h6>
           </Link>
-          <Link href="/Admin" className="flex justify-center items-center">
-            <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-              <h6>Masuk</h6>
-            </button>
-          </Link>
+
+          {isLoggedIn ? (
+            <div className="flex justify-center items-center">
+              <button
+                className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
+                onClick={handleLogout}
+              >
+                <h6>{loading ? "Logging out..." : "Keluar"}</h6>
+              </button>
+            </div>
+          ) : (
+            <Link href="/Masuk" className="flex justify-center items-center">
+              <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
+                <h6>Masuk</h6>
+              </button>
+            </Link>
+          )}
         </div>
       </nav>
 
       {/* //! TABLET & MOBILE */}
       <nav
         className={`lg:hidden z-10 sticky top-0 transition-transform duration-300 ${
-          show ? "translate-0" : "-translate-y-full"
+          show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >

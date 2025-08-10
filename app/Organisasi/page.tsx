@@ -1,6 +1,4 @@
 import React from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import { getStaff } from "@/lib/supabase/getHelper";
 import StaffList from "../components/StaffList";
 
@@ -9,7 +7,6 @@ const page = async () => {
 
   return (
     <>
-      <Navbar />
       <section className="lg:mx-24 my-12 mx-12">
         <div className="flex flex-col gap-3">
           <h2>Organisasi</h2>
@@ -27,7 +24,6 @@ const page = async () => {
           <StaffList type="regular" data={staffs} />
         </div>
       </section>
-      <Footer />
     </>
   );
 };

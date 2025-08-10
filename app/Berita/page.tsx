@@ -1,6 +1,4 @@
 import React from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import Card from "../components/Card";
 import { getNews } from "@/lib/supabase/getHelper";
 
@@ -9,7 +7,6 @@ const page = async () => {
 
   return (
     <>
-      <Navbar />
       <section className="lg:mx-24 my-12 mx-12">
         <div className="flex flex-col gap-3">
           <h2>Kabar Kelautan Perikanan</h2>
@@ -35,7 +32,6 @@ const page = async () => {
           })}
         </div>
       </section>
-      <Footer />
     </>
   );
 };

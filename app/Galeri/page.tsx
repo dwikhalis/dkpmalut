@@ -1,6 +1,4 @@
 import React from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import Gallery from "../components/Gallery";
 import { getGallery } from "@/lib/supabase/getHelper";
 
@@ -9,7 +7,6 @@ export default async function Page() {
 
   return (
     <>
-      <Navbar />
       <section className="lg:mx-24 my-12 mx-12">
         <div className="flex flex-col gap-3">
           <h2>Galeri Kelautan Perikanan</h2>
@@ -36,7 +33,6 @@ export default async function Page() {
           })}
         </div>
       </section>
-      <Footer />
     </>
   );
 }
