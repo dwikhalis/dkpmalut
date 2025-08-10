@@ -4,7 +4,7 @@ import Footer from "../components/Footer";
 import Gallery from "../components/Gallery";
 import { getGallery } from "@/lib/supabase/getHelper";
 
-const page = async () => {
+export default async function Page() {
   const images = await getGallery();
 
   return (
@@ -39,6 +39,4 @@ const page = async () => {
       <Footer />
     </>
   );
-};
-
-export default page;
+}

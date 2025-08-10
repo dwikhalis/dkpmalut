@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
-const page = () => {
+export default function Page() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -138,6 +138,4 @@ const page = () => {
       <Footer />
     </>
   );
-};
-
-export default page;
+}
