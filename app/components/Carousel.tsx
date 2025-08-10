@@ -52,8 +52,6 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
         onClick={() => setShowImage("hidden")}
       >
         <Swiper
-          modules={[Navigation, Pagination]}
-          navigation
           //! Disabled loop, swiper requires more pictures
           // loop={true}
           onSwiper={(swiper) => (swiperRef.current = swiper)}

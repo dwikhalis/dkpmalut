@@ -20,7 +20,7 @@ const SectionOne = dynamic(() => import("./components/SectionOrg"), {
 const SectionTwo = dynamic(() => import("./components/SectionNumber"), {
   loading: () => <Loading />,
 });
-const SectionThree = dynamic(() => import("./components/SectionThree"), {
+const SectionThree = dynamic(() => import("./components/SectionNews"), {
   loading: () => <Loading />,
 });
 const SectionFour = dynamic(() => import("./components/SectionGallery"), {

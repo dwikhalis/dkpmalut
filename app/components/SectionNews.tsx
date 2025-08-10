@@ -16,7 +16,7 @@ interface NewsItem {
   content: string;
 }
 
-export default function SectionThree() {
+export default function SectionNews() {
   const [news, setNews] = useState<NewsItem[] | null>(null);
   const [loading, setLoading] = useState(true);
 
