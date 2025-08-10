@@ -6,7 +6,7 @@ export default function Hero() {
   return (
     <>
       {/* Desktop Hero */}
-      <div className="hidden md:flex justify-between items-center mx-12 2xl:mx-24 mt-10 py-10">
+      <div className="hidden md:flex justify-between items-center mx-12 2xl:mx-24 mt-12 2xl:mt-24 pb-10">
         <div className="flex flex-col gap-6 w-[40%]">
           <h1>Mewujudkan</h1>
           <h1>Ekonomi</h1>

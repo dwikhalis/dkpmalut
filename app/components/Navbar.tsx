@@ -38,7 +38,7 @@ export default function Navbar() {
         {/* Logo Home Desktop */}
         <Link
           href="/"
-          className="hidden md:flex h-full justify-between items-center ml-12 lg:ml-24"
+          className="hidden md:flex h-full justify-between items-center ml-12 2xl:ml-24"
         >
           <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3">
             <Image
