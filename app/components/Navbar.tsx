@@ -12,6 +12,7 @@ export default function Navbar() {
   const [show, setShow] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
@@ -55,13 +56,16 @@ export default function Navbar() {
   //! LOGOUT Handle
   const handleLogout = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error signing out:", error.message);
-    } else {
-      router.push("/");
+    if (logoutConfirm) {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error signing out:", error.message);
+      } else {
+        router.push("/");
+      }
+      setLoading(false);
+      setLogoutConfirm([false, "hidden"]);
     }
-    setLoading(false);
   };
 
   // Avoid flicker by not rendering login buttons until login status resolved
@@ -191,7 +195,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* //!  POP UP */}
+        {/* //!  DROP-DOWN MENU */}
         <div
           className={`md:hidden w-full absolute transform transition-all duration-500 ease-in-out 
     ${
@@ -248,18 +252,17 @@ export default function Navbar() {
                   {loading ? "Loading..." : "Dashboard"}
                 </h4>
               </Link>
-              <Link
-                href="/Masuk"
+              <div
                 className="text-center"
                 onClick={() => {
-                  handleLogout();
+                  setLogoutConfirm([false, "flex"]);
                   setIsMenuOpen([false, "hidden"]);
                 }}
               >
                 <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
                   {loading ? "Loading..." : "Keluar"}
                 </h4>
-              </Link>
+              </div>
             </>
           ) : (
             <Link
@@ -283,6 +286,35 @@ export default function Navbar() {
           />
         </div>
       </nav>
+
+      {/* //! LOGOUT POPUP CONFIRMATION  */}
+      <div
+        className={`${logoutConfirm[1]} fixed inset-0 z-10 justify-center items-center bg-black/50 w-[100vw] h-[100vh]`}
+      >
+        <div className="flex flex-col gap-6 justify-center object-center rounded-2xl bg-stone-100 md:p-12 p-8 md:h-[20vw] md:w-[50vw]">
+          <h3 className="text-center">Apakah anda ingin keluar?</h3>
+          <div className="flex md:gap-12 gap-3 justify-center object-center">
+            {/* YES Logout */}
+            <button
+              className="bg-sky-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-sky-700"
+              onClick={() => {
+                setLogoutConfirm([true, "hidden"]);
+                handleLogout();
+              }}
+            >
+              <h3>Ya</h3>
+            </button>
+
+            {/* NO Logout */}
+            <button
+              className="bg-rose-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-rose-700"
+              onClick={() => setLogoutConfirm([false, "hidden"])}
+            >
+              <h3>Tidak</h3>
+            </button>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
