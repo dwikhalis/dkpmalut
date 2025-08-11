@@ -108,7 +108,7 @@ export default function SectionOrg() {
             src="/assets/pic_kadis.png"
             width={800}
             height={600}
-            className="object-contain mb-5 w-[55%]"
+            className="object-contain mb-5 w-[55%] mx-10"
             style={{ filter: "drop-shadow(-15px 10px 9px rgba(0,0,0,0.3))" }}
             alt="Kepala Dinas"
           />

@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 export default function Page() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,14 +12,7 @@ export default function Page() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Mode can be: "signin", "register", or "forgot"
-  const [mode, setMode] = useState<"signin" | "forgot">("signin");
-
-  //! RESET ALL FIELD when "mode" is changed
-  useEffect(() => {
-    setEmail("");
-    setPassword("");
-    clearMessages();
-  }, [mode]);
+  const [mode, setMode] = useState<"signin" | "register" | "forgot">("signin");
 
   //! RESET Messages
   const clearMessages = () => {
@@ -41,12 +32,45 @@ export default function Page() {
     });
 
     if (error) {
-      setErrorMsg("Akun belum terdaftar! Hubungi Admin.");
+      setErrorMsg(error.message);
     } else {
       setSuccessMsg("Login berhasil!");
-      setTimeout(() => {
-        router.push("/Admin");
-      }, 1000);
+    }
+    setLoading(false);
+  };
+
+  //! SIGNIN GOOGLE Handler
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    clearMessages();
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+    });
+
+    if (error) {
+      setErrorMsg(error.message);
+    }
+    setLoading(false);
+  };
+
+  //! REGISTER Handler
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    clearMessages();
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setSuccessMsg(
+        "Registrasi berhasil! Silahkan cek email anda untuk konfirmasi."
+      );
     }
     setLoading(false);
   };
@@ -73,24 +97,19 @@ export default function Page() {
     <>
       <div className="flex lg:flex-row flex-col">
         <div className="flex lg:h-[80vh] lg:w-[50%] flex-col justify-center items-center lg:items-start mx-12 lg:ml-24 my-8 md:my-12 gap-3">
-          <Image
-            src={"/assets/hero_1.png"}
-            alt="picture"
-            priority
-            quality={100}
-            width={800}
-            height={600}
-            className="absolute w-[50%]object-contain z-[-1]"
-          />
+          <h2 className="text-center md:text-left">Login Staff</h2>
+          <h6 className="text-center md:text-left">
+            Dinas Kelautan Dan Perikanan Maluku Utara
+          </h6>
+          <h6 className="text-center md:text-left">
+            Untuk keperluan pembuatan akun, harap menghubungi Admin.
+          </h6>
         </div>
-        <div className="flex flex-col p-10 border-1 bg-white border-stone-100 gap-3 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%] h-[70vh]">
+        <div className="flex flex-col p-10 border-1 border-stone-100 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%]">
           {mode === "signin" && (
             <>
               {/* //! LOGIN */}
-              <h2 className="text-center md:text-left">Masuk</h2>
-              <h5 className="text-center md:text-left mb-3">
-                Untuk keperluan pembuatan akun, harap menghubungi Admin.
-              </h5>
+              <h2 className="text-2xl font-semibold mb-4">Masuk</h2>
               <form
                 onSubmit={handleEmailSignIn}
                 className="flex flex-col gap-4"
@@ -128,6 +147,62 @@ export default function Page() {
               >
                 Lupa password?
               </button>
+              <p className="mt-3 text-center">
+                Belum punya akun ?{" "}
+                <button
+                  onClick={() => {
+                    clearMessages();
+                    setMode("register");
+                  }}
+                  className="underline text-stone-600 hover:text-stone-800"
+                >
+                  Registrasi
+                </button>
+              </p>
+            </>
+          )}
+
+          {/* //! REGISTER */}
+          {mode === "register" && (
+            <>
+              <h2 className="text-2xl font-semibold mb-4">Registrasi</h2>
+              <form onSubmit={handleRegister} className="flex flex-col gap-4">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="border p-2 rounded"
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="border p-2 rounded"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
+                >
+                  {loading ? "Loading..." : "Daftar"}
+                </button>
+              </form>
+              <p className="mt-3 text-center">
+                Sudah memiliki akun?{" "}
+                <button
+                  onClick={() => {
+                    clearMessages();
+                    setMode("signin");
+                  }}
+                  className="underline text-stone-600 hover:text-stone-800"
+                >
+                  Login disini
+                </button>
+              </p>
             </>
           )}
 
@@ -166,6 +241,28 @@ export default function Page() {
               </button>
             </>
           )}
+
+          {/* //! GOOGLE Button */}
+          <div className="my-4 text-center">Atau</div>
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="bg-white text-black p-1 rounded hover:bg-stone-300 disabled:opacity-50 w-full shadow-xl border-1 border-stone-200"
+          >
+            {loading ? (
+              "Loading..."
+            ) : (
+              <div className="flex gap-2 justify-center items-center">
+                <Image
+                  src={"/assets/icon_google.webp"}
+                  alt="G"
+                  width={35}
+                  height={35}
+                />
+                <div>Gunakan akun Google</div>
+              </div>
+            )}
+          </button>
 
           {errorMsg && <p className="mt-4 text-red-600">{errorMsg}</p>}
           {successMsg && <p className="mt-4 text-green-600">{successMsg}</p>}

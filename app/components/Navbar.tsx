@@ -12,6 +12,7 @@ export default function Navbar() {
   const [show, setShow] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [loading, setLoading] = useState(false);
+
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   //! CHECK USER LOGIN
@@ -19,7 +20,6 @@ export default function Navbar() {
     // Initial user fetch
     supabase.auth.getUser().then(({ data: { user } }) => {
       setIsLoggedIn(!!user);
-      console.log(user?.user_metadata?.avatar_url);
     });
 
     // Listen for auth changes
@@ -33,19 +33,6 @@ export default function Navbar() {
       authListener.subscription.unsubscribe();
     };
   }, []);
-
-  //! LOGOUT
-
-  const handleLogout = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error signing out:", error.message);
-    } else {
-      router.push("/");
-    }
-    setLoading(false);
-  };
 
   //! Retractable Navbar
   useEffect(() => {
@@ -64,6 +51,18 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
+
+  //! LOGOUT Handle
+  const handleLogout = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error.message);
+    } else {
+      router.push("/");
+    }
+    setLoading(false);
+  };
 
   // Avoid flicker by not rendering login buttons until login status resolved
   if (isLoggedIn === null) return null;
@@ -134,9 +133,9 @@ export default function Navbar() {
             <div className="flex justify-center items-center">
               <button
                 className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
-                onClick={handleLogout}
+                onClick={() => router.push("/Admin")}
               >
-                <h6>{loading ? "Logging out..." : "Keluar"}</h6>
+                Dashboard
               </button>
             </div>
           ) : (
@@ -165,7 +164,8 @@ export default function Navbar() {
                 src="/assets/logo_malut.png"
                 alt="Logo"
                 className="object-contain"
-                fill
+                width={800}
+                height={600}
               />
             </div>
             <div className="flex flex-col justify-center">
@@ -176,48 +176,104 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Burger Menu for Mobile */}
-          <div className="flex items-center px-7 h-full justify-center">
-            <button
-              onClick={() =>
-                isMenuOpen[0]
-                  ? setIsMenuOpen([false, "hidden"])
-                  : setIsMenuOpen([true, "flex"])
-              }
-              className="text-2xl focus:outline-none"
-            >
+          {/* //! Burger Menu for Mobile */}
+          <div
+            className="flex items-center px-7 h-full justify-center cursor-pointer"
+            onClick={() =>
+              isMenuOpen[0]
+                ? setIsMenuOpen([false, "hidden"])
+                : setIsMenuOpen([true, "flex"])
+            }
+          >
+            <button className="text-2xl focus:outline-none">
               &#9776; {/* Burger icon */}
             </button>
           </div>
         </div>
 
-        {/* POP UP */}
+        {/* //!  POP UP */}
         <div
           className={`md:hidden w-full absolute transform transition-all duration-500 ease-in-out 
     ${
       isMenuOpen[0] && show
         ? "translate-y-0"
-        : "-translate-y-100 pointer-events-none"
+        : "-translate-y-full pointer-events-none"
     }`}
         >
-          <Link href="/Organisasi" className=" text-center">
+          <Link
+            href="/Organisasi"
+            className="text-center"
+            onClick={() => setIsMenuOpen([false, "hidden"])}
+          >
             <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Organisasi</h4>
           </Link>
-          <Link href="/Berita" className=" text-center">
+          <Link
+            href="/Berita"
+            className="text-center"
+            onClick={() => setIsMenuOpen([false, "hidden"])}
+          >
             <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Berita</h4>
           </Link>
-          <Link href="/Galeri" className=" text-center">
+          <Link
+            href="/Galeri"
+            className="text-center"
+            onClick={() => setIsMenuOpen([false, "hidden"])}
+          >
             <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Galeri</h4>
           </Link>
-          <Link href="/Data" className=" text-center">
+          <Link
+            href="/Data"
+            className="text-center"
+            onClick={() => setIsMenuOpen([false, "hidden"])}
+          >
             <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Data</h4>
           </Link>
-          <Link href="/Kontak" className=" text-center">
+          <Link
+            href="/Kontak"
+            className="text-center"
+            onClick={() => setIsMenuOpen([false, "hidden"])}
+          >
             <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Kontak</h4>
           </Link>
-          <Link href="/Masuk" className="text-center">
-            <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">Masuk</h4>
-          </Link>
+          {isLoggedIn ? (
+            <>
+              <Link
+                href="/Admin"
+                className="text-center"
+                onClick={() => {
+                  setIsMenuOpen([false, "hidden"]);
+                }}
+              >
+                <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
+                  {loading ? "Loading..." : "Dashboard"}
+                </h4>
+              </Link>
+              <Link
+                href="/Masuk"
+                className="text-center"
+                onClick={() => {
+                  handleLogout();
+                  setIsMenuOpen([false, "hidden"]);
+                }}
+              >
+                <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
+                  {loading ? "Loading..." : "Keluar"}
+                </h4>
+              </Link>
+            </>
+          ) : (
+            <Link
+              href="/Masuk"
+              className="text-center"
+              onClick={() => {
+                setIsMenuOpen([false, "hidden"]);
+              }}
+            >
+              <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
+                {loading ? "Loading..." : "Masuk"}
+              </h4>
+            </Link>
+          )}
           {/* Outer Element, if Burger Menu = Open, then Menu will Off if Outer Element "Clicked"  */}
           <div
             className={`${isMenuOpen[1]} h-[50vh] w-full`}

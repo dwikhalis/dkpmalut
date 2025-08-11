@@ -1,12 +1,11 @@
 import Link from "next/link";
-import React from "react";
 
 export default function Footer() {
   return (
     <>
       {/* //! DESKTOP */}
       <hr className="border-t border-gray-300" />
-      <div className="hidden md:flex justify-between py-12 lg:px-24 px-12 bg-stone-200">
+      <div className="hidden md:flex justify-between py-12 lg:px-24 px-12 bg-stone-200 w-full">
         {/* LEFT SIDE */}
         <div className="w-[50%]">
           <h6>© 2025 DKP Malut. All right reserved.</h6>
@@ -84,7 +83,7 @@ export default function Footer() {
       </div>
 
       {/* //! MOBILE */}
-      <div className="md:hidden px-12 py-6 bg-stone-200">
+      <div className="md:hidden px-12 py-6 bg-stone-200 w-full">
         {/* LEFT SIDE */}
         <div className="flex justify-between">
           {/* COL 1 */}
@@ -155,7 +154,7 @@ export default function Footer() {
 
           {/* BOTTOM SIDE */}
           <h6 className="text-center mt-3">
-            © 2025 DKP Malut. All right reserved.
+            © 2025 DKP Malut. All rights reserved.
           </h6>
           <Link href="https://www.linkedin.com/in/khalisdwih/">
             <h6 className="text-center">Design and build by Khalis</h6>

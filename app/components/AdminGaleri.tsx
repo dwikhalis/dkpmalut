@@ -74,7 +74,7 @@ export default function AdminGaleri() {
     <div className="flex flex-col">
       <h3>Galeri</h3>
       <form
-        className="flex flex-col p-10 border-1 border-stone-100 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl w-full"
+        className="flex flex-col p-10 border-1 border-stone-100 ml-8 mb-12 lg:mb-20 lg:my-12 rounded-2xl shadow-2xl"
         onSubmit={handleSubmit}
       >
         {/* //! IMAGE UPLOAD */}
