@@ -167,7 +167,7 @@ export default function Navbar() {
                 : setIsMenuOpen([true, "flex"])
             }
           >
-            <button className="text-2xl focus:outline-none">
+            <button className="text-2xl focus:outline-none cursor-pointer">
               &#9776; {/* Burger icon */}
             </button>
           </div>
