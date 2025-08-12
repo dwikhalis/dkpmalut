@@ -113,7 +113,8 @@ export default function AdminOrg() {
   return (
     <div className="flex flex-col">
       <h3 className="font-bold text-center my-12 ml-8 md:ml-12">Organisasi</h3>
-      <div className="flex flex-col gap-6 mb-12">
+      <div className="flex flex-col gap-6 mb-12 min-h-[60vh]">
+        {/* //! EDIT STAFF */}
         <div className="flex flex-col p-3 border-1 hover:bg-black hover:text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center">
           Edit Staff
         </div>
