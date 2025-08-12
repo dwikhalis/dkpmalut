@@ -38,5 +38,6 @@ export const getStaff = async () => {
     title: item.title ?? "",
     division: item.division ?? "",
     photo: item.photo ?? "",
+    gender: item.gender ?? "",
   }));
 };
