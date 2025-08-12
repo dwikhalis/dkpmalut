@@ -1,30 +1,13 @@
-"use client";
-
 import React from "react";
 import Image from "next/image";
+import { getStaff } from "@/lib/supabase/getHelper";
 
-interface DataItem {
-  id: string;
-  name: string;
-  title: string;
-  division: string;
-  photo: string;
-}
-
-interface Props {
+interface Prop {
   type: string;
-  data: DataItem[] | null;
-  loading?: boolean; // optional flag
 }
 
-export default function StaffList({ type, data, loading }: Props) {
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-40">
-        <p>Loading...</p>
-      </div>
-    );
-  }
+export default async function StaffList({ type }: Prop) {
+  const data = await getStaff();
 
   if (!data || data.length === 0) return null;
 
@@ -45,6 +28,7 @@ export default function StaffList({ type, data, loading }: Props) {
                     width={120}
                     height={120}
                     alt="photo"
+                    priority
                   />
                 </div>
                 <h5 className="w-[30%] text-center">{e.name}</h5>

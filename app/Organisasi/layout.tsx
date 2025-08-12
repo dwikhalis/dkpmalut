@@ -1,5 +1,4 @@
 import "../globals.css";
-
 export const metadata = {
   title: "Organisasi",
   description: "Organisasi DKP Malut",

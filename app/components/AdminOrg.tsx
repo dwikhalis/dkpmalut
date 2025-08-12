@@ -4,6 +4,7 @@ import React from "react";
 import { useState } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import StaffList from "./StaffList";
 
 export default function AdminOrg() {
   const [fileName, setFileName] = useState("Upload photo");
@@ -16,6 +17,7 @@ export default function AdminOrg() {
     gender: "",
     photo: "",
   });
+  const [show, setShow] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,148 +112,179 @@ export default function AdminOrg() {
 
   return (
     <div className="flex flex-col">
-      <h3>Organisasi</h3>
-      <form
-        className="flex flex-col p-10 border-1 border-stone-100 ml-12 mb-12 lg:mb-20 lg:my-12 rounded-2xl shadow-2xl"
-        onSubmit={handleSubmit}
-      >
-        {/* //! NAME */}
-        <label
-          className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          htmlFor="name"
-        >
-          Nama Lengkap
-        </label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          placeholder="Nama Staff"
-          className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-
-        {/* //! GENDER */}
-        <label
-          className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          htmlFor="gender"
-        >
-          Gender
-        </label>
-        <select
-          className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3
-  py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          value={formData.gender}
-          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-        >
-          <option value="">-- Pilih Gender --</option>
-          <option value="Male">Laki-laki</option>
-          <option value="Female">Perempuan</option>
-        </select>
-
-        {/* //! TITLE */}
-        <label
-          className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          htmlFor="title"
-        >
-          Jabatan
-        </label>
-        <input
-          type="text"
-          id="title"
-          name="title"
-          placeholder="Nama Staff"
-          className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-        />
-
-        {/* //! DIVISION */}
-        <label
-          className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          htmlFor="division"
-        >
-          Bidang
-        </label>
-        <select
-          className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3
-  py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          value={formData.division}
-          onChange={(e) =>
-            setFormData({ ...formData, division: e.target.value })
-          }
-          required
-        >
-          <option value="" disabled>
-            -- Pilih Bidang --
-          </option>
-          <option value="PRL">PRL</option>
-          <option value="Penangkapan">Penangkapan</option>
-          <option value="Budidaya">Budidaya</option>
-          <option value="PSDKP">PSDKP</option>
-        </select>
-
-        {/* //! IMAGE UPLOAD */}
-        <div className="flex flex-col gap-3">
-          <label
-            className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-            htmlFor="image"
-          >
-            Upload Photo
-          </label>
-
-          {/* Hidden input */}
-          <input
-            id="image"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                const selectedFile = e.target.files[0];
-                setFile(selectedFile);
-                setFileName(selectedFile.name);
-                setPreview(URL.createObjectURL(selectedFile));
-              } else {
-                setFile(null);
-                setFileName("No file chosen");
-                setPreview(null);
-              }
-            }}
-          />
-          {/* Button image selector */}
-          <label
-            htmlFor="image"
-            className="bg-stone-100 p-3 rounded-md text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] cursor-pointer hover:bg-stone-200 inline-block md:mb-6 mb-3"
-          >
-            Pilih Gambar
-          </label>
-
-          {/* Image preview */}
-          {preview && (
-            <div className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3">
-              <Image
-                src={preview}
-                alt="Preview"
-                className="mt-3 max-h-60 object-contain h-full w-full"
-                width={800}
-                height={600}
-              />
-              <span className="text-center mt-2">{fileName}</span>
-            </div>
-          )}
+      <h3 className="font-bold text-center my-12 ml-8 md:ml-12">Organisasi</h3>
+      <div className="flex flex-col gap-6 mb-12">
+        <div className="flex flex-col p-3 border-1 hover:bg-black hover:text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center">
+          Edit Staff
         </div>
 
-        {/* //! SUBMIT */}
-        <input
-          type="submit"
-          value="Kirim"
-          className="bg-black text-white p-1.5 md:p-3 rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] md:mb-6 mb-3"
-        />
-      </form>
+        {/* //! ADD STAFF */}
+        <div
+          className={`${
+            show ? "hidden" : "flex"
+          } flex-col p-3 border-1 hover:bg-black hover:text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
+          onClick={() => setShow(true)}
+        >
+          Tambah Staff
+        </div>
+        <div
+          className={`${
+            show ? "flex" : "hidden"
+          } flex-col p-3 border-1 bg-black text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
+          onClick={() => setShow(false)}
+        >
+          Tambah Staff
+        </div>
+
+        {/* //! CONTENT : ADD STAFF */}
+        <form
+          className={`${
+            show ? "flex" : "hidden"
+          } flex-col p-6 md:p-10 border-1 border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl`}
+          onSubmit={handleSubmit}
+        >
+          {/* //! NAME */}
+          <label
+            className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            htmlFor="name"
+          >
+            Nama Lengkap
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Nama Staff"
+            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+
+          {/* //! GENDER */}
+          <label
+            className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            htmlFor="gender"
+          >
+            Gender
+          </label>
+          <select
+            className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3
+  py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            value={formData.gender}
+            onChange={(e) =>
+              setFormData({ ...formData, gender: e.target.value })
+            }
+          >
+            <option value="">-- Pilih Gender --</option>
+            <option value="Male">Laki-laki</option>
+            <option value="Female">Perempuan</option>
+          </select>
+
+          {/* //! TITLE */}
+          <label
+            className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            htmlFor="title"
+          >
+            Jabatan
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            placeholder="Nama Staff"
+            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            value={formData.title}
+            onChange={(e) =>
+              setFormData({ ...formData, title: e.target.value })
+            }
+            required
+          />
+
+          {/* //! DIVISION */}
+          <label
+            className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            htmlFor="division"
+          >
+            Bidang
+          </label>
+          <select
+            className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3
+  py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            value={formData.division}
+            onChange={(e) =>
+              setFormData({ ...formData, division: e.target.value })
+            }
+            required
+          >
+            <option value="" disabled>
+              -- Pilih Bidang --
+            </option>
+            <option value="PRL">PRL</option>
+            <option value="Penangkapan">Penangkapan</option>
+            <option value="Budidaya">Budidaya</option>
+            <option value="PSDKP">PSDKP</option>
+          </select>
+
+          {/* //! IMAGE UPLOAD */}
+          <div className="flex flex-col gap-3">
+            <label
+              className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+              htmlFor="image"
+            >
+              Upload Photo
+            </label>
+
+            {/* Hidden input */}
+            <input
+              id="image"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) {
+                  const selectedFile = e.target.files[0];
+                  setFile(selectedFile);
+                  setFileName(selectedFile.name);
+                  setPreview(URL.createObjectURL(selectedFile));
+                } else {
+                  setFile(null);
+                  setFileName("No file chosen");
+                  setPreview(null);
+                }
+              }}
+            />
+            {/* Button image selector */}
+            <label
+              htmlFor="image"
+              className="bg-stone-100 p-3 rounded-md text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] cursor-pointer hover:bg-stone-200 inline-block md:mb-6 mb-3"
+            >
+              Pilih Gambar
+            </label>
+
+            {/* Image preview */}
+            {preview && (
+              <div className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3">
+                <Image
+                  src={preview}
+                  alt="Preview"
+                  className="mt-3 max-h-60 object-contain h-full w-full"
+                  width={800}
+                  height={600}
+                />
+                <span className="text-center mt-2">{fileName}</span>
+              </div>
+            )}
+          </div>
+
+          {/* //! SUBMIT */}
+          <input
+            type="submit"
+            value="Kirim"
+            className="bg-black text-white p-1.5 md:p-3 rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] md:mb-6 mb-3"
+          />
+        </form>
+      </div>
     </div>
   );
 }

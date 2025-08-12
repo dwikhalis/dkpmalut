@@ -17,7 +17,8 @@
     "react-dom": "19.1.0",
     "react-textarea-autosize": "^8.5.9",
     "swiper": "^11.2.10",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

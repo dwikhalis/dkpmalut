@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "../Stores/authStores";
 
 export default function Navbar() {
   const router = useRouter();
@@ -13,27 +14,7 @@ export default function Navbar() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
-
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-
-  //! CHECK USER LOGIN
-  useEffect(() => {
-    // Initial user fetch
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsLoggedIn(!!user);
-    });
-
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setIsLoggedIn(!!session?.user);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   //! Retractable Navbar
   useEffect(() => {
@@ -67,9 +48,6 @@ export default function Navbar() {
       setLogoutConfirm([false, "hidden"]);
     }
   };
-
-  // Avoid flicker by not rendering login buttons until login status resolved
-  if (isLoggedIn === null) return null;
 
   return (
     <>

@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
 import "./globals.css";
 
 import { Poppins } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import AuthProvider from "./Auth/AuthProvider";
+import { Metadata } from "next";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -30,9 +31,11 @@ export default function RootLayout({
     >
       <body>
         <Analytics />
-        <Navbar />
-        {children}
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

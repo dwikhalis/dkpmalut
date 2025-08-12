@@ -14,14 +14,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    config.ignoreWarnings = config.ignoreWarnings || [];
-    config.ignoreWarnings.push({
-      message:
-        /Critical dependency: the request of a dependency is an expression/,
-    });
-    return config;
-  },
+  // webpack: (config, { isServer }) => {
+  //   config.ignoreWarnings = config.ignoreWarnings || [];
+  //   config.ignoreWarnings.push({
+  //     message:
+  //       /Critical dependency: the request of a dependency is an expression/,
+  //   });
+  //   return config;
+  // },
 };
 
 export default nextConfig;

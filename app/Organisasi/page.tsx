@@ -1,10 +1,7 @@
 import React from "react";
-import { getStaff } from "@/lib/supabase/getHelper";
 import StaffList from "../components/StaffList";
 
-const page = async () => {
-  const staffs = await getStaff();
-
+export default function Page() {
   return (
     <>
       <section className="lg:mx-24 my-12 mx-12">
@@ -16,16 +13,14 @@ const page = async () => {
         </div>
         {/* //! DESKTOP */}
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          <StaffList type="regular" data={staffs} />
+          <StaffList type="regular" />
         </div>
 
         {/* //! MOBILE */}
         <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          <StaffList type="regular" data={staffs} />
+          <StaffList type="regular" />
         </div>
       </section>
     </>
   );
-};
-
-export default page;
+}
