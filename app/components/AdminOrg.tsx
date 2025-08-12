@@ -17,7 +17,8 @@ export default function AdminOrg() {
     gender: "",
     photo: "",
   });
-  const [show, setShow] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,24 +116,45 @@ export default function AdminOrg() {
       <h3 className="font-bold text-center my-12 ml-8 md:ml-12">Organisasi</h3>
       <div className="flex flex-col gap-6 mb-12 min-h-[60vh]">
         {/* //! EDIT STAFF */}
-        <div className="flex flex-col p-3 border-1 hover:bg-black hover:text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center">
+        <div
+          className={`${
+            showEdit ? "hidden" : "flex"
+          } flex-col p-3 border-1 border-stone-100 bg-stone-100 hover:bg-black hover:text-white ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
+          onClick={() => {
+            setShowEdit(true);
+            setShowAdd(false);
+          }}
+        >
+          Edit Staff
+        </div>
+        {/* Pseudo Button Edit Staff */}
+        <div
+          className={`${
+            showEdit ? "flex" : "hidden"
+          } flex-col p-3 border-1 bg-black text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
+          onClick={() => setShowEdit(false)}
+        >
           Edit Staff
         </div>
 
         {/* //! ADD STAFF */}
         <div
           className={`${
-            show ? "hidden" : "flex"
-          } flex-col p-3 border-1 hover:bg-black hover:text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
-          onClick={() => setShow(true)}
+            showAdd ? "hidden" : "flex"
+          } flex-col p-3 hover:bg-black border-1 border-stone-100 hover:text-white bg-stone-100 ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
+          onClick={() => {
+            setShowAdd(true);
+            setShowEdit(false);
+          }}
         >
           Tambah Staff
         </div>
+        {/* Pseudo Button Add Staff */}
         <div
           className={`${
-            show ? "flex" : "hidden"
+            showAdd ? "flex" : "hidden"
           } flex-col p-3 border-1 bg-black text-white border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl text-center cursor-pointer`}
-          onClick={() => setShow(false)}
+          onClick={() => setShowAdd(false)}
         >
           Tambah Staff
         </div>
@@ -140,7 +162,7 @@ export default function AdminOrg() {
         {/* //! CONTENT : ADD STAFF */}
         <form
           className={`${
-            show ? "flex" : "hidden"
+            showAdd ? "flex" : "hidden"
           } flex-col p-6 md:p-10 border-1 border-stone-200 ml-8 md:ml-12 rounded-2xl shadow-xl`}
           onSubmit={handleSubmit}
         >
@@ -285,6 +307,11 @@ export default function AdminOrg() {
             className="bg-black text-white p-1.5 md:p-3 rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] md:mb-6 mb-3"
           />
         </form>
+
+        {/* //! CONTENT : STAFF LIST */}
+        <div className={`${showEdit ? "flex" : "hidden"} ml-8 md:ml-12`}>
+          <StaffList type="regular" />
+        </div>
       </div>
     </div>
   );

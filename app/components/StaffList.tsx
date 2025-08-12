@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { getStaff } from "@/lib/supabase/getHelper";
 
@@ -6,10 +8,21 @@ interface Prop {
   type: string;
 }
 
-export default async function StaffList({ type }: Prop) {
-  const data = await getStaff();
+export default function StaffList({ type }: Prop) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!data || data.length === 0) return null;
+  useEffect(() => {
+    async function fetchData() {
+      const staff = await getStaff();
+      setData(staff || []);
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+
+  if (loading) return <p>Loading staff...</p>;
+  if (!data.length) return <p>No staff found.</p>;
 
   if (type === "regular") {
     return (

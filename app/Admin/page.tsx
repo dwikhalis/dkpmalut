@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import AdminBerita from "../components/AdminBerita";
 import AdminGaleri from "../components/AdminGaleri";
 import AdminDashboard from "../components/AdminDashboard";
