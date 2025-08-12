@@ -1,3 +1,6 @@
+//! Force page to load fresh data each render
+export const revalidate = 0;
+
 import React from "react";
 import Gallery from "../components/Gallery";
 import { getGallery } from "@/lib/supabase/getHelper";

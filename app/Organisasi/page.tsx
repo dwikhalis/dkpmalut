@@ -1,3 +1,6 @@
+//! Force page to load fresh data each render
+export const revalidate = 0;
+
 import React from "react";
 import StaffList from "../components/StaffList";
 
