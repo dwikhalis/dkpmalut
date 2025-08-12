@@ -23,7 +23,6 @@ export default function StaffList({ type }: Prop) {
   useEffect(() => {
     async function fetchData() {
       const staff = await getStaff();
-      console.log(staff);
       setData(staff || []);
       setLoading(false);
     }
