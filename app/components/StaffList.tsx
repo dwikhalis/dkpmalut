@@ -8,13 +8,22 @@ interface Prop {
   type: string;
 }
 
+interface Staff {
+  id: string;
+  name: string;
+  photo: string;
+  title: string;
+  division: string;
+}
+
 export default function StaffList({ type }: Prop) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       const staff = await getStaff();
+      console.log(staff);
       setData(staff || []);
       setLoading(false);
     }
