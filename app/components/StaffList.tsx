@@ -49,7 +49,7 @@ export default function StaffList({ admin, sendToParent = () => {} }: Prop) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "staff" },
-        (payload) => {
+        () => {
           fetchData();
         }
       )
