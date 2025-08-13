@@ -37,7 +37,9 @@ export default function AdminOrg() {
   };
 
   const handleAlert = (signal: boolean) => {
-    signal ? setUpdated("") : null;
+    if (signal) {
+      setUpdated("");
+    }
   };
 
   return (
