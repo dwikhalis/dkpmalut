@@ -9,6 +9,7 @@ import AdminData from "../components/AdminData";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 import AuthProtect from "../Auth/AuthProtect";
+import SpinnerLoading from "../components/SpinnerLoading";
 
 export default function Page() {
   const router = useRouter();
@@ -82,14 +83,16 @@ export default function Page() {
             <div className={"p-3 w-full"}></div>
 
             {/* //! LOGOUT */}
-            <h3
+            <div
               className={
                 "p-3 cursor-pointer text-white bg-teal-900 hover:bg-teal-950 w-full"
               }
-              onClick={() => setLogoutConfirm([false, "flex"])}
+              onClick={() => {
+                setLogoutConfirm([false, "flex"]);
+              }}
             >
-              {loading ? "Logging out..." : "Keluar"}
-            </h3>
+              {loading ? <SpinnerLoading size="sm" /> : <h3>Keluar</h3>}
+            </div>
           </div>
 
           {/* //! RETRACT "❬" BUTTON SIDEMENU */}
@@ -145,17 +148,20 @@ export default function Page() {
               <button
                 className="bg-sky-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-sky-700"
                 onClick={() => {
-                  setLogoutConfirm([true, "hidden"]);
+                  setLogoutConfirm([true, "flex"]);
                   handleLogout();
                 }}
               >
-                <h3>Ya</h3>
+                {loading ? <SpinnerLoading size="sm" /> : <h3>Ya</h3>}
               </button>
 
               {/* NO Logout */}
               <button
                 className="bg-rose-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-rose-700"
-                onClick={() => setLogoutConfirm([false, "hidden"])}
+                onClick={() => {
+                  setLoading(false);
+                  setLogoutConfirm([false, "hidden"]);
+                }}
               >
                 <h3>Tidak</h3>
               </button>

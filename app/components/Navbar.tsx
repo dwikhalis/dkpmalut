@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../Stores/authStores";
+import SpinnerLoading from "./SpinnerLoading";
 
 export default function Navbar() {
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState([false, "hidden"]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [show, setShow] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -20,6 +21,12 @@ export default function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setShow(false);
+      } else {
+        setShow(true);
+      }
 
       if (currentScrollY > lastScrollY && currentScrollY > 50) {
         setShow(false);
@@ -41,6 +48,8 @@ export default function Navbar() {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error signing out:", error.message);
+        alert("Gagal melakukan Logout. Masalah pada server!");
+        router.push("/");
       } else {
         router.push("/");
       }
@@ -53,7 +62,7 @@ export default function Navbar() {
     <>
       {/* //! DESKTOP */}
       <nav
-        className={`hidden lg:flex sticky z-10 top-0  xl:h-[6vw] h-[8vw] justify-between items-center bg-white w-full transition-transform duration-300 ${
+        className={`hidden md:flex sticky z-10 top-0  xl:h-[6vw] h-[8vw] justify-between items-center bg-white w-full transition-transform duration-300 ${
           show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
@@ -73,8 +82,10 @@ export default function Navbar() {
             />
           </div>
           <div className="flex flex-col justify-center">
-            <h5 className="font-bold">Dinas Kelautan dan Perikanan</h5>
-            <h5>Provinsi Maluku Utara</h5>
+            <p className="font-bold md:text-xs lg:text-lg">
+              Dinas Kelautan dan Perikanan
+            </p>
+            <p className="md:text-xs lg:text-lg">Provinsi Maluku Utara</p>
           </div>
         </Link>
 
@@ -114,7 +125,7 @@ export default function Navbar() {
           {isLoggedIn ? (
             <div className="flex justify-center items-center">
               <button
-                className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
+                className="px-[2vw] py-2.5 text-[1.2vw] mr-12 2xl:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
                 onClick={() => router.push("/Admin")}
               >
                 Dashboard
@@ -122,7 +133,7 @@ export default function Navbar() {
             </div>
           ) : (
             <Link href="/Masuk" className="flex justify-center items-center">
-              <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 lg:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
+              <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 2xl:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
                 <h6>Masuk</h6>
               </button>
             </Link>
@@ -130,9 +141,9 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* //! TABLET & MOBILE */}
+      {/* //! MOBILE */}
       <nav
-        className={`lg:hidden z-10 sticky top-0 transition-transform duration-300 ${
+        className={`md:hidden z-10 sticky top-0 transition-transform duration-300 ${
           show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
@@ -151,10 +162,8 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col justify-center">
-              <h4 className="font-bold text-[2vw]">
-                Dinas Kelautan dan Perikanan
-              </h4>
-              <h4 className="text-[2vw]">Provinsi Maluku Utara</h4>
+              <h4 className="font-bold">Dinas Kelautan dan Perikanan</h4>
+              <h4>Provinsi Maluku Utara</h4>
             </div>
           </Link>
 
@@ -162,9 +171,7 @@ export default function Navbar() {
           <div
             className="flex items-center px-7 h-full justify-center cursor-pointer"
             onClick={() =>
-              isMenuOpen[0]
-                ? setIsMenuOpen([false, "hidden"])
-                : setIsMenuOpen([true, "flex"])
+              isMenuOpen ? setIsMenuOpen(false) : setIsMenuOpen(true)
             }
           >
             <button className="text-2xl focus:outline-none cursor-pointer">
@@ -175,9 +182,9 @@ export default function Navbar() {
 
         {/* //!  DROP-DOWN MENU */}
         <div
-          className={`md:hidden w-full absolute transform transition-all duration-500 ease-in-out 
+          className={`lg:hidden w-full absolute transform transition-all duration-500 ease-in-out 
     ${
-      isMenuOpen[0] && show
+      isMenuOpen && show
         ? "translate-y-0"
         : "-translate-y-full pointer-events-none"
     }`}
@@ -185,37 +192,39 @@ export default function Navbar() {
           <Link
             href="/Organisasi"
             className="text-center"
-            onClick={() => setIsMenuOpen([false, "hidden"])}
+            onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Organisasi</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
+              Organisasi
+            </h4>
           </Link>
           <Link
             href="/Berita"
             className="text-center"
-            onClick={() => setIsMenuOpen([false, "hidden"])}
+            onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Berita</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Berita</h4>
           </Link>
           <Link
             href="/Galeri"
             className="text-center"
-            onClick={() => setIsMenuOpen([false, "hidden"])}
+            onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Galeri</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Galeri</h4>
           </Link>
           <Link
             href="/Data"
             className="text-center"
-            onClick={() => setIsMenuOpen([false, "hidden"])}
+            onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Data</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Data</h4>
           </Link>
           <Link
             href="/Kontak"
             className="text-center"
-            onClick={() => setIsMenuOpen([false, "hidden"])}
+            onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-4 bg-[rgba(0,0,0,0.8)] text-white">Kontak</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Kontak</h4>
           </Link>
           {isLoggedIn ? (
             <>
@@ -223,23 +232,27 @@ export default function Navbar() {
                 href="/Admin"
                 className="text-center"
                 onClick={() => {
-                  setIsMenuOpen([false, "hidden"]);
+                  setIsMenuOpen(false);
                 }}
               >
-                <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
-                  {loading ? "Loading..." : "Dashboard"}
-                </h4>
+                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
+                  {loading ? (
+                    <SpinnerLoading size={"sm"} />
+                  ) : (
+                    <h4>Dashboard</h4>
+                  )}
+                </div>
               </Link>
               <div
                 className="text-center"
                 onClick={() => {
                   setLogoutConfirm([false, "flex"]);
-                  setIsMenuOpen([false, "hidden"]);
+                  setIsMenuOpen(false);
                 }}
               >
-                <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
-                  {loading ? "Loading..." : "Keluar"}
-                </h4>
+                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
+                  {loading ? <SpinnerLoading size={"sm"} /> : <h4>Keluar</h4>}
+                </div>
               </div>
             </>
           ) : (
@@ -247,20 +260,18 @@ export default function Navbar() {
               href="/Masuk"
               className="text-center"
               onClick={() => {
-                setIsMenuOpen([false, "hidden"]);
+                setIsMenuOpen(false);
               }}
             >
-              <h4 className="py-4 bg-[rgba(0,0,0,0.85)] text-white">
-                {loading ? "Loading..." : "Masuk"}
-              </h4>
+              <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
+                {loading ? <SpinnerLoading size={"sm"} /> : <h4>Masuk</h4>}
+              </div>
             </Link>
           )}
           {/* Outer Element, if Burger Menu = Open, then Menu will Off if Outer Element "Clicked"  */}
           <div
-            className={`${isMenuOpen[1]} h-[50vh] w-full`}
-            onClick={() =>
-              isMenuOpen ? setIsMenuOpen([false, "hidden"]) : null
-            }
+            className={`${isMenuOpen ? "flex" : "hidden"} h-[50vh] w-full`}
+            onClick={() => (isMenuOpen ? setIsMenuOpen(false) : null)}
           />
         </div>
       </nav>
@@ -276,11 +287,11 @@ export default function Navbar() {
             <button
               className="bg-sky-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-sky-700"
               onClick={() => {
-                setLogoutConfirm([true, "hidden"]);
+                setLogoutConfirm([true, "flex"]);
                 handleLogout();
               }}
             >
-              <h3>Ya</h3>
+              <div>{loading ? <SpinnerLoading size={"sm"} /> : "Ya"}</div>
             </button>
 
             {/* NO Logout */}

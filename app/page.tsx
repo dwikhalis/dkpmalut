@@ -55,7 +55,7 @@ export default function Page() {
   }, [router]);
 
   return (
-    <>
+    <div>
       <Hero />
       <SectionOrg />
       <SectionNumber />
@@ -65,6 +65,6 @@ export default function Page() {
       <Suspense fallback={<Loading />}>
         <SectionAddr />
       </Suspense>
-    </>
+    </div>
   );
 }

@@ -35,11 +35,16 @@ export default async function page({ params }: Props) {
   } else {
     return (
       <>
-        <div className="flex flex-col gap-6 mx-12 mt-3 mb-12 p-12">
+        <div className="flex flex-col gap-6 2xl:mx-24 2xl:my-24 2xl:gap-12 md:mx-12 mx-8 md:mt-12 mt-8 mb-12">
           <h2>{data.title}</h2>
-          <h6>
-            {data.tag}/{data.date}
-          </h6>
+          <h5>
+            {`${data.tag.charAt(0).toUpperCase() + data.tag.slice(1)} /
+            ${new Date(data.date).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}`}
+          </h5>
           <div className="flex flex-col mb-6 gap-2">
             <Image
               alt="Gambar"

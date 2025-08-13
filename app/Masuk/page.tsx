@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import SpinnerLoading from "../components/SpinnerLoading";
 
 export default function Page() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function Page() {
             className="absolute w-[50%]object-contain z-[-1]"
           />
         </div>
-        <div className="flex flex-col p-10 border-1 bg-white border-stone-100 gap-3 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%] h-[70vh]">
+        <div className="flex flex-col md:p-10 p-6 border-1 bg-white border-stone-100 gap-3 mx-8 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%] min-h-[70vh]">
           {mode === "signin" && (
             <>
               {/* //! LOGIN */}
@@ -116,7 +117,7 @@ export default function Page() {
                   disabled={loading}
                   className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
                 >
-                  {loading ? "Loading..." : "Masuk"}
+                  {loading ? <SpinnerLoading size={"sm"} /> : "Masuk"}
                 </button>
               </form>
               <button
@@ -152,7 +153,11 @@ export default function Page() {
                   disabled={loading}
                   className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
                 >
-                  {loading ? "Mengirim..." : "Kirim email reset password"}
+                  {loading ? (
+                    <SpinnerLoading size={"sm"} />
+                  ) : (
+                    "Kirim email reset password"
+                  )}
                 </button>
               </form>
               <button
@@ -167,8 +172,14 @@ export default function Page() {
             </>
           )}
 
-          {errorMsg && <p className="mt-4 text-red-600">{errorMsg}</p>}
-          {successMsg && <p className="mt-4 text-green-600">{successMsg}</p>}
+          {errorMsg && (
+            <p className="mt-4 text-red-600 w-full text-center">{errorMsg}</p>
+          )}
+          {successMsg && (
+            <p className="mt-4 text-green-600 w-full text-center">
+              {successMsg} Menuju Dashboard...
+            </p>
+          )}
         </div>
       </div>
     </>

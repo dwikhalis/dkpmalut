@@ -10,7 +10,7 @@ export default async function Page() {
 
   return (
     <>
-      <section className="lg:mx-24 my-12 mx-12">
+      <section className="lg:mx-24 my-12 md:mx-12 mx-8">
         <div className="flex flex-col gap-3">
           <h2>Galeri Kelautan Perikanan</h2>
           <h5>

@@ -19,7 +19,12 @@ interface Staff {
   gender: string;
 }
 
-export default function StaffList({ type, sendToParent }: Prop) {
+//! sendToParent = () => {}, using empty function
+//! to tell typescript that it is a default no-op function
+//! If you don't wanna send data to parent from this component
+//! just use the same empty function as value
+
+export default function StaffList({ type, sendToParent = () => {} }: Prop) {
   const [data, setData] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +80,7 @@ export default function StaffList({ type, sendToParent }: Prop) {
         {Object.entries(groupedData).map(([key, items]) => {
           return (
             <div key={key}>
-              <h4>
+              <h4 className="font-bold">
                 {key === "PRL"
                   ? prl
                   : key === "Budidaya"
