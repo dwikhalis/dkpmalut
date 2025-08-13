@@ -74,9 +74,9 @@ export default function AdminBerita() {
 
   return (
     <div className="flex flex-col">
-      <h3>Berita</h3>
+      <h3 className="font-bold text-center my-8">Berita</h3>
       <form
-        className="flex flex-col p-10 border-1 border-stone-100 ml-8 mb-12 lg:ml-12 lg:mb-20 lg:my-12 rounded-2xl shadow-2xl"
+        className="flex flex-col md:p-10 p-6 border-1 border-stone-100 lg:mb-20 mb-12 rounded-2xl shadow-2xl"
         onSubmit={handleSubmit}
       >
         {/* //! TAG */}

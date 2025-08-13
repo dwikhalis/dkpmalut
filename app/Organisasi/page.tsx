@@ -16,12 +16,12 @@ export default function Page() {
         </div>
         {/* //! DESKTOP */}
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          <StaffList type="regular" sendToParent={() => {}} />
+          <StaffList admin={false} />
         </div>
 
         {/* //! MOBILE */}
         <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          <StaffList type="regular" sendToParent={() => {}} />
+          <StaffList admin={false} />
         </div>
       </section>
     </>

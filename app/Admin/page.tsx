@@ -129,7 +129,7 @@ export default function Page() {
         ></div>
 
         {/* //! CONTENT */}
-        <div className="h-full w-full lg:mr-24 mr-8 ">
+        <div className="h-full w-full lg:mx-12 mx-8 ">
           {content === "Dashboard" ? <AdminDashboard /> : null}
           {content === "Berita" ? <AdminBerita /> : null}
           {content === "Galeri" ? <AdminGaleri /> : null}

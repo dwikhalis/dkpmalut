@@ -15,9 +15,10 @@ interface Staff {
 
 interface Props {
   oldData: Staff;
+  signalUpdated: (updated: string) => void;
 }
 
-export default function AdminEditStaff({ oldData }: Props) {
+export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
   const [fileName, setFileName] = useState("Upload photo");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -29,7 +30,9 @@ export default function AdminEditStaff({ oldData }: Props) {
     photo: "",
   });
 
+  //! SCROLL TO TOP AT 1st RENDER
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setFormData({
       name: oldData.name,
       title: oldData.title,
@@ -42,6 +45,7 @@ export default function AdminEditStaff({ oldData }: Props) {
     setFileName("Preview");
   }, [oldData]);
 
+  //! CLEAR IMAGE UPLOAD FILE CACHE
   useEffect(() => {
     return () => {
       if (preview && preview.startsWith("blob:")) {
@@ -50,6 +54,7 @@ export default function AdminEditStaff({ oldData }: Props) {
     };
   }, [preview]);
 
+  //! HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -57,7 +62,6 @@ export default function AdminEditStaff({ oldData }: Props) {
       let publicUrl = formData.photo;
 
       if (file) {
-        console.log(file);
         // Upload file to storage
         const filePath = `staff/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
@@ -90,12 +94,18 @@ export default function AdminEditStaff({ oldData }: Props) {
 
       if (updateError) throw updateError;
 
-      alert("Data staff telah sukses diedit!");
-
       // Reset form (optional, maybe you want to keep data instead)
       setFile(null);
       setFileName("Upload photo");
-      setPreview(publicUrl);
+      setPreview(null);
+      setFormData({
+        name: "",
+        title: "",
+        division: "",
+        gender: "",
+        photo: "",
+      });
+      signalUpdated(formData.name);
     } catch (err) {
       console.error(err);
       alert("Edit gagal. Terdapat masalah pada server!");
@@ -104,9 +114,10 @@ export default function AdminEditStaff({ oldData }: Props) {
 
   return (
     <form
-      className="flex flex-col p-6 md:p-10 border-1 border-stone-200 ml-8 md:ml-12 w-full rounded-2xl shadow-xl"
+      className="flex flex-col p-6 md:p-10 border-1 border-stone-200 w-full rounded-2xl shadow-xl"
       onSubmit={handleSubmit}
     >
+      <h4 className="mb-6 font-bold">Edit Staff</h4>
       {/* //! NAME */}
       <label
         className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -205,7 +216,6 @@ export default function AdminEditStaff({ oldData }: Props) {
               setFile(selectedFile);
               setFileName(selectedFile.name);
               setPreview(URL.createObjectURL(selectedFile));
-              console.log("File selected:", selectedFile);
             } else {
               setFile(null);
               setFileName("No file chosen");

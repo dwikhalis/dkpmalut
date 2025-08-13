@@ -74,9 +74,10 @@ export default function AdminAddStaff() {
 
   return (
     <form
-      className="flex flex-col p-6 md:p-10 border-1 border-stone-200 ml-8 md:ml-12 w-full rounded-2xl shadow-xl"
+      className="flex flex-col p-6 md:p-10 border-1 border-stone-200 w-full rounded-2xl shadow-xl"
       onSubmit={handleSubmit}
     >
+      <h4 className="mb-6 font-bold">Tambah Staff</h4>
       {/* //! NAME */}
       <label
         className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
