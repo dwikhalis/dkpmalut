@@ -7,32 +7,30 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { updateData } from "@/lib/supabase/supabaseHelper";
 
-interface News {
+interface Gallery {
   id: string;
   image: string;
   tag: string;
-  date: string;
   title: string;
-  content: string;
-  source: string;
+  date: string;
+  description: string;
 }
 
 interface Props {
-  oldData: News;
+  oldData: Gallery;
   signalUpdated: (updated: string) => void;
 }
 
-export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
-  const [fileName, setFileName] = useState("Preview");
+export default function AdminGaleriAdd({ oldData, signalUpdated }: Props) {
+  const [fileName, setFileName] = useState("Upload gambar");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     image: "",
     tag: "",
-    date: "",
     title: "",
-    content: "",
-    source: "",
+    date: "",
+    description: "",
   });
 
   //! SCROLL TO TOP AT 1st RENDER
@@ -41,10 +39,9 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
     setFormData({
       image: oldData.image,
       tag: oldData.tag,
-      date: oldData.date,
       title: oldData.title,
-      content: oldData.content,
-      source: oldData.source,
+      date: oldData.date,
+      description: oldData.description,
     });
     setPreview(oldData.image);
     setFile(null);
@@ -58,7 +55,7 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
 
       if (file) {
         // ! Upload image to SupaBase Storage
-        const filePath = `news/${Date.now()}-${file.name}`;
+        const filePath = `gallery/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("images")
           .upload(filePath, file);
@@ -75,12 +72,11 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
 
       //! Insert image Public Url into Database
       const dataUpdate = {
+        image: publicUrl,
         tag: formData.tag,
-        date: formData.date,
         title: formData.title,
-        content: formData.content,
-        source: formData.source,
-        image: publicUrl || null,
+        date: formData.date,
+        description: formData.description,
       };
 
       if (
@@ -97,7 +93,7 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
       ) {
         signalUpdated("No Update");
       } else {
-        updateData("news", dataUpdate, oldData.id);
+        updateData("gallery", dataUpdate, oldData.id);
         signalUpdated(formData.title);
       }
 
@@ -107,10 +103,9 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
       setFormData({
         image: "",
         tag: "",
-        date: "",
         title: "",
-        content: "",
-        source: "",
+        date: "",
+        description: "",
       });
     } catch (err) {
       console.error(err);
@@ -125,9 +120,9 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
     >
       {/* //! IMAGE UPLOAD */}
       <div className="flex flex-col gap-3">
-        {/* Image Selector + Preview */}
+        {/* Image selector + preview */}
         <label
-          htmlFor="picture"
+          htmlFor="image"
           className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3 cursor-pointer hover:bg-stone-200"
         >
           <Image
@@ -142,7 +137,7 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
 
         {/* Hidden input */}
         <input
-          id="picture"
+          id="image"
           type="file"
           accept="image/*"
           className="hidden"
@@ -178,10 +173,28 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
         <option value="" disabled>
           -- Pilih Tag --
         </option>
-        <option value="Berita">Berita</option>
-        <option value="Artikel">Artikel</option>
-        <option value="Peraturan">Peraturan</option>
+        <option value="Kegiatan">Kegiatan</option>
+        <option value="Alam">Alam</option>
+        <option value="Lainnya">Lainnya</option>
       </select>
+
+      {/* //! TITLE */}
+      <label
+        className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+        htmlFor="title"
+      >
+        Judul Gambar
+      </label>
+      <input
+        type="text"
+        id="title"
+        name="title"
+        placeholder="Masukkan judul gambar"
+        className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+        value={formData.title}
+        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+        required
+      />
 
       {/* //! DATE */}
       <label
@@ -202,55 +215,21 @@ export default function AdminBeritaEdit({ oldData, signalUpdated }: Props) {
         value={formData.date}
       />
 
-      {/* //! TITLE */}
+      {/* //! DESCRIPTION */}
       <label
         className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-        htmlFor="title"
+        htmlFor="description"
       >
-        Judul
-      </label>
-      <input
-        type="text"
-        id="title"
-        name="title"
-        placeholder="Masukkan Judul"
-        className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
-        value={formData.title}
-        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-        required
-      />
-
-      {/* //! Content */}
-      <label
-        className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-        htmlFor="content"
-      >
-        Konten
+        Deskripsi / Caption
       </label>
       <TextareaAutosize
         minRows={4}
-        placeholder="Masukkan Konten"
+        placeholder="Masukkan Deskripsi / Caption"
         className="w-full bg-stone-100 p-3 rounded-md text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] caret-black mt-2 md:mb-6 mb-3"
-        value={formData.content}
-        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-        required
-      />
-
-      {/* //! SOURCE */}
-      <label
-        className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-        htmlFor="source"
-      >
-        Sumber
-      </label>
-      <input
-        type="text"
-        id="source"
-        name="source"
-        placeholder="Masukkan sumber Gambar / Berita"
-        className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
-        value={formData.source}
-        onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+        value={formData.description}
+        onChange={(e) =>
+          setFormData({ ...formData, description: e.target.value })
+        }
         required
       />
 

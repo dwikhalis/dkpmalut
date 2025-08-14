@@ -39,7 +39,7 @@ export default function Gallery({ type, data, id, loading }: Props) {
       <div className="w-full">
         <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
           <Image
-            src={image}
+            src={image ? image : "/assets/image_placeholder.png"}
             alt="Gambar"
             width={800}
             height={600}

@@ -102,12 +102,12 @@ export default function AdminBerita() {
             <AdminBeritaAdd />
           </div>
 
-          {/* //! CONTENT : STAFF LIST */}
+          {/* //! CONTENT : NEWS LIST */}
           <div className={`${page === listNews ? "flex" : "hidden"}`}>
             <ListNews admin={true} sendToParent={handleDataFromChild} />
           </div>
 
-          {/* //! CONTENT : EDIT STAFF */}
+          {/* //! CONTENT : EDIT NEWS */}
           <div className={`${page === editNews ? "flex" : "hidden"}`}>
             {selectedNews && (
               <AdminBeritaEdit

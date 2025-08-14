@@ -14,7 +14,7 @@ export default function AuthWatcher({
   //! Input number in milisecond
   //! We can also use like this (2 * 60 * 1000) which is = 2 minutes
   useIdleAutoLogout({
-    timeout: 10 * 1000,
+    timeout: 30 * 60 * 1000,
     onAutoLogout: () => {
       setShowAlert(true);
     },
