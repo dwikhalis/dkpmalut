@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthProvider from "./Auth/AuthProvider";
 import { Metadata } from "next";
+import AuthWatcher from "./Auth/AuthWatcher";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -31,11 +32,13 @@ export default function RootLayout({
     >
       <body>
         <Analytics />
-        <AuthProvider>
-          <Navbar />
-          {children}
-          <Footer />
-        </AuthProvider>
+        <AuthWatcher>
+          <AuthProvider>
+            <Navbar />
+            {children}
+            <Footer />
+          </AuthProvider>
+        </AuthWatcher>
       </body>
     </html>
   );

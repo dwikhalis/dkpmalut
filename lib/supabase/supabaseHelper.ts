@@ -2,7 +2,11 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 
 export const getNews = async () => {
   const { data, error } = await supabase.from("news").select("*");
-  if (error) throw error;
+  if (error) {
+    alert("Get News Gagal!");
+    console.error(error);
+    throw error;
+  }
 
   return (data || []).map((item) => ({
     id: item.id ?? "",
@@ -11,12 +15,17 @@ export const getNews = async () => {
     date: item.date ?? "",
     title: item.title ?? "",
     content: item.content ?? "",
+    source: item.source ?? "",
   }));
 };
 
 export const getGallery = async () => {
   const { data, error } = await supabase.from("gallery").select("*");
-  if (error) throw error;
+  if (error) {
+    alert("Get gallery Gagal!");
+    console.error(error);
+    throw error;
+  }
 
   return (data || []).map((item) => ({
     id: item.id ?? "",
@@ -30,7 +39,12 @@ export const getGallery = async () => {
 
 export const getStaff = async () => {
   const { data, error } = await supabase.from("staff").select("*");
-  if (error) throw error;
+
+  if (error) {
+    alert("Get staff Gagal!");
+    console.error(error);
+    throw error;
+  }
 
   return (data || []).map((item) => ({
     id: item.id ?? "",
@@ -40,4 +54,32 @@ export const getStaff = async () => {
     photo: item.photo ?? "",
     gender: item.gender ?? "",
   }));
+};
+
+export const deleteData = async (table: string, id: string) => {
+  const { error } = await supabase.from(table).delete().eq("id", id);
+
+  if (error) {
+    alert("Delete staff Gagal!");
+    console.error(error);
+    throw error;
+  }
+
+  return true;
+};
+
+export const updateData = async (
+  table: string,
+  newData: object,
+  id: string
+) => {
+  const { error } = await supabase.from(table).update(newData).eq("id", id);
+
+  if (error) {
+    alert("Delete staff Gagal!");
+    console.error(error);
+    throw error;
+  }
+
+  return true;
 };

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Carousel from "./Carousel";
 import Link from "next/link";
-import { getGallery } from "@/lib/supabase/getHelper";
+import { getGallery } from "@/lib/supabase/supabaseHelper";
 
 export default function SectionFour() {
   const [pictures, setPictures] = useState<[string, string][]>([]);

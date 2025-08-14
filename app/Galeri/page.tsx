@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import React from "react";
 import Gallery from "../components/Gallery";
-import { getGallery } from "@/lib/supabase/getHelper";
+import { getGallery } from "@/lib/supabase/supabaseHelper";
 
 export default async function Page() {
   const images = await getGallery();

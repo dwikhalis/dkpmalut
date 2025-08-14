@@ -1,6 +1,9 @@
 import { create } from "zustand";
 
 interface AuthState {
+  user: any;
+  setUser: (user: any) => void;
+  clearUser: () => void;
   isLoggedIn: boolean;
   loading: boolean;
   setIsLoggedIn: (loggedIn: boolean) => void;
@@ -8,8 +11,11 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  isLoggedIn: false,
+  user: null,
+  setUser: (user) => set({ user }),
+  clearUser: () => set({ user: null }),
   loading: true, // start as true until we check auth
+  isLoggedIn: false,
   setIsLoggedIn: (loggedIn) => set({ isLoggedIn: loggedIn }),
   setLoading: (loading) => set({ loading }),
 }));

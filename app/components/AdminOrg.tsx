@@ -2,10 +2,11 @@
 
 import React from "react";
 import { useState } from "react";
-import StaffList from "./StaffList";
-import AdminAddStaff from "./AdminAddStaff";
-import AdminEditStaff from "./AdminEditStaff";
+import ListStaff from "./ListStaff";
+import AdminStaffAdd from "./AdminStaffAdd";
+import AdminStaffEdit from "./AdminStaffEdit";
 import AlertNotif from "./AlertNotif";
+import { LeftChevron } from "@/public/icons/iconSets";
 
 interface Staff {
   id: string;
@@ -17,98 +18,99 @@ interface Staff {
 }
 
 export default function AdminOrg() {
-  const [showAdd, setShowAdd] = useState(false);
-  const [showList, setShowList] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
-  const [updated, setUpdated] = useState("");
+  const [confirmUpdated, setConfirmUpdated] = useState("");
+  const [page, setPage] = useState("Organisasi");
+
+  const home = "Organisasi";
+  const addStaff = "Tambah Staff";
+  const editStaff = "Edit Staff";
+  const listStaff = "List Staff";
 
   const handleDataFromChild = (childData: Staff) => {
-    setShowList(false);
+    setPage(editStaff);
     setSelectedStaff(childData);
-    setShowEdit(true);
   };
 
   const handleSignalUpdated = (signal: string) => {
-    const message = `Data staff ${signal} telah diupdate`;
-    setUpdated(message);
-    setShowEdit(false);
-    setShowList(true);
+    let message = "";
+
+    if (signal === "No Update") {
+      message = "Tidak ada perubahan data staff";
+      setConfirmUpdated(message);
+    } else {
+      message = `Data staff "${signal}" telah diupdate`;
+      setConfirmUpdated(message);
+    }
+    setPage(listStaff);
   };
 
   const handleAlert = (signal: boolean) => {
     if (signal) {
-      setUpdated("");
+      setConfirmUpdated("");
     }
   };
 
   return (
     <>
       <div className="flex flex-col">
-        <h3 className="font-bold text-center my-8">Organisasi</h3>
-        <div className="flex flex-col gap-6 mb-12 min-h-[60vh]">
-          {/* //! List STAFF */}
+        <div className="relative flex items-center my-8">
+          {/* //! Button Back */}
           <div
             className={`${
-              showList ? "hidden" : "flex"
-            } flex-col p-3 border-1 border-stone-100 bg-stone-100 hover:bg-black hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+              page === "Organisasi" ? "hidden" : "flex"
+            } flex absolute left-0 py-6 pr-12`}
             onClick={() => {
-              setShowList(true);
-              setShowAdd(false);
-              setShowEdit(false);
-              setSelectedStaff(null);
+              setPage("Organisasi");
             }}
           >
-            List Staff
+            <LeftChevron className="size-6" />
           </div>
-          {/* Pseudo Button List Staff */}
+
+          {/* //! Page Name */}
+          <h3 className="font-bold text-center mx-auto">{page}</h3>
+        </div>
+        <div className="flex flex-col gap-6 mb-12 min-h-[60vh]">
+          {/* //! Button List STAFF */}
           <div
             className={`${
-              showList ? "flex" : "hidden"
-            } flex-col p-3 border-1 bg-black text-white border-stone-200 rounded-2xl shadow-xl text-center cursor-pointer`}
-            onClick={() => setShowList(false)}
+              page === home ? "flex" : "hidden"
+            } flex-col p-3 border-1 border-stone-100 bg-stone-100 hover:bg-black hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+            onClick={() => {
+              setSelectedStaff(null);
+              setPage("List Staff");
+            }}
           >
             List Staff
           </div>
 
-          {/* //! ADD STAFF */}
+          {/* //! Button ADD STAFF */}
           <div
             className={`${
-              showAdd ? "hidden" : "flex"
+              page === home ? "flex" : "hidden"
             } flex-col p-3 hover:bg-black border-1 border-stone-100 hover:text-white bg-stone-100 rounded-2xl shadow-xl text-center cursor-pointer`}
             onClick={() => {
-              setShowAdd(true);
-              setShowList(false);
-              setShowEdit(false);
               setSelectedStaff(null);
+              setPage("Tambah Staff");
             }}
-          >
-            Tambah Staff
-          </div>
-          {/* Pseudo Button Add Staff */}
-          <div
-            className={`${
-              showAdd ? "flex" : "hidden"
-            } flex-col p-3 border-1 bg-black text-white border-stone-200 rounded-2xl shadow-xl text-center cursor-pointer`}
-            onClick={() => setShowAdd(false)}
           >
             Tambah Staff
           </div>
 
           {/* //! CONTENT : ADD STAFF */}
-          <div className={`${showAdd ? "flex" : "hidden"} `}>
-            <AdminAddStaff />
+          <div className={`${page === addStaff ? "flex" : "hidden"} `}>
+            <AdminStaffAdd />
           </div>
 
           {/* //! CONTENT : STAFF LIST */}
-          <div className={`${showList ? "flex" : "hidden"}`}>
-            <StaffList admin={true} sendToParent={handleDataFromChild} />
+          <div className={`${page === listStaff ? "flex" : "hidden"}`}>
+            <ListStaff admin={true} sendToParent={handleDataFromChild} />
           </div>
 
           {/* //! CONTENT : EDIT STAFF */}
-          <div className={`${showEdit ? "flex" : "hidden"}`}>
+          <div className={`${page === editStaff ? "flex" : "hidden"}`}>
             {selectedStaff && (
-              <AdminEditStaff
+              <AdminStaffEdit
                 oldData={selectedStaff}
                 signalUpdated={handleSignalUpdated}
               />
@@ -118,10 +120,10 @@ export default function AdminOrg() {
       </div>
 
       {/* //! ALERT UPDATED */}
-      <div className={updated ? "flex" : "hidden"}>
+      <div className={confirmUpdated ? "flex" : "hidden"}>
         <AlertNotif
           type="single"
-          msg={updated}
+          msg={confirmUpdated}
           yesText="OK"
           confirm={handleAlert}
         />

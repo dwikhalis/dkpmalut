@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/supabaseClient";
+import { updateData } from "@/lib/supabase/supabaseHelper";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 
@@ -18,8 +19,8 @@ interface Props {
   signalUpdated: (updated: string) => void;
 }
 
-export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
-  const [fileName, setFileName] = useState("Upload photo");
+export default function AdminStaffEdit({ oldData, signalUpdated }: Props) {
+  const [fileName, setFileName] = useState("Ganti Foto");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
@@ -42,7 +43,6 @@ export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
     });
     setPreview(oldData.photo);
     setFile(null);
-    setFileName("Preview");
   }, [oldData]);
 
   //! CLEAR IMAGE UPLOAD FILE CACHE
@@ -79,7 +79,7 @@ export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
       }
 
       // Update staff data in DB
-      const updateData = {
+      const dataUpdate = {
         name: formData.name,
         title: formData.title,
         division: formData.division,
@@ -87,14 +87,25 @@ export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
         photo: publicUrl || null,
       };
 
-      const { error: updateError } = await supabase
-        .from("staff")
-        .update(updateData)
-        .eq("id", oldData.id);
+      if (
+        JSON.stringify(
+          Object.entries(dataUpdate)
+            .filter(([key]) => key !== "id")
+            .sort()
+        ) ===
+        JSON.stringify(
+          Object.entries(oldData)
+            .filter(([key]) => key !== "id")
+            .sort()
+        )
+      ) {
+        signalUpdated("No Update");
+      } else {
+        updateData("staff", dataUpdate, oldData.id);
+        signalUpdated(formData.name);
+      }
 
-      if (updateError) throw updateError;
-
-      // Reset form (optional, maybe you want to keep data instead)
+      // Reset form
       setFile(null);
       setFileName("Upload photo");
       setPreview(null);
@@ -105,7 +116,6 @@ export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
         gender: "",
         photo: "",
       });
-      signalUpdated(formData.name);
     } catch (err) {
       console.error(err);
       alert("Edit gagal. Terdapat masalah pada server!");
@@ -117,7 +127,47 @@ export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
       className="flex flex-col p-6 md:p-10 border-1 border-stone-200 w-full rounded-2xl shadow-xl"
       onSubmit={handleSubmit}
     >
-      <h4 className="mb-6 font-bold">Edit Staff</h4>
+      {/* //! IMAGE UPLOAD */}
+      <div className="flex flex-col gap-3">
+        {/* Hidden input */}
+        <input
+          id="picture"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const selectedFile = e.target.files?.[0];
+            if (selectedFile) {
+              setFile(selectedFile);
+              setFileName(selectedFile.name);
+              setPreview(URL.createObjectURL(selectedFile));
+            } else {
+              setFile(null);
+              setFileName("No file chosen");
+              setPreview(null);
+            }
+
+            // Reset the input value to allow selecting the same file again
+            e.target.value = "";
+          }}
+        />
+
+        {/* Image Selector + Preview */}
+        <label
+          htmlFor="picture"
+          className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3 cursor-pointer hover:bg-stone-200"
+        >
+          <Image
+            src={preview ? preview : "/assets/icon_profile_u.png"}
+            alt="Preview"
+            className="mt-3 max-h-60 object-contain h-full w-full"
+            width={800}
+            height={600}
+          />
+          <span className="text-center mt-2">{fileName}</span>
+        </label>
+      </div>
+
       {/* //! NAME */}
       <label
         className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -194,60 +244,6 @@ export default function AdminEditStaff({ oldData, signalUpdated }: Props) {
         <option value="Budidaya">Budidaya</option>
         <option value="PSDKP">PSDKP</option>
       </select>
-
-      {/* //! IMAGE UPLOAD */}
-      <div className="flex flex-col gap-3">
-        <label
-          className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          htmlFor="image"
-        >
-          Upload Photo
-        </label>
-
-        {/* Hidden input */}
-        <input
-          id="picture"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const selectedFile = e.target.files?.[0];
-            if (selectedFile) {
-              setFile(selectedFile);
-              setFileName(selectedFile.name);
-              setPreview(URL.createObjectURL(selectedFile));
-            } else {
-              setFile(null);
-              setFileName("No file chosen");
-              setPreview(null);
-            }
-
-            // Reset the input value to allow selecting the same file again
-            e.target.value = "";
-          }}
-        />
-        {/* Button image selector */}
-        <label
-          htmlFor="picture"
-          className="bg-stone-100 p-3 rounded-md text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] cursor-pointer hover:bg-stone-200 inline-block md:mb-6 mb-3"
-        >
-          Pilih Gambar
-        </label>
-
-        {/* Image preview */}
-        {preview && (
-          <div className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3">
-            <Image
-              src={preview}
-              alt="Preview"
-              className="mt-3 max-h-60 object-contain h-full w-full"
-              width={800}
-              height={600}
-            />
-            <span className="text-center mt-2">{fileName}</span>
-          </div>
-        )}
-      </div>
 
       {/* //! SUBMIT */}
       <input

@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import Image from "next/image";
 import React, { useState } from "react";
 
-export default function AdminAddStaff() {
+export default function AdminStaffAdd() {
   const [fileName, setFileName] = useState("Upload photo");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -19,8 +19,10 @@ export default function AdminAddStaff() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (file) {
-      try {
+    try {
+      let publicUrl = formData.photo;
+
+      if (file) {
         // ! Upload image to SupaBase Storage
         const filePath = `staff/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
@@ -34,41 +36,41 @@ export default function AdminAddStaff() {
           .from("images")
           .getPublicUrl(filePath);
 
-        const publicUrl = publicUrlData.publicUrl;
-
-        //! Insert image Public Url into Database
-
-        const insertData = [
-          {
-            name: formData.name,
-            title: formData.title,
-            division: formData.division,
-            gender: formData.gender ? formData.gender : null,
-            photo: publicUrl ? publicUrl : null,
-          },
-        ];
-
-        const { error: insertError } = await supabase
-          .from("staff")
-          .insert(insertData);
-
-        if (insertError) throw insertError;
-
-        alert("Data staff telah sukses diupload!");
-        setFormData({
-          name: "",
-          title: "",
-          division: "",
-          gender: "",
-          photo: "",
-        });
-        setFile(null);
-        setFileName("Upload photo");
-        setPreview(null);
-      } catch (err) {
-        console.error(err);
-        alert("Upload gagal. Terdapat masalah pada server!");
+        publicUrl = publicUrlData.publicUrl;
       }
+
+      //! Insert image Public Url into Database
+
+      const insertData = [
+        {
+          name: formData.name,
+          title: formData.title,
+          division: formData.division,
+          gender: formData.gender ? formData.gender : null,
+          photo: publicUrl ? publicUrl : null,
+        },
+      ];
+
+      const { error: insertError } = await supabase
+        .from("staff")
+        .insert(insertData);
+
+      if (insertError) throw insertError;
+
+      alert("Data staff telah sukses diupload!");
+      setFormData({
+        name: "",
+        title: "",
+        division: "",
+        gender: "",
+        photo: "",
+      });
+      setFile(null);
+      setFileName("Upload photo");
+      setPreview(null);
+    } catch (err) {
+      console.error(err);
+      alert("Upload gagal. Terdapat masalah pada server!");
     }
   };
 
@@ -77,7 +79,44 @@ export default function AdminAddStaff() {
       className="flex flex-col p-6 md:p-10 border-1 border-stone-200 w-full rounded-2xl shadow-xl"
       onSubmit={handleSubmit}
     >
-      <h4 className="mb-6 font-bold">Tambah Staff</h4>
+      {/* //! IMAGE UPLOAD */}
+      <div className="flex flex-col gap-3">
+        {/* Image Selector + Preview */}
+        <label
+          htmlFor="image"
+          className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3 cursor-pointer hover:bg-stone-200"
+        >
+          <Image
+            src={preview ? preview : "/assets/icon_profile_u.png"}
+            alt="Preview"
+            className="mt-3 max-h-60 object-contain h-full w-full"
+            width={800}
+            height={600}
+          />
+          <span className="text-center mt-2">{fileName}</span>
+        </label>
+
+        {/* Hidden input */}
+        <input
+          id="image"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.[0]) {
+              const selectedFile = e.target.files[0];
+              setFile(selectedFile);
+              setFileName(selectedFile.name);
+              setPreview(URL.createObjectURL(selectedFile));
+            } else {
+              setFile(null);
+              setFileName("No file chosen");
+              setPreview(null);
+            }
+          }}
+        />
+      </div>
+
       {/* //! NAME */}
       <label
         className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -110,7 +149,9 @@ export default function AdminAddStaff() {
         onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
         required
       >
-        <option value="">-- Pilih Gender --</option>
+        <option value="" disabled>
+          -- Pilih Gender --
+        </option>
         <option value="Male">Laki-laki</option>
         <option value="Female">Perempuan</option>
       </select>
@@ -126,7 +167,7 @@ export default function AdminAddStaff() {
         type="text"
         id="title"
         name="title"
-        placeholder="Nama Staff"
+        placeholder="Jabatan Staff"
         className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
         value={formData.title}
         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -155,57 +196,6 @@ export default function AdminAddStaff() {
         <option value="Budidaya">Budidaya</option>
         <option value="PSDKP">PSDKP</option>
       </select>
-
-      {/* //! IMAGE UPLOAD */}
-      <div className="flex flex-col gap-3">
-        <label
-          className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-          htmlFor="image"
-        >
-          Upload Photo
-        </label>
-
-        {/* Hidden input */}
-        <input
-          id="image"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.[0]) {
-              const selectedFile = e.target.files[0];
-              setFile(selectedFile);
-              setFileName(selectedFile.name);
-              setPreview(URL.createObjectURL(selectedFile));
-            } else {
-              setFile(null);
-              setFileName("No file chosen");
-              setPreview(null);
-            }
-          }}
-        />
-        {/* Button image selector */}
-        <label
-          htmlFor="image"
-          className="bg-stone-100 p-3 rounded-md text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] cursor-pointer hover:bg-stone-200 inline-block md:mb-6 mb-3"
-        >
-          Pilih Gambar
-        </label>
-
-        {/* Image preview */}
-        {preview && (
-          <div className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3">
-            <Image
-              src={preview}
-              alt="Preview"
-              className="mt-3 max-h-60 object-contain h-full w-full"
-              width={800}
-              height={600}
-            />
-            <span className="text-center mt-2">{fileName}</span>
-          </div>
-        )}
-      </div>
 
       {/* //! SUBMIT */}
       <input

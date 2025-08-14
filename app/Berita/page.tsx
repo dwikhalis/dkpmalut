@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import React from "react";
 import Card from "../components/Card";
-import { getNews } from "@/lib/supabase/getHelper";
+import { getNews } from "@/lib/supabase/supabaseHelper";
 
 const page = async () => {
   const fetchedData = await getNews();
