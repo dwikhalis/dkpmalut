@@ -1,15 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import AdminBerita from "../components/AdminBerita";
-import AdminGaleri from "../components/AdminGaleri";
 import AdminDashboard from "../components/AdminDashboard";
-import AdminOrg from "../components/AdminOrg";
+import AdminPages from "../components/AdminPages";
 import AdminData from "../components/AdminData";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 import AuthProtect from "../Auth/AuthProtect";
 import SpinnerLoading from "../components/SpinnerLoading";
+import AlertNotif from "../components/AlertNotif";
 
 export default function Page() {
   const router = useRouter();
@@ -91,7 +90,11 @@ export default function Page() {
                 setLogoutConfirm([false, "flex"]);
               }}
             >
-              {loading ? <SpinnerLoading size="sm" /> : <h3>Keluar</h3>}
+              {loading ? (
+                <SpinnerLoading size="sm" color="white" />
+              ) : (
+                <h3>Keluar</h3>
+              )}
             </div>
           </div>
 
@@ -124,49 +127,39 @@ export default function Page() {
         <div
           className={`${
             showSideMenu ? "flex" : "hidden"
-          } fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
+          } md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
           onClick={() => setShowSideMenu(false)}
         ></div>
 
         {/* //! CONTENT */}
         <div className="h-full w-full lg:mx-12 mx-8 ">
           {content === "Dashboard" ? <AdminDashboard /> : null}
-          {content === "Berita" ? <AdminBerita /> : null}
-          {content === "Galeri" ? <AdminGaleri /> : null}
-          {content === "Organisasi" ? <AdminOrg /> : null}
+          {content === "Berita" ? <AdminPages type="news" /> : null}
+          {content === "Galeri" ? <AdminPages type="gallery" /> : null}
+          {content === "Organisasi" ? <AdminPages type="staff" /> : null}
           {content === "Data" ? <AdminData /> : null}
         </div>
 
         {/* //! LOGOUT POPUP CONFIRMATION  */}
-        <div
-          className={`${logoutConfirm[1]} fixed inset-0 z-10 justify-center items-center bg-black/50 w-[100vw] h-[100vh]`}
-        >
-          <div className="flex flex-col gap-6 justify-center object-center rounded-2xl bg-stone-100 md:p-12 p-8 md:h-[20vw] md:w-[50vw]">
-            <h3 className="text-center">Apakah anda ingin keluar?</h3>
-            <div className="flex md:gap-12 gap-3 justify-center object-center">
-              {/* YES Logout */}
-              <button
-                className="bg-sky-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-sky-700"
-                onClick={() => {
-                  setLogoutConfirm([true, "flex"]);
-                  handleLogout();
-                }}
-              >
-                {loading ? <SpinnerLoading size="sm" /> : <h3>Ya</h3>}
-              </button>
 
-              {/* NO Logout */}
-              <button
-                className="bg-rose-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-rose-700"
-                onClick={() => {
-                  setLoading(false);
-                  setLogoutConfirm([false, "hidden"]);
-                }}
-              >
-                <h3>Tidak</h3>
-              </button>
-            </div>
-          </div>
+        <div className={`${logoutConfirm[1]}`}>
+          <AlertNotif
+            type="double"
+            msg="Apakah anda ingin keluar?"
+            yesText="Ok"
+            noText="Tidak"
+            icon="warning"
+            loading={loading}
+            confirm={(res) => {
+              if (res) {
+                setLogoutConfirm([true, "flex"]);
+                handleLogout();
+              } else {
+                setLoading(false);
+                setLogoutConfirm([false, "hidden"]);
+              }
+            }}
+          />
         </div>
       </div>
     </AuthProtect>

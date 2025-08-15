@@ -33,7 +33,7 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
         {pictures.map((src, idx) => (
           <SwiperSlide key={idx}>
             <Image
-              src={src[0]}
+              src={src[0] ? src[0] : "/assets/image_placeholder.png"}
               alt={`Slide ${idx}`}
               width={800}
               height={600}
@@ -46,7 +46,7 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
         ))}
       </Swiper>
 
-      {/* //! POP ON FOCUS */}
+      {/* //! POP UP FOCUS */}
       <div
         className={`${showImage} inset-0 flex bg-[rgba(0,0,0,0.8)] items-center justify-center z-20`}
         onClick={() => setShowImage("hidden")}
@@ -61,11 +61,11 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
             <SwiperSlide key={idx}>
               <div className="flex flex-col justify-center items-center">
                 <Image
-                  src={src[0]}
+                  src={src[0] ? src[0] : "/assets/image_placeholder.png"}
                   alt={`Slide ${idx}`}
                   width={800}
                   height={600}
-                  className="w-[90%] xl:w-[50%]"
+                  className="max-w-[90%] xl:w-[50%] max-h-[80vh] object-contain"
                 />
                 <h6 className="text-white mx-3 pt-3 w-[90%] xl:w-[50%]">
                   {src[1]}

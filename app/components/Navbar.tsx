@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../Stores/authStores";
 import SpinnerLoading from "./SpinnerLoading";
+import AlertNotif from "./AlertNotif";
 
 export default function Navbar() {
   const router = useRouter();
@@ -157,8 +158,8 @@ export default function Navbar() {
                 src="/assets/logo_malut.png"
                 alt="Logo"
                 className="object-contain"
-                width={800}
                 height={600}
+                width={800}
               />
             </div>
             <div className="flex flex-col justify-center">
@@ -237,7 +238,7 @@ export default function Navbar() {
               >
                 <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
                   {loading ? (
-                    <SpinnerLoading size={"sm"} />
+                    <SpinnerLoading size={"sm"} color="white" />
                   ) : (
                     <h4>Dashboard</h4>
                   )}
@@ -251,7 +252,11 @@ export default function Navbar() {
                 }}
               >
                 <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
-                  {loading ? <SpinnerLoading size={"sm"} /> : <h4>Keluar</h4>}
+                  {loading ? (
+                    <SpinnerLoading size={"sm"} color="white" />
+                  ) : (
+                    <h4>Keluar</h4>
+                  )}
                 </div>
               </div>
             </>
@@ -264,7 +269,11 @@ export default function Navbar() {
               }}
             >
               <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
-                {loading ? <SpinnerLoading size={"sm"} /> : <h4>Masuk</h4>}
+                {loading ? (
+                  <SpinnerLoading size={"sm"} color="white" />
+                ) : (
+                  <h4>Masuk</h4>
+                )}
               </div>
             </Link>
           )}
@@ -277,32 +286,23 @@ export default function Navbar() {
       </nav>
 
       {/* //! LOGOUT POPUP CONFIRMATION  */}
-      <div
-        className={`${logoutConfirm[1]} fixed inset-0 z-10 justify-center items-center bg-black/50 w-[100vw] h-[100vh]`}
-      >
-        <div className="flex flex-col gap-6 justify-center object-center rounded-2xl bg-stone-100 md:p-12 p-8 md:h-[20vw] md:w-[50vw]">
-          <h3 className="text-center">Apakah anda ingin keluar?</h3>
-          <div className="flex md:gap-12 gap-3 justify-center object-center">
-            {/* YES Logout */}
-            <button
-              className="bg-sky-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-sky-700"
-              onClick={() => {
-                setLogoutConfirm([true, "flex"]);
-                handleLogout();
-              }}
-            >
-              <div>{loading ? <SpinnerLoading size={"sm"} /> : "Ya"}</div>
-            </button>
-
-            {/* NO Logout */}
-            <button
-              className="bg-rose-600 p-4 md:w-40 w-20 text-white font-bold rounded-2xl hover:bg-rose-700"
-              onClick={() => setLogoutConfirm([false, "hidden"])}
-            >
-              <h3>Tidak</h3>
-            </button>
-          </div>
-        </div>
+      <div className={`${logoutConfirm[1]}`}>
+        <AlertNotif
+          type="double"
+          msg="Apakah anda ingin keluar?"
+          yesText="Ok"
+          noText="Tidak"
+          icon="warning"
+          loading={loading}
+          confirm={(res) => {
+            if (res) {
+              setLogoutConfirm([true, "flex"]);
+              handleLogout();
+            } else {
+              setLogoutConfirm([false, "hidden"]);
+            }
+          }}
+        />
       </div>
     </>
   );

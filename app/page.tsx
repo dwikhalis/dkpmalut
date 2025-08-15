@@ -10,10 +10,9 @@ import SectionNumber from "./components/SectionNumber";
 import SectionNews from "./components/SectionNews";
 import SectionGallery from "./components/SectionGallery";
 import SectionData from "./components/SectionData";
+import SpinnerLoading from "./components/SpinnerLoading";
 
-const Loading = () => (
-  <div className="text-center text-gray-500 py-6">Loading...</div>
-);
+const Loading = () => <SpinnerLoading size="sm" color="black" />;
 
 const SectionAddr = dynamic(() => import("./components/SectionAddr"), {
   loading: () => <Loading />,
@@ -55,7 +54,7 @@ export default function Page() {
   }, [router]);
 
   return (
-    <div>
+    <div className="min-h-[70vh]">
       <Hero />
       <SectionOrg />
       <SectionNumber />

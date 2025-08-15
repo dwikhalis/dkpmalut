@@ -2,7 +2,7 @@
 export const revalidate = 0;
 
 import React from "react";
-import StaffList from "../components/ListStaff";
+import StaffList from "../components/ListManager";
 
 export default function Page() {
   return (
