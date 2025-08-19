@@ -46,44 +46,44 @@ export default function AdminPages({ type }: Props) {
       type === "staff"
         ? "Tambah Staff"
         : type === "gallery"
-        ? "Tambah Galeri"
-        : "Tambah Berita",
+          ? "Tambah Galeri"
+          : "Tambah Berita",
     edit:
       type === "staff"
         ? "Edit Staff"
         : type === "gallery"
-        ? "Edit Galeri"
-        : "Edit Berita",
+          ? "Edit Galeri"
+          : "Edit Berita",
     list:
       type === "staff"
         ? "List Staff"
         : type === "gallery"
-        ? "List Galeri"
-        : "List Berita",
+          ? "List Galeri"
+          : "List Berita",
     noUpdate:
       type === "staff"
         ? "Tidak ada perubahan data staff"
         : type === "gallery"
-        ? "Tidak ada perubahan data galeri"
-        : "Tidak ada perubahan data berita",
+          ? "Tidak ada perubahan data galeri"
+          : "Tidak ada perubahan data berita",
     noAdd:
       type === "staff"
         ? "Tidak ada penambahan data staff"
         : type === "gallery"
-        ? "Tidak ada penambahan data galeri"
-        : "Tidak ada penambahan data berita",
+          ? "Tidak ada penambahan data galeri"
+          : "Tidak ada penambahan data berita",
     updated: (name: string) =>
       type === "staff"
         ? `Data staff "${name}" telah diupdate`
         : type === "gallery"
-        ? `Data galeri "${name}" telah diupdate`
-        : `Data berita "${name}" telah diupdate`,
+          ? `Data galeri "${name}" telah diupdate`
+          : `Data berita "${name}" telah diupdate`,
     added: (name: string) =>
       type === "staff"
         ? `Data staff "${name}" telah ditambahkan`
         : type === "gallery"
-        ? `Data galeri "${name}" telah ditambahkan`
-        : `Data berita "${name}" telah ditambahkan`,
+          ? `Data galeri "${name}" telah ditambahkan`
+          : `Data berita "${name}" telah ditambahkan`,
   };
 
   const handleDataFromChild = (childData: DataTypes) => {
@@ -99,21 +99,14 @@ export default function AdminPages({ type }: Props) {
   };
 
   const handleSignalAdded = (signal: string) => {
-    setConfirmAdded(
-      signal === "No Add" ? labels.noUpdate : labels.added(signal)
-    );
+    setConfirmAdded(signal === "No Add" ? labels.noAdd : labels.added(signal));
     setPage(labels.list);
   };
 
   const handleAlert = (signal: boolean) => {
-    if (signal) {
-      page === "Tambah Staff" || "Tambah Berita" || "Tambah Galeri"
-        ? setConfirmAdded("")
-        : null;
-      page === "Edit Staff" || "Edit Berita" || "Edit Galeri"
-        ? setConfirmUpdated("")
-        : null;
-    }
+    if (!signal) return;
+    setConfirmAdded("");
+    setConfirmUpdated("");
   };
 
   return (

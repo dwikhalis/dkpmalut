@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
 interface AuthState {
-  user: any;
-  setUser: (user: any) => void;
+  user: unknown;
+  setUser: (user: unknown) => void;
   clearUser: () => void;
   isLoggedIn: boolean;
   loading: boolean;

@@ -3,9 +3,6 @@
 import React, { useRef, useState } from "react";
 import Image from "next/image";
 
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Swiper as SwiperType } from "swiper";
-
 interface DataItem {
   id: string;
   image: string;

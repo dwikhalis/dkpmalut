@@ -1,7 +1,5 @@
-"use client";
-
 import { Failed, Success, Warning } from "@/public/icons/iconSets";
-import React, { useState } from "react";
+import React from "react";
 import SpinnerLoading from "./SpinnerLoading";
 
 interface Props {

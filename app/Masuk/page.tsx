@@ -117,7 +117,11 @@ export default function Page() {
                   disabled={loading}
                   className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
                 >
-                  {loading ? <SpinnerLoading size={"sm"} /> : "Masuk"}
+                  {loading ? (
+                    <SpinnerLoading size={"sm"} color="white" />
+                  ) : (
+                    "Masuk"
+                  )}
                 </button>
               </form>
               <button
@@ -154,7 +158,7 @@ export default function Page() {
                   className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
                 >
                   {loading ? (
-                    <SpinnerLoading size={"sm"} />
+                    <SpinnerLoading size={"sm"} color="white" />
                   ) : (
                     "Kirim email reset password"
                   )}

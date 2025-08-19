@@ -16,8 +16,6 @@ type DatasetConf = {
   backgroundColor?: string;
 };
 
-type Unit = "kg" | "t";
-
 function toNum(v: unknown) {
   if (v == null) return NaN;
   if (typeof v === "number") return v;
@@ -53,16 +51,26 @@ export default function ProductionChartWithFilters() {
   const [showBudidaya, setShowBudidaya] = useState(true);
   const [showTangkap, setShowTangkap] = useState(true);
   const [stacked, setStacked] = useState(false);
-  const [unit, setUnit] = useState<Unit>("t"); // default to ton
-  const [topN, setTopN] = useState<number | "all">("all");
   const [sortBy, setSortBy] = useState<"value" | "kab">("value");
   const [order, setOrder] = useState<"desc" | "asc">("desc");
-  const [showSideMenu, setShowSideMenu] = useState(true);
+  // const [showSideMenu, setShowSideMenu] = useState(true);
 
   // fetch once on mount (client-side for interactive filters)
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      const getErrorMessage = (err: unknown): string => {
+        if (err instanceof Error) return err.message;
+        if (typeof err === "object" && err !== null && "message" in err) {
+          const m = (err as { message?: unknown }).message;
+          if (typeof m === "string") return m;
+        }
+        try {
+          return JSON.stringify(err);
+        } catch {
+          return String(err);
+        }
+      };
       try {
         const [
           { data: dataBudidaya, error: e1 },
@@ -77,8 +85,8 @@ export default function ProductionChartWithFilters() {
         setRowsBudidaya((dataBudidaya ?? []) as Row[]);
         setRowsTangkap((dataTangkap ?? []) as Row[]);
         setErr(null);
-      } catch (e: any) {
-        setErr(e?.message ?? "Failed to load data");
+      } catch (e: unknown) {
+        setErr(getErrorMessage(e) || "Failed to load data");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -130,48 +138,31 @@ export default function ProductionChartWithFilters() {
         );
       }
 
-      if (topN !== "all") {
-        labs = labs.slice(0, topN);
-      }
-
-      const scale = unit === "t" ? 1 / 1000 : 1;
-
       const ds: DatasetConf[] = [];
       if (showBudidaya) {
         ds.push({
           label: "Budidaya",
-          values: labs.map((k) => (totals.tb.get(k) ?? 0) * scale),
+          values: labs.map((k) => totals.tb.get(k) ?? 0),
           backgroundColor: "rgba(144, 238, 144, 0.7)",
         });
       }
       if (showTangkap) {
         ds.push({
           label: "Tangkap",
-          values: labs.map((k) => (totals.tt.get(k) ?? 0) * scale),
+          values: labs.map((k) => totals.tt.get(k) ?? 0),
           backgroundColor: "rgba(53, 162, 235, 0.6)",
         });
       }
 
       return { labels: labs, datasets: ds };
-    }, [
-      totals,
-      selectedKabs,
-      showBudidaya,
-      showTangkap,
-      unit,
-      sortBy,
-      order,
-      topN,
-    ]);
+    }, [totals, selectedKabs, showBudidaya, showTangkap, sortBy, order]);
 
   //! ==== TABLE ====
-  const unitLabel = unit === "t" ? "Ton" : "Kg";
 
   const tableRows = useMemo(() => {
-    const scale = unit === "t" ? 1 / 1000 : 1; // totals.* are in kg
     return labels.map((kab) => {
-      const bud = (totals.tb.get(kab) ?? 0) * scale;
-      const tang = (totals.tt.get(kab) ?? 0) * scale;
+      const bud = totals.tb.get(kab) ?? 0;
+      const tang = totals.tt.get(kab) ?? 0;
       return {
         kab,
         bud: showBudidaya ? bud : 0,
@@ -179,7 +170,7 @@ export default function ProductionChartWithFilters() {
         total: (showBudidaya ? bud : 0) + (showTangkap ? tang : 0),
       };
     });
-  }, [labels, totals, unit, showBudidaya, showTangkap]);
+  }, [labels, totals, showBudidaya, showTangkap]);
 
   const grand = useMemo(
     () =>
@@ -224,9 +215,8 @@ export default function ProductionChartWithFilters() {
       {/* //! ============================================================================ */}
 
       <div
-        className={`flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 text-white ${
-          showSideMenu ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 text-white"
+        // ! ======= setShowSideMenu for Mobile ======
       >
         {/* //! KABUPATEN */}
         <div>
@@ -285,13 +275,13 @@ export default function ProductionChartWithFilters() {
             <div className="flex gap-3">
               <button
                 className={`flex px-3 py-1 rounded border items-center gap-1 text-sm ${showBudidaya ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
-                onClick={(e) => setShowBudidaya(!showBudidaya)}
+                onClick={() => setShowBudidaya(!showBudidaya)}
               >
                 Budidaya
               </button>
               <button
                 className={`flex px-3 py-1 rounded border items-center gap-1 text-sm ${showTangkap ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
-                onClick={(e) => setShowTangkap(!showTangkap)}
+                onClick={() => setShowTangkap(!showTangkap)}
               >
                 Tangkap
               </button>
@@ -339,39 +329,8 @@ export default function ProductionChartWithFilters() {
                 <option value="desc">Atas</option>
                 <option value="asc">Bawah</option>
               </select>
-
-              {/* //! SORT TOP N */}
-              {/* <select
-                className="rounded border px-2 py-1 text-sm"
-                value={topN}
-                onChange={(e) =>
-                  setTopN(
-                    e.target.value === "all" ? "all" : Number(e.target.value)
-                  )
-                }
-              >
-                <option value="all">All</option>
-                <option value="5">Top 5</option>
-                <option value="10">Top 10</option>
-                <option value="15">Top 15</option>
-                <option value="20">Top 20</option>
-              </select> */}
             </div>
           </div>
-          {/* //! UNITS */}
-          {/* <div>
-            <label className="text-sm font-medium">Unit</label>
-            <div>
-              <select
-                className="rounded border px-2 py-1 text-sm"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as Unit)}
-              >
-                <option value="t">Ton</option>
-                <option value="kg">Kg</option>
-              </select>
-            </div>
-          </div> */}
         </div>
         {/* //! CHART */}
         <div>
@@ -390,18 +349,12 @@ export default function ProductionChartWithFilters() {
               <tr>
                 <th className="px-3 py-2 border border-gray-400">Kabupaten</th>
                 {showBudidaya && (
-                  <th className="px-3 py-2 border border-gray-400">
-                    Budidaya ({unitLabel})
-                  </th>
+                  <th className="px-3 py-2 border border-gray-400">Budidaya</th>
                 )}
                 {showTangkap && (
-                  <th className="px-3 py-2 border border-gray-400">
-                    Tangkap ({unitLabel})
-                  </th>
+                  <th className="px-3 py-2 border border-gray-400">Tangkap</th>
                 )}
-                <th className="px-3 py-2 border border-gray-400">
-                  Total ({unitLabel})
-                </th>
+                <th className="px-3 py-2 border border-gray-400">Total</th>
               </tr>
             </thead>
 

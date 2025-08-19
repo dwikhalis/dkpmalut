@@ -20,7 +20,7 @@ export default function AuthWatcher({
     },
   });
 
-  const handleConfirm = (status: boolean) => {
+  const handleConfirm = () => {
     setShowAlert(false);
   };
 

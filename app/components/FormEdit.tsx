@@ -31,6 +31,61 @@ interface Props {
   signalUpdated: (updated: string) => void;
 }
 
+/** Payload types for updates (exact keys used in compareKeys) */
+type StaffUpdate = {
+  name: string;
+  title: string;
+  division: string;
+  gender: string;
+  photo: string;
+};
+
+type NewsUpdate = {
+  tag: string;
+  date: string;
+  title: string;
+  content: string;
+  source: string;
+  image: string;
+};
+
+type GalleryUpdate = {
+  image: string;
+  tag: string;
+  title: string;
+  date: string;
+  description: string;
+};
+
+type Cfg =
+  | {
+      table: "staff";
+      storageFolder: "staff";
+      placeholder: string;
+      urlField: "photo";
+      labelFrom: () => string;
+      buildUpdate: (url: string) => StaffUpdate;
+      compareKeys: readonly (keyof StaffUpdate)[];
+    }
+  | {
+      table: "news";
+      storageFolder: "news";
+      placeholder: string;
+      urlField: "image";
+      labelFrom: () => string;
+      buildUpdate: (url: string) => NewsUpdate;
+      compareKeys: readonly (keyof NewsUpdate)[];
+    }
+  | {
+      table: "gallery";
+      storageFolder: "gallery";
+      placeholder: string;
+      urlField: "image";
+      labelFrom: () => string;
+      buildUpdate: (url: string) => GalleryUpdate;
+      compareKeys: readonly (keyof GalleryUpdate)[];
+    };
+
 export default function FormEdit({ type, oldData, signalUpdated }: Props) {
   // file/image state
   const [fileName, setFileName] = useState(
@@ -40,7 +95,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
-  // single form state that holds everything; we’ll render only what each type needs
+  // single form state that holds everything; render only what each type needs
   const [formData, setFormData] = useState({
     // staff
     name: "",
@@ -60,43 +115,32 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
   });
 
   // where to upload the file and which db table to update
-  const cfg = useMemo(() => {
+  const cfg: Cfg = useMemo(() => {
     switch (type) {
       case "staff":
         return {
           table: "staff",
           storageFolder: "staff",
-          // for preview fallback
           placeholder: "/assets/icon_profile_u.png",
-          // which field stores the URL
-          urlField: "photo" as const,
-          // label that is shown in success message
+          urlField: "photo",
           labelFrom: () => formData.name,
-          // build the payload to update
-          buildUpdate: (url: string) => ({
+          buildUpdate: (url: string): StaffUpdate => ({
             name: formData.name,
             title: formData.title,
             division: formData.division,
             gender: formData.gender,
             photo: url,
           }),
-          // keys used for "no change" comparison
-          compareKeys: [
-            "name",
-            "title",
-            "division",
-            "gender",
-            "photo",
-          ] as const,
+          compareKeys: ["name", "title", "division", "gender", "photo"],
         };
       case "news":
         return {
           table: "news",
           storageFolder: "news",
           placeholder: "/assets/image_placeholder.png",
-          urlField: "image" as const,
+          urlField: "image",
           labelFrom: () => formData.title,
-          buildUpdate: (url: string) => ({
+          buildUpdate: (url: string): NewsUpdate => ({
             tag: formData.tag,
             date: formData.date,
             title: formData.title,
@@ -104,36 +148,23 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
             source: formData.source,
             image: url,
           }),
-          compareKeys: [
-            "tag",
-            "date",
-            "title",
-            "content",
-            "source",
-            "image",
-          ] as const,
+          compareKeys: ["tag", "date", "title", "content", "source", "image"],
         };
       case "gallery":
         return {
           table: "gallery",
           storageFolder: "gallery",
           placeholder: "/assets/image_placeholder.png",
-          urlField: "image" as const,
+          urlField: "image",
           labelFrom: () => formData.title,
-          buildUpdate: (url: string) => ({
+          buildUpdate: (url: string): GalleryUpdate => ({
             image: url,
             tag: formData.tag,
             title: formData.title,
             date: formData.date,
             description: formData.description,
           }),
-          compareKeys: [
-            "image",
-            "tag",
-            "title",
-            "date",
-            "description",
-          ] as const,
+          compareKeys: ["image", "tag", "title", "date", "description"],
         };
     }
   }, [type, formData]);
@@ -179,31 +210,33 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
   }, [preview]);
 
   // helpers
-  const pickOldSubset = (keys: readonly string[]) => {
-    const o: Record<string, unknown> = {};
-    keys.forEach((k) => {
-      // @ts-ignore
-      o[k] = oldData[k] ?? "";
-    });
-    return o;
-  };
+  const toStr = (v: unknown) =>
+    typeof v === "string" ? v : v == null ? "" : String(v);
 
-  const shallowEqualByKeys = (
+  function pickOldSubset(keys: readonly string[]): Record<string, string> {
+    const src = oldData as unknown as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    for (const k of keys) out[k] = toStr(src[k]);
+    return out;
+  }
+
+  function shallowEqualByKeys(
     keys: readonly string[],
-    a: Record<string, unknown>,
-    b: Record<string, unknown>
-  ) => {
+    a: unknown,
+    b: Record<string, string>
+  ): boolean {
+    const ar = a as Record<string, unknown>;
     for (const k of keys) {
-      if ((a[k] ?? "") !== (b[k] ?? "")) return false;
+      if (toStr(ar[k]) !== b[k]) return false;
     }
     return true;
-  };
+  }
 
   // submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // decide current URL -> if user picks a file we upload and use the new URL
+      // current URL -> if user picks a file we upload and use the new URL
       const currentUrl =
         cfg.urlField === "photo" ? formData.photo : formData.image;
 
@@ -237,11 +270,12 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
       setFile(null);
       setLoadingSubmit(false);
       setFileName(type === "staff" ? "Ganti Foto" : "Upload gambar");
-      setPreview(
-        cfg.urlField === "photo"
-          ? (dataUpdate as any).photo || cfg.placeholder
-          : (dataUpdate as any).image || cfg.placeholder
-      );
+
+      // set preview from the updated payload without `any`
+      const urlMap = dataUpdate as Partial<
+        Record<"photo" | "image", string | undefined>
+      >;
+      setPreview(urlMap[cfg.urlField] ?? cfg.placeholder);
     } catch (err) {
       console.error(err);
       alert("Update gagal. Terdapat masalah pada server!");
@@ -256,7 +290,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
 
   return (
     <form
-      className="flex flex-col w-full p-6 shadow-xl md:p-10 border-1 border-stone-200 rounded-2xl"
+      className="flex flex-col w-full p-6 shadow-xl md:p-10 border border-stone-200 rounded-2xl"
       onSubmit={handleSubmit}
     >
       {/* IMAGE UPLOAD (shared) */}
@@ -563,7 +597,6 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
       )}
 
       {/* SUBMIT */}
-
       <button
         type="submit"
         className="flex justify-center items-center bg-black text-white rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black md:mb-6 mb-3 p-1.5 md:p-3"
