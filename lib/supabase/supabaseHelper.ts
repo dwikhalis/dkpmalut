@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
+// import Router from "next/navigation";
 
 export const getNews = async () => {
   const { data, error } = await supabase.from("news").select("*");

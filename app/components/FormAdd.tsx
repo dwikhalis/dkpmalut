@@ -199,14 +199,14 @@ export default function FormAdd({ type, signalAdded }: Props) {
   return (
     <>
       <form
-        className="flex flex-col p-6 md:p-10 border-1 border-stone-200 w-full rounded-2xl shadow-xl"
+        className="flex flex-col w-full p-6 shadow-xl md:p-10 border-1 border-stone-200 rounded-2xl"
         onSubmit={handleSubmit}
       >
         {/* IMAGE UPLOAD */}
         <div className="flex flex-col gap-3">
           <label
             htmlFor="image"
-            className="flex flex-col md:mb-6 mb-3 w-full border rounded-md p-3 cursor-pointer hover:bg-stone-200"
+            className="flex flex-col w-full p-3 mb-3 border rounded-md cursor-pointer md:mb-6 hover:bg-stone-200"
           >
             <Image
               src={preview || placeholderSrc}
@@ -221,7 +221,7 @@ export default function FormAdd({ type, signalAdded }: Props) {
             <div className={loadingImage ? "flex" : "hidden"}>
               <SpinnerLoading size="sm" color="black" />
             </div>
-            <span className="text-center mt-2">{fileName}</span>
+            <span className="mt-2 text-center">{fileName}</span>
           </label>
 
           <input
