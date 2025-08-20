@@ -628,7 +628,7 @@ export default function ChartProductionCommonFish() {
                 className={`px-3 py-1 rounded w-full border text-sm ${
                   noDatasetSelected || items.length === 0
                     ? "opacity-50 cursor-not-allowed"
-                    : "bg-teal-400 text-white hover:bg-teal-500"
+                    : "bg-teal-600 text-white hover:bg-teal-500"
                 }`}
                 onClick={downloadCsv}
                 disabled={noDatasetSelected || items.length === 0}
