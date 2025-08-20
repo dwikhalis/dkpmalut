@@ -34,6 +34,7 @@ interface BarChartProps {
   datasets: Dataset[];
   stacked: boolean;
   chartTitle: string;
+  tooltipLabels?: string[];
 }
 
 export default function BarCharts({
@@ -41,6 +42,7 @@ export default function BarCharts({
   datasets,
   stacked,
   chartTitle,
+  tooltipLabels,
 }: BarChartProps) {
   const data = {
     labels,
@@ -61,6 +63,20 @@ export default function BarCharts({
       legend: { position: "bottom" },
       title: { display: true, text: chartTitle },
       datalabels: { display: false },
+      tooltip: {
+        callbacks: {
+          title: (items) => {
+            const idx = items?.[0]?.dataIndex ?? 0;
+            return tooltipLabels?.[idx] ?? items?.[0]?.label ?? "";
+          },
+          // Keep the dataset + formatted value on second line
+          label: (ctx) => {
+            const v = ctx.parsed?.y ?? ctx.parsed ?? 0;
+            const ds = ctx.dataset?.label ? `${ctx.dataset.label}: ` : "";
+            return `${ds}${nf.format(v)}`;
+          },
+        },
+      },
       // datalabels: {
       //   anchor: "end",
       //   align: "end",

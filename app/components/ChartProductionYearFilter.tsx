@@ -1,0 +1,551 @@
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase/supabaseClient";
+import BarCharts from "./BarCharts";
+
+type Row = {
+  kab: string | null;
+  year: number | string | null; // x-axis
+  tot_produksi?: number | string | null; // budidaya
+  weight?: number | string | null; // tangkap
+};
+
+type DatasetConf = {
+  label: string;
+  values: number[];
+  backgroundColor?: string;
+};
+
+const TITLE = "Produksi Perikanan Tangkap dan Budidaya per Tahun";
+
+// tolerant number parser: "164,158,670" / "164.158.670" / "164 158 670"
+function toNum(v: unknown) {
+  if (v == null) return NaN;
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const cleaned = v.replace(/[^\d.-]/g, ""); // keep digits, dot, minus
+    return Number(cleaned);
+  }
+  return NaN;
+}
+function toYear(v: unknown): number | null {
+  const n = typeof v === "string" ? Number(v.slice(0, 4)) : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Fetch *all* rows with pagination to avoid PostgREST default limit */
+async function fetchAllRows<T>(
+  table: string,
+  columns: string,
+  pageSize = 1000
+): Promise<T[]> {
+  const all: T[] = [];
+  let from = 0;
+  while (true) {
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .range(from, to);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+/** Aggregate per YEAR (x-axis) with optional kab + year filters */
+function aggregateByYear(
+  rows: Row[],
+  pick: (r: Row) => number | string | null | undefined,
+  kabFilter?: Set<string>,
+  yearFilter?: Set<number>
+) {
+  const totals = new Map<number, number>();
+  rows.forEach((r) => {
+    const kab = r.kab?.trim();
+    if (!kab) return;
+    if (kabFilter && kabFilter.size > 0 && !kabFilter.has(kab)) return;
+
+    const y = toYear(r.year);
+    if (y == null) return;
+    if (yearFilter && yearFilter.size > 0 && !yearFilter.has(y)) return;
+
+    const val = toNum(pick(r));
+    if (!Number.isFinite(val)) return;
+
+    totals.set(y, (totals.get(y) ?? 0) + val);
+  });
+  return totals;
+}
+
+export default function ChartProductionYearFilter() {
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  // raw rows
+  const [rowsBudidaya, setRowsBudidaya] = useState<Row[]>([]);
+  const [rowsTangkap, setRowsTangkap] = useState<Row[]>([]);
+
+  // filters
+  const [selectedYears, setSelectedYears] = useState<number[]>([]); // sidebar (multi)
+  const [selectedKab, setSelectedKab] = useState<"all" | string>("all"); // dropdown (single)
+  const [showBudidaya, setShowBudidaya] = useState(true);
+  const [showTangkap, setShowTangkap] = useState(true);
+  const [stacked, setStacked] = useState(false);
+  const [sortBy, setSortBy] = useState<"value" | "year">("year");
+  const [order, setOrder] = useState<"desc" | "asc">("asc");
+
+  // fetch (with pagination)
+  useEffect(() => {
+    let cancelled = false;
+    const getErrorMessage = (e: unknown) => {
+      if (e instanceof Error) return e.message;
+      try {
+        return JSON.stringify(e);
+      } catch {
+        return String(e);
+      }
+    };
+
+    (async () => {
+      try {
+        const [bud, tan] = await Promise.all([
+          fetchAllRows<Row>("budidaya", "kab, year, tot_produksi"),
+          fetchAllRows<Row>("tangkap", "kab, year, weight"),
+        ]);
+        if (cancelled) return;
+        setRowsBudidaya(bud);
+        setRowsTangkap(tan);
+        setErr(null);
+      } catch (e) {
+        setErr(getErrorMessage(e) || "Failed to load data");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // options
+  const yearOptions = useMemo(() => {
+    const s = new Set<number>();
+    [...rowsBudidaya, ...rowsTangkap].forEach((r) => {
+      const y = toYear(r.year);
+      if (y != null) s.add(y);
+    });
+    return Array.from(s).sort((a, b) => b - a); // newest first
+  }, [rowsBudidaya, rowsTangkap]);
+
+  const kabOptions = useMemo(() => {
+    const s = new Set<string>();
+    [...rowsBudidaya, ...rowsTangkap].forEach((r) => {
+      const kab = r.kab?.trim();
+      if (kab) s.add(kab);
+    });
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [rowsBudidaya, rowsTangkap]);
+
+  // totals per year, with filters
+  const totals = useMemo(() => {
+    const kabSet = selectedKab === "all" ? undefined : new Set([selectedKab]);
+    const yearSet =
+      selectedYears.length > 0 ? new Set(selectedYears) : undefined;
+
+    const tb = aggregateByYear(
+      rowsBudidaya,
+      (r) => r.tot_produksi,
+      kabSet,
+      yearSet
+    );
+    const tt = aggregateByYear(rowsTangkap, (r) => r.weight, kabSet, yearSet);
+    return { tb, tt };
+  }, [rowsBudidaya, rowsTangkap, selectedKab, selectedYears]);
+
+  // x-axis (years)
+  const years = useMemo(() => {
+    const s = new Set<number>([...totals.tb.keys(), ...totals.tt.keys()]);
+    let arr = Array.from(s);
+
+    if (sortBy === "year") {
+      arr.sort((a, b) => (order === "asc" ? a - b : b - a));
+    } else {
+      const sumForYear = (y: number) =>
+        (showBudidaya ? (totals.tb.get(y) ?? 0) : 0) +
+        (showTangkap ? (totals.tt.get(y) ?? 0) : 0);
+      arr.sort(
+        (a, b) => (sumForYear(a) - sumForYear(b)) * (order === "asc" ? 1 : -1)
+      );
+    }
+    return arr;
+  }, [totals, sortBy, order, showBudidaya, showTangkap]);
+
+  const datasets: DatasetConf[] = useMemo(() => {
+    const ds: DatasetConf[] = [];
+    if (showBudidaya) {
+      ds.push({
+        label: "Budidaya",
+        values: years.map((y) => totals.tb.get(y) ?? 0),
+        backgroundColor: "rgba(144, 238, 144, 0.7)",
+      });
+    }
+    if (showTangkap) {
+      ds.push({
+        label: "Tangkap",
+        values: years.map((y) => totals.tt.get(y) ?? 0),
+        backgroundColor: "rgba(53, 162, 235, 0.6)",
+      });
+    }
+    return ds;
+  }, [years, totals, showBudidaya, showTangkap]);
+
+  // table (source of truth for CSV)
+  const tableRows = useMemo(() => {
+    return years.map((y) => {
+      const bud = totals.tb.get(y) ?? 0;
+      const tang = totals.tt.get(y) ?? 0;
+      return {
+        year: y,
+        bud: showBudidaya ? bud : 0,
+        tang: showTangkap ? tang : 0,
+        total: (showBudidaya ? bud : 0) + (showTangkap ? tang : 0),
+      };
+    });
+  }, [years, totals, showBudidaya, showTangkap]);
+
+  const grand = useMemo(
+    () =>
+      tableRows.reduce(
+        (acc, r) => ({
+          bud: acc.bud + r.bud,
+          tang: acc.tang + r.tang,
+          total: acc.total + r.total,
+        }),
+        { bud: 0, tang: 0, total: 0 }
+      ),
+    [tableRows]
+  );
+
+  const nf = useMemo(
+    () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
+    []
+  );
+
+  // ===== CSV (data-based) =====
+  const noDatasetSelected = !showBudidaya && !showTangkap;
+
+  const fileNameFromTitle = (title: string) =>
+    title
+      .trim()
+      .replace(/[\/\\?%*:|"<>]/g, "")
+      .replace(/\s+/g, "_") + ".csv";
+
+  const csvCell = (v: unknown) => {
+    if (typeof v === "number" && Number.isFinite(v)) return String(v); // numeric -> raw
+    const s = String(v ?? "");
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const toCsv = (header: (string | number)[], rows: (string | number)[][]) => {
+    const lines = [
+      header.map(csvCell).join(","),
+      ...rows.map((r) => r.map(csvCell).join(",")),
+    ];
+    return lines.join("\r\n");
+  };
+
+  const downloadCsv = () => {
+    if (noDatasetSelected || tableRows.length === 0) return;
+
+    const header: (string | number)[] = ["Tahun"];
+    if (showBudidaya) header.push("Budidaya");
+    if (showTangkap) header.push("Tangkap");
+    header.push("Total");
+
+    const body: (string | number)[][] = tableRows.map((r) => {
+      const row: (string | number)[] = [r.year];
+      if (showBudidaya) row.push(r.bud);
+      if (showTangkap) row.push(r.tang);
+      row.push(r.total);
+      return row;
+    });
+
+    const grandRow: (string | number)[] = ["Jumlah"];
+    if (showBudidaya) grandRow.push(grand.bud);
+    if (showTangkap) grandRow.push(grand.tang);
+    grandRow.push(grand.total);
+    body.push(grandRow);
+
+    const csv = toCsv(header, body);
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }); // BOM for Excel
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileNameFromTitle(TITLE);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full h-[50vh] flex items-center justify-center">
+        <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (err) {
+    return (
+      <div className="bg-red-50 text-red-700 border border-red-200 p-3 rounded">
+        {err}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex">
+      {/* Sidebar: YEAR checkboxes */}
+      <div className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] text-white">
+        <div>
+          <h3>Tahun</h3>
+
+          {yearOptions.map((y) => {
+            const checked = selectedYears.includes(y);
+            return (
+              <label key={y} className="flex items-center gap-2 py-0.5">
+                <input
+                  type="checkbox"
+                  className="accent-teal-600"
+                  checked={checked}
+                  onChange={(e) => {
+                    setSelectedYears((prev) =>
+                      e.target.checked
+                        ? [...prev, y]
+                        : prev.filter((v) => v !== y)
+                    );
+                  }}
+                />
+                <span className="text-sm">{y}</span>
+              </label>
+            );
+          })}
+
+          <div className="flex flex-col gap-2 mt-6">
+            <button
+              className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              onClick={() => setSelectedYears(yearOptions)}
+            >
+              Semua
+            </button>
+            <button
+              className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              onClick={() => setSelectedYears([])}
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Controls + Chart + Table */}
+      <div className="flex flex-col ml-12 mt-12 w-full">
+        <h2 className="mb-6">{TITLE}</h2>
+
+        <div className="flex flex-wrap gap-6">
+          {/* Kabupaten dropdown */}
+          <div>
+            <label className="text-sm font-medium">Kabupaten</label>
+            <div>
+              <select
+                className="rounded border px-2 py-1 text-sm"
+                value={selectedKab}
+                onChange={(e) =>
+                  setSelectedKab(
+                    e.target.value === "all" ? "all" : e.target.value
+                  )
+                }
+              >
+                <option value="all">Semua</option>
+                {kabOptions.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Datasets toggle */}
+          <div>
+            <label>Datasets</label>
+            <div className="flex gap-3">
+              <button
+                className={`flex px-3 py-1 rounded border items-center gap-1 text-sm ${showBudidaya ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
+                onClick={() => setShowBudidaya(!showBudidaya)}
+              >
+                Budidaya
+              </button>
+              <button
+                className={`flex px-3 py-1 rounded border items-center gap-1 text-sm ${showTangkap ? "bg-sky-600 text-white border-teal-600" : "bg-white"}`}
+                onClick={() => setShowTangkap(!showTangkap)}
+              >
+                Tangkap
+              </button>
+            </div>
+          </div>
+
+          {/* Layout */}
+          <div>
+            <label className="text-sm font-medium">Tampilan</label>
+            <div className="flex gap-3">
+              <button
+                className={`px-3 py-1 rounded border text-sm ${stacked ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
+                onClick={() => setStacked(true)}
+              >
+                Tumpuk
+              </button>
+              <button
+                className={`px-3 py-1 rounded border text-sm ${!stacked ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
+                onClick={() => setStacked(false)}
+              >
+                Grup
+              </button>
+            </div>
+          </div>
+
+          {/* Sorting */}
+          <div>
+            <label className="text-sm font-medium">Urutkan</label>
+            <div className="flex gap-3">
+              <select
+                className="rounded border px-2 py-1 text-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "value" | "year")}
+              >
+                <option value="year">Tahun</option>
+                <option value="value">Nilai</option>
+              </select>
+
+              <select
+                className="rounded border px-2 py-1 text-sm"
+                value={order}
+                onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
+              >
+                <option value="asc">Naik</option>
+                <option value="desc">Turun</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Download (your button) */}
+          <div>
+            <label className="text-sm font-medium">Download</label>
+            <div>
+              <button
+                className={`px-3 py-1 rounded w-full border text-sm ${
+                  noDatasetSelected || tableRows.length === 0
+                    ? "opacity-50 cursor-not-allowed"
+                    : "bg-teal-600 text-white hover:bg-teal-500"
+                }`}
+                onClick={downloadCsv}
+                disabled={noDatasetSelected || tableRows.length === 0}
+              >
+                CSV
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="mt-4">
+          <BarCharts
+            chartTitle=""
+            labels={years.map(String)}
+            datasets={datasets}
+            stacked={stacked}
+          />
+        </div>
+
+        {/* Table */}
+        <div className="mt-8 overflow-x-auto mb-12">
+          <table className="min-w-full text-sm">
+            <thead className="bg-teal-100">
+              <tr>
+                <th className="px-3 py-2 border border-gray-400">Tahun</th>
+                {showBudidaya && (
+                  <th className="px-3 py-2 border border-gray-400">Budidaya</th>
+                )}
+                {showTangkap && (
+                  <th className="px-3 py-2 border border-gray-400">Tangkap</th>
+                )}
+                <th className="px-3 py-2 border border-gray-400">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.length === 0 ? (
+                <tr>
+                  <td
+                    className="px-3 py-3 text-gray-500"
+                    colSpan={3 + Number(showBudidaya) + Number(showTangkap)}
+                  >
+                    Tidak ada data untuk filter saat ini.
+                  </td>
+                </tr>
+              ) : (
+                tableRows.map((r) => (
+                  <tr key={r.year}>
+                    <td className="px-3 py-2 border border-gray-400">
+                      {r.year}
+                    </td>
+                    {showBudidaya && (
+                      <td className="px-3 py-2 border border-gray-400 text-right">
+                        {nf.format(r.bud)}
+                      </td>
+                    )}
+                    {showTangkap && (
+                      <td className="px-3 py-2 border border-gray-400 text-right">
+                        {nf.format(r.tang)}
+                      </td>
+                    )}
+                    <td className="px-3 py-2 border border-gray-400 text-right font-medium">
+                      {nf.format(r.total)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {tableRows.length > 0 && (
+              <tfoot className="bg-teal-50">
+                <tr>
+                  <td className="px-3 py-2 border border-gray-400 font-semibold">
+                    Jumlah
+                  </td>
+                  {showBudidaya && (
+                    <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                      {nf.format(grand.bud)}
+                    </td>
+                  )}
+                  {showTangkap && (
+                    <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                      {nf.format(grand.tang)}
+                    </td>
+                  )}
+                  <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                    {nf.format(grand.total)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
