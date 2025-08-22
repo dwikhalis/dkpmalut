@@ -326,12 +326,12 @@ export default function ChartProductionKabFilter({
     <div className="flex w-full">
       {/* //! SIDE MENU */}
       <aside
-        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[20vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
           showSideMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div
-          className={`flex flex-col gap-3 bg-teal-900 px-8 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20`}
+          className={`flex flex-col gap-3 bg-teal-900 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full`}
         >
           <h3 className="font-bold">Kabupaten</h3>
           <div>
@@ -358,13 +358,13 @@ export default function ChartProductionKabFilter({
 
           <div className="flex flex-col gap-3">
             <button
-              className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
               onClick={() => setSelectedKabs(allKabOptions)}
             >
               Semua
             </button>
             <button
-              className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
               onClick={() => setSelectedKabs([])}
             >
               Reset
@@ -372,7 +372,7 @@ export default function ChartProductionKabFilter({
           </div>
 
           {/* //! FILTERS - MOBILE */}
-          <div className="reltive flex md:hidden gap-x-6 md:gap-y-2 gap-y-6 flex-wrap">
+          <div className="flex flex-col md:hidden gap-6">
             {/* Tahun */}
             <div className="w-full">
               <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -517,7 +517,7 @@ export default function ChartProductionKabFilter({
               </label>
               <div>
                 <button
-                  className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     noDatasetSelected || tableRows.length === 0
                       ? "opacity-50 cursor-not-allowed"
                       : "bg-teal-600 text-white hover:bg-teal-500"
@@ -610,7 +610,7 @@ export default function ChartProductionKabFilter({
                       setShowDropDown(false);
                       fromChild(pages[idx]);
                     }}
-                    className="px-3 py-1.5 hover:bg-stone-100"
+                    className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   >
                     {e}
                   </div>
@@ -624,7 +624,7 @@ export default function ChartProductionKabFilter({
         <h2 className="md:mb-6 mb-3">{TITLE}</h2>
 
         {/* //! TOP CONTROL */}
-        <div className="hidden md:flex gap-x-6 md:gap-y-2 gap-y-1 flex-wrap">
+        <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
           {/* Tahun */}
           <div>
             <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -763,18 +763,20 @@ export default function ChartProductionKabFilter({
           </div>
         </div>
 
-        {/* Chart */}
-        {/* <div className="mt-4">
-          <BarCharts
-            chartTitle=""
-            labels={labels}
-            datasets={datasets}
-            stacked={stacked}
-          />
-        </div> */}
+        {/* //! CHART */}
+
+        <BarCharts
+          chartTitle=""
+          labels={labels}
+          datasets={datasets}
+          stacked={stacked}
+          datalabel={false}
+          yAxis={true}
+          rotateXLabels={45}
+        />
 
         {/* Table */}
-        <div className="mt-8 overflow-x-auto mb-12">
+        <div className="overflow-x-auto mb-12">
           <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
             <thead className="bg-teal-100">
               <tr>

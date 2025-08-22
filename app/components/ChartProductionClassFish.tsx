@@ -130,8 +130,8 @@ export default function ChartProductionClassFish({
   const [rows, setRows] = useState<Row[]>([]);
 
   // Filters
-  const [selectedKabs, setSelectedKabs] = useState<string[]>([]); // sidebar (multi)
-  const [selectedYear, setSelectedYear] = useState<"all" | number>("all"); // dropdown (single)
+  const [selectedKabs, setSelectedKabs] = useState<string[]>([]); // multi (mobile side menu)
+  const [selectedYear, setSelectedYear] = useState<"all" | number>("all"); // single
   const [selectedSemester, setSelectedSemester] = useState<"all" | 1 | 2>(
     "all"
   );
@@ -139,6 +139,7 @@ export default function ChartProductionClassFish({
   const [sortBy, setSortBy] = useState<"value" | "class">("class");
   const [order, setOrder] = useState<"desc" | "asc">("asc");
   const [showDropDown, setShowDropDown] = useState(false);
+  const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
 
   // fetch ALL rows (pagination) — include semester & landing
   useEffect(() => {
@@ -267,9 +268,8 @@ export default function ChartProductionClassFish({
     []
   );
 
-  // ===== CSV (data-based) =====
-  // keep this var to match your button's disabled logic
-  const noDatasetSelected = false;
+  // CSV
+  const noDatasetSelected = false; // single dataset
 
   const fileNameFromTitle = (title: string) =>
     title
@@ -278,7 +278,7 @@ export default function ChartProductionClassFish({
       .replace(/\s+/g, "_") + ".csv";
 
   const csvCell = (v: unknown) => {
-    if (typeof v === "number" && Number.isFinite(v)) return String(v); // raw numeric
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
     const s = String(v ?? "");
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
@@ -304,7 +304,7 @@ export default function ChartProductionClassFish({
     body.push(["Jumlah", grandTotal]);
 
     const csv = toCsv(header, body);
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }); // BOM for Excel
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -331,83 +331,251 @@ export default function ChartProductionClassFish({
   }
 
   return (
-    <div className="flex">
-      {/* Sidebar: Kabupaten (multi) */}
-      <aside className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] text-white">
-        <h3 className="mb-2">Kabupaten</h3>
-        <div className="space-y-1">
-          {kabOptions.map((kab) => {
-            const checked = selectedKabs.includes(kab);
-            return (
-              <label key={kab} className="flex items-center gap-2 py-0.5">
-                <input
-                  type="checkbox"
-                  className="accent-teal-600"
-                  checked={checked}
+    <div className="flex w-full">
+      {/* //! SIDE MENU (mobile) */}
+      <aside
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+          showSideMenu ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex flex-col gap-3 bg-teal-900 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full">
+          <h3 className="font-bold">Kabupaten</h3>
+
+          {/* Kabupaten (multi) */}
+          <div>
+            {kabOptions.map((kab) => {
+              const checked = selectedKabs.includes(kab);
+              return (
+                <label key={kab} className="flex items-center gap-2 py-0.5">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      setSelectedKabs((prev) =>
+                        e.target.checked
+                          ? [...prev, kab]
+                          : prev.filter((k) => k !== kab)
+                      );
+                    }}
+                  />
+                  <h6 className="text-sm">{kab}</h6>
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              onClick={() => setSelectedKabs(kabOptions)}
+            >
+              Semua
+            </button>
+            <button
+              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              onClick={() => setSelectedKabs([])}
+            >
+              Reset
+            </button>
+          </div>
+
+          {/* //! FILTERS - MOBILE (inside side menu) */}
+          <div className="reltive flex md:hidden gap-x-6 md:gap-y-2 gap-y-6 flex-wrap">
+            {/* Tahun */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Tahun
+              </label>
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={selectedYear === "all" ? "all" : String(selectedYear)}
                   onChange={(e) => {
-                    setSelectedKabs((prev) =>
-                      e.target.checked
-                        ? [...prev, kab]
-                        : prev.filter((k) => k !== kab)
+                    const v = e.target.value;
+                    setSelectedYear(v === "all" ? "all" : Number(v));
+                  }}
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y} className="text-black">
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Semester */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Semester
+              </label>
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={String(selectedSemester)}
+                  onChange={(e) => {
+                    const v = e.target.value as "all" | "1" | "2";
+                    setSelectedSemester(
+                      v === "all" ? "all" : (Number(v) as 1 | 2)
                     );
                   }}
-                />
-                <span className="text-sm">{kab}</span>
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  <option value="1" className="text-black">
+                    1
+                  </option>
+                  <option value="2" className="text-black">
+                    2
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* Landing */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Landing
               </label>
-            );
-          })}
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={selectedLanding}
+                  onChange={(e) =>
+                    setSelectedLanding(
+                      e.target.value === "all" ? "all" : e.target.value
+                    )
+                  }
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  {landingOptions.map((l) => (
+                    <option key={l} value={l} className="text-black">
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Sorting */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Urutkan
+              </label>
+              <div className="flex flex-col gap-3">
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(e.target.value as "value" | "class")
+                  }
+                >
+                  <option value="class" className="text-black">
+                    Nama Kelas
+                  </option>
+                  <option value="value" className="text-black">
+                    Nilai
+                  </option>
+                </select>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={order}
+                  onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
+                >
+                  <option value="asc" className="text-black">
+                    Naik
+                  </option>
+                  <option value="desc" className="text-black">
+                    Turun
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* Download */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Download
+              </label>
+              <div>
+                <button
+                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    noDatasetSelected || tableRows.length === 0
+                      ? "opacity-50 cursor-not-allowed"
+                      : "bg-teal-600 text-white hover:bg-teal-500"
+                  }`}
+                  onClick={downloadCsv}
+                  disabled={noDatasetSelected || tableRows.length === 0}
+                >
+                  CSV
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 mt-6">
-          <button
-            className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 justify-center"
-            onClick={() => setSelectedKabs(kabOptions)}
-          >
-            Semua
-          </button>
-          <button
-            className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 justify-center"
-            onClick={() => setSelectedKabs([])}
-          >
-            Reset
-          </button>
+        {/* //! RETRACT "❬" BUTTON when open */}
+        <div
+          className={`${showSideMenu ? "flex" : "hidden"} justify-center items-center text-6xl text-stone-300 md:hidden cursor-pointer`}
+        >
+          <div className="px-4" onClick={() => setShowSideMenu(false)}>
+            ❬
+          </div>
         </div>
       </aside>
 
+      {/* //! RETRACT "❭" BUTTON (mobile) */}
+      <div className="flex fixed top-0 justify-center items-center text-6xl text-stone-300 h-[100vh] md:hidden cursor-pointer">
+        <div className="px-2 py-4" onClick={() => setShowSideMenu((v) => !v)}>
+          ❭
+        </div>
+      </div>
+
+      {/* //! POP UP FOCUS OVERLAY */}
+      <div
+        className={`${showSideMenu ? "flex" : "hidden"} md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
+        onClick={() => setShowSideMenu(false)}
+      />
+
       {/* Main */}
-      <main className="flex flex-col ml-12 w-full">
-        {/* //! HEAD DROPDOWN */}
+      <div className="flex flex-col lg:mx-12 mx-8 w-full">
+        {/* Header + page nav */}
         <div className="flex w-full">
           <div
-            className="flex justify-center items-center pr-6 py-3 cursor-pointer"
+            className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
             onClick={() => fromChild(pages[0])}
           >
-            <LeftChevron width={30} height={30} />
+            <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
           </div>
-          <div className="relative flex flex-col justify-center items-center my-3 w-full">
+
+          <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
             <div
               onClick={() => setShowDropDown(!showDropDown)}
-              className="flex items-center justify-between w-full h-10 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
+              className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
             >
-              <p>Lihat Data Lainnya</p>
+              <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Lihat Data Lainnya
+              </p>
               <DownChevron
-                width={20}
-                height={20}
-                className={showDropDown ? "hidden" : "flex"}
+                className={`${showDropDown ? "hidden" : "flex"} lg:w-7 lg:h-7 w-4 h-4`}
               />
               <UpChevron
-                width={20}
-                height={20}
-                className={showDropDown ? "flex" : "hidden"}
+                className={`${showDropDown ? "flex" : "hidden"} lg:w-7 lg:h-7 w-4 h-4`}
               />
             </div>
-            {/* //! DROPDOWN */}
+
+            {/* Dropdown list */}
             <div
               className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
             >
               {pages.map((e, idx) => {
-                if (e === "Home") return;
-
+                if (e === "Home") return null;
                 return (
                   <div
                     key={idx}
@@ -415,7 +583,7 @@ export default function ChartProductionClassFish({
                       setShowDropDown(false);
                       fromChild(pages[idx]);
                     }}
-                    className="px-3 py-1.5 hover:bg-stone-100"
+                    className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   >
                     {e}
                   </div>
@@ -425,24 +593,37 @@ export default function ChartProductionClassFish({
           </div>
         </div>
 
-        <h2 className="mb-6">{TITLE}</h2>
+        {/* Title */}
+        <h2 className="md:mb-6 mb-3">{TITLE}</h2>
 
-        <div className="flex flex-wrap gap-6">
-          {/* Year */}
+        {/* //! TOP CONTROL (desktop only) */}
+        <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
+          {/* Tahun */}
           <div>
-            <label className="text-sm font-medium">Tahun</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Tahun
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={selectedYear === "all" ? "all" : String(selectedYear)}
                 onChange={(e) => {
                   const v = e.target.value;
                   setSelectedYear(v === "all" ? "all" : Number(v));
                 }}
               >
-                <option value="all">Semua</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
                 {yearOptions.map((y) => (
-                  <option key={y} value={y}>
+                  <option
+                    key={y}
+                    value={y}
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  >
                     {y}
                   </option>
                 ))}
@@ -452,10 +633,12 @@ export default function ChartProductionClassFish({
 
           {/* Semester */}
           <div>
-            <label className="text-sm font-medium">Semester</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Semester
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={String(selectedSemester)}
                 onChange={(e) => {
                   const v = e.target.value as "all" | "1" | "2";
@@ -464,19 +647,36 @@ export default function ChartProductionClassFish({
                   );
                 }}
               >
-                <option value="all">Semua</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
+                <option
+                  value="1"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  1
+                </option>
+                <option
+                  value="2"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  2
+                </option>
               </select>
             </div>
           </div>
 
           {/* Sorting */}
           <div>
-            <label className="text-sm font-medium">Urutkan</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Urutkan
+            </label>
             <div className="flex gap-3">
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as "value" | "class")}
               >
@@ -484,7 +684,7 @@ export default function ChartProductionClassFish({
                 <option value="value">Nilai</option>
               </select>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={order}
                 onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
               >
@@ -496,10 +696,12 @@ export default function ChartProductionClassFish({
 
           {/* Landing */}
           <div>
-            <label className="text-sm font-medium">Landing</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Landing
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm min-w-[220px]"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={selectedLanding}
                 onChange={(e) =>
                   setSelectedLanding(
@@ -507,9 +709,18 @@ export default function ChartProductionClassFish({
                   )
                 }
               >
-                <option value="all">Semua</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
                 {landingOptions.map((l) => (
-                  <option key={l} value={l}>
+                  <option
+                    key={l}
+                    value={l}
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  >
                     {l}
                   </option>
                 ))}
@@ -517,12 +728,14 @@ export default function ChartProductionClassFish({
             </div>
           </div>
 
-          {/* Download (your button) */}
+          {/* Download */}
           <div>
-            <label className="text-sm font-medium">Download</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Download
+            </label>
             <div>
               <button
-                className={`px-3 py-1 rounded w-full border text-sm ${
+                className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   noDatasetSelected || tableRows.length === 0
                     ? "opacity-50 cursor-not-allowed"
                     : "bg-teal-600 text-white hover:bg-teal-500"
@@ -537,18 +750,19 @@ export default function ChartProductionClassFish({
         </div>
 
         {/* Chart */}
-        <div className="mt-4">
-          <BarCharts
-            chartTitle=""
-            labels={labels}
-            datasets={datasets}
-            stacked={false}
-          />
-        </div>
+        <BarCharts
+          chartTitle=""
+          labels={labels}
+          datasets={datasets}
+          stacked={false}
+          datalabel={false}
+          yAxis={true}
+          rotateXLabels={45}
+        />
 
         {/* Table */}
-        <div className="mt-8 overflow-x-auto mb-12">
-          <table className="min-w-full text-sm">
+        <div className="overflow-x-auto mb-12">
+          <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
             <thead className="bg-teal-100">
               <tr>
                 <th className="px-3 py-2 border border-gray-400 text-center">
@@ -593,7 +807,7 @@ export default function ChartProductionClassFish({
             )}
           </table>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

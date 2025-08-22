@@ -8,11 +8,11 @@ import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 type Row = {
   kab: string | null;
   year: number | string | null;
-  semester?: number | string | null; // <-- NEW
+  semester?: number | string | null; // NEW
   class: string | null;
   common: string | null;
   name?: string | null;
-  landing?: string | null; // <-- NEW
+  landing?: string | null; // NEW
   weight?: number | string | null;
 };
 
@@ -33,14 +33,13 @@ interface Props {
 
 const TITLE = "Produksi Perikanan Tangkap per Jenis Komoditas";
 
-// ===== Helpers =====
+/* ================= Helpers ================= */
 const toNum = (v: unknown) => {
   if (v == null) return NaN;
   if (typeof v === "number") return v;
   if (typeof v === "string") return Number(v.replace(/[^\d.-]/g, ""));
   return NaN;
 };
-
 const trimOrEmpty = (s: string | null | undefined) => (s ?? "").trim();
 const keyOf = (s: string) => s.normalize("NFKC").trim().toLowerCase();
 
@@ -54,7 +53,6 @@ const yearOf = (v: unknown): number | null => {
   return null;
 };
 
-// Accepts "1", "2", "Semester I", "Semester 2", etc.
 const semesterOf = (v: unknown): 1 | 2 | null => {
   if (v == null) return null;
   if (typeof v === "number") {
@@ -80,7 +78,7 @@ function shortNameForChart(fullNameRaw: string | null | undefined): string {
   return firstSlash.trim();
 }
 
-// fetch *all* rows with pagination
+/** Fetch *all* rows with pagination */
 async function fetchAllRows<T>(
   table: string,
   columns: string,
@@ -103,6 +101,7 @@ async function fetchAllRows<T>(
   return all;
 }
 
+/* ================= Component ================= */
 export default function ChartProductionCommonFish({
   fromChild = () => {},
   pages,
@@ -115,16 +114,17 @@ export default function ChartProductionCommonFish({
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const [selectedSemester, setSelectedSemester] = useState<"all" | 1 | 2>(
     "all"
-  ); // NEW
+  );
   const [selectedKab, setSelectedKab] = useState<"all" | string>("all");
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]); // sidebar checkboxes
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]); // multi (side menu)
   const [sortBy, setSortBy] = useState<SortBy>("name");
   const [order, setOrder] = useState<Order>("asc");
   const [topN, setTopN] = useState<TopN>("all");
-  const [selectedLanding, setSelectedLanding] = useState<"all" | string>("all"); // Landing Filter
+  const [selectedLanding, setSelectedLanding] = useState<"all" | string>("all");
   const [showDropDown, setShowDropDown] = useState(false);
+  const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
 
-  // Fetch ALL data (include `name`, `semester`, `landing`)
+  // Fetch ALL data (include name/semester/landing)
   useEffect(() => {
     let cancelled = false;
     const getErr = (e: unknown) =>
@@ -180,7 +180,7 @@ export default function ChartProductionCommonFish({
     };
   }, []);
 
-  // Options
+  /* ======= Options ======= */
   const yearOptions = useMemo(() => {
     const s = new Set<number>();
     rows.forEach((r) => {
@@ -223,7 +223,7 @@ export default function ChartProductionCommonFish({
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
-  // Helper filter keys
+  /* ======= Filter keys ======= */
   const kabSelectedKey = useMemo(
     () => (selectedKab === "all" ? undefined : keyOf(selectedKab)),
     [selectedKab]
@@ -245,7 +245,7 @@ export default function ChartProductionCommonFish({
     [selectedLanding]
   );
 
-  // ======= AGGREGATION KEYED BY `name` =======
+  /* ======= Aggregation keyed by name ======= */
   const nameUniverse = useMemo(() => {
     const byKey = new Map<string, { full: string; short: string }>();
     rows.forEach((r) => {
@@ -351,7 +351,7 @@ export default function ChartProductionCommonFish({
     return topN === "all" ? arr : arr.slice(0, topN);
   }, [nameUniverse, totalsByNameKey, sortBy, order, topN]);
 
-  // Chart data (labels = SHORT NAME from `name`)
+  // Chart data (labels = SHORT NAME), tooltip = full name
   const { labels, datasets }: { labels: string[]; datasets: DatasetConf[] } =
     useMemo(() => {
       const labs = items.map((it) => it.chartLabel);
@@ -368,7 +368,6 @@ export default function ChartProductionCommonFish({
       };
     }, [items]);
 
-  // Tooltip titles (full `name`)
   const tooltipLabels = useMemo(
     () => items.map((it) => it.tableLabel),
     [items]
@@ -384,21 +383,18 @@ export default function ChartProductionCommonFish({
     [items]
   );
 
-  // ===== CSV (data-based) =====
-  const noDatasetSelected = false; // there’s only one dataset
-
+  // CSV
+  const noDatasetSelected = false;
   const fileNameFromTitle = (title: string) =>
     title
       .trim()
       .replace(/[\/\\?%*:|"<>]/g, "")
       .replace(/\s+/g, "_") + ".csv";
-
   const csvCell = (v: unknown) => {
-    if (typeof v === "number" && Number.isFinite(v)) return String(v); // raw numeric
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
     const s = String(v ?? "");
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-
   const toCsv = (
     header: (string | number)[],
     rowsData: (string | number)[][]
@@ -409,21 +405,16 @@ export default function ChartProductionCommonFish({
     ];
     return lines.join("\r\n");
   };
-
   const downloadCsv = () => {
     if (noDatasetSelected || items.length === 0) return;
-
     const header: (string | number)[] = ["Nama", "Total"];
     const body: (string | number)[][] = items.map((it) => [
       it.tableLabel,
       it.value,
     ]);
-
-    // footer (Jumlah)
     body.push(["Jumlah", grandTotal]);
-
     const csv = toCsv(header, body);
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }); // BOM for Excel
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -450,83 +441,301 @@ export default function ChartProductionCommonFish({
   }
 
   return (
-    <div className="flex">
-      {/* Sidebar: Kelas Komoditas (multi checkboxes) */}
-      <aside className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] text-white">
-        <h3 className="mb-2">Kelas Komoditas</h3>
-        <div className="space-y-1 max-h-[55vh] overflow-auto pr-1">
-          {classOptions.map((c) => {
-            const checked = selectedClasses.includes(c);
-            return (
-              <label key={c} className="flex items-center gap-2 py-0.5">
-                <input
-                  type="checkbox"
-                  className="accent-teal-600"
-                  checked={checked}
+    <div className="flex w-full">
+      {/* //! SIDE MENU (mobile) */}
+      <aside
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+          showSideMenu ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex flex-col gap-3 bg-teal-900 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full">
+          <h3 className="font-bold">Kelas Komoditas</h3>
+
+          {/* Kelas (multi) */}
+          <div>
+            {classOptions.map((c) => {
+              const checked = selectedClasses.includes(c);
+              return (
+                <label key={c} className="flex items-center gap-2 py-0.5">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      setSelectedClasses((prev) =>
+                        e.target.checked
+                          ? [...prev, c]
+                          : prev.filter((x) => x !== c)
+                      );
+                    }}
+                  />
+                  <h6 className="text-sm">{c}</h6>
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              onClick={() => setSelectedClasses(classOptions)}
+            >
+              Semua
+            </button>
+            <button
+              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              onClick={() => setSelectedClasses([])}
+            >
+              Reset
+            </button>
+          </div>
+
+          {/* //! FILTERS - MOBILE (inside side menu) */}
+          <div className="reltive flex md:hidden gap-x-6 md:gap-y-2 gap-y-6 flex-wrap">
+            {/* Tahun */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Tahun
+              </label>
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={selectedYear === "all" ? "all" : String(selectedYear)}
                   onChange={(e) => {
-                    setSelectedClasses((prev) =>
-                      e.target.checked
-                        ? [...prev, c]
-                        : prev.filter((x) => x !== c)
+                    const v = e.target.value;
+                    setSelectedYear(v === "all" ? "all" : Number(v));
+                  }}
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y} className="text-black">
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Semester */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Semester
+              </label>
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={String(selectedSemester)}
+                  onChange={(e) => {
+                    const v = e.target.value as "all" | "1" | "2";
+                    setSelectedSemester(
+                      v === "all" ? "all" : (Number(v) as 1 | 2)
                     );
                   }}
-                />
-                <span className="text-sm">{c}</span>
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  <option value="1" className="text-black">
+                    1
+                  </option>
+                  <option value="2" className="text-black">
+                    2
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* Kabupaten (single) */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Kabupaten
               </label>
-            );
-          })}
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={selectedKab}
+                  onChange={(e) =>
+                    setSelectedKab(
+                      e.target.value === "all" ? "all" : e.target.value
+                    )
+                  }
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  {kabOptions.map((k) => (
+                    <option key={k} value={k} className="text-black">
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Landing */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Landing
+              </label>
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={selectedLanding}
+                  onChange={(e) =>
+                    setSelectedLanding(
+                      e.target.value === "all" ? "all" : e.target.value
+                    )
+                  }
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  {landingOptions.map((l) => (
+                    <option key={l} value={l} className="text-black">
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Sorting + Order */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Urutkan
+              </label>
+              <div className="flex flex-col gap-3">
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortBy)}
+                >
+                  <option value="name" className="text-black">
+                    Nama
+                  </option>
+                  <option value="value" className="text-black">
+                    Nilai
+                  </option>
+                </select>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={order}
+                  onChange={(e) => setOrder(e.target.value as Order)}
+                >
+                  <option value="asc" className="text-black">
+                    Naik
+                  </option>
+                  <option value="desc" className="text-black">
+                    Turun
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* Top */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Top
+              </label>
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                value={topN}
+                onChange={(e) => {
+                  const v = e.target.value as "all" | "5" | "10";
+                  setTopN(v === "all" ? "all" : (Number(v) as 5 | 10));
+                }}
+              >
+                <option value="all" className="text-black">
+                  Semua
+                </option>
+                <option value="5" className="text-black">
+                  Top 5
+                </option>
+                <option value="10" className="text-black">
+                  Top 10
+                </option>
+              </select>
+            </div>
+
+            {/* Download */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Download
+              </label>
+              <div>
+                <button
+                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    noDatasetSelected || items.length === 0
+                      ? "opacity-50 cursor-not-allowed"
+                      : "bg-teal-600 text-white hover:bg-teal-500"
+                  }`}
+                  onClick={downloadCsv}
+                  disabled={noDatasetSelected || items.length === 0}
+                >
+                  CSV
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 mt-6">
-          <button
-            className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 justify-center"
-            onClick={() => setSelectedClasses(classOptions)}
-          >
-            Semua
-          </button>
-          <button
-            className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 justify-center"
-            onClick={() => setSelectedClasses([])}
-          >
-            Reset
-          </button>
+        {/* Close chevron when open */}
+        <div
+          className={`${showSideMenu ? "flex" : "hidden"} justify-center items-center text-6xl text-stone-300 md:hidden cursor-pointer`}
+        >
+          <div className="px-4" onClick={() => setShowSideMenu(false)}>
+            ❬
+          </div>
         </div>
       </aside>
 
+      {/* Open chevron */}
+      <div className="flex fixed top-0 justify-center items-center text-6xl text-stone-300 h-[100vh] md:hidden cursor-pointer">
+        <div className="px-2 py-4" onClick={() => setShowSideMenu((v) => !v)}>
+          ❭
+        </div>
+      </div>
+
+      {/* Overlay */}
+      <div
+        className={`${showSideMenu ? "flex" : "hidden"} md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
+        onClick={() => setShowSideMenu(false)}
+      />
+
       {/* Main */}
-      <main className="flex flex-col ml-12 w-full">
-        {/* //! HEAD DROPDOWN */}
+      <div className="flex flex-col lg:mx-12 mx-8 w-full">
+        {/* Header + page nav */}
         <div className="flex w-full">
           <div
-            className="flex justify-center items-center pr-6 py-3 cursor-pointer"
+            className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
             onClick={() => fromChild(pages[0])}
           >
-            <LeftChevron width={30} height={30} />
+            <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
           </div>
-          <div className="relative flex flex-col justify-center items-center my-3 w-full">
+
+          <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
             <div
               onClick={() => setShowDropDown(!showDropDown)}
-              className="flex items-center justify-between w-full h-10 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
+              className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
             >
-              <p>Lihat Data Lainnya</p>
+              <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Lihat Data Lainnya
+              </p>
               <DownChevron
-                width={20}
-                height={20}
-                className={showDropDown ? "hidden" : "flex"}
+                className={`${showDropDown ? "hidden" : "flex"} lg:w-7 lg:h-7 w-4 h-4`}
               />
               <UpChevron
-                width={20}
-                height={20}
-                className={showDropDown ? "flex" : "hidden"}
+                className={`${showDropDown ? "flex" : "hidden"} lg:w-7 lg:h-7 w-4 h-4`}
               />
             </div>
-            {/* //! DROPDOWN */}
+
+            {/* Dropdown list */}
             <div
               className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
             >
               {pages.map((e, idx) => {
-                if (e === "Home") return;
-
+                if (e === "Home") return null;
                 return (
                   <div
                     key={idx}
@@ -534,7 +743,7 @@ export default function ChartProductionCommonFish({
                       setShowDropDown(false);
                       fromChild(pages[idx]);
                     }}
-                    className="px-3 py-1.5 hover:bg-stone-100"
+                    className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   >
                     {e}
                   </div>
@@ -544,25 +753,37 @@ export default function ChartProductionCommonFish({
           </div>
         </div>
 
-        <h2 className="mb-6">{TITLE}</h2>
+        {/* Title */}
+        <h2 className="md:mb-6 mb-3">{TITLE}</h2>
 
-        {/* Top controls: Tahun -> Semester -> Kabupaten -> Sorting -> Top -> Landing -> Download */}
-        <div className="flex flex-wrap gap-6">
+        {/* //! TOP CONTROL (desktop only) */}
+        <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
           {/* Tahun */}
           <div>
-            <label className="text-sm font-medium">Tahun</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Tahun
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={selectedYear === "all" ? "all" : String(selectedYear)}
                 onChange={(e) => {
                   const v = e.target.value;
                   setSelectedYear(v === "all" ? "all" : Number(v));
                 }}
               >
-                <option value="all">Semua</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
                 {yearOptions.map((y) => (
-                  <option key={y} value={y}>
+                  <option
+                    key={y}
+                    value={y}
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  >
                     {y}
                   </option>
                 ))}
@@ -572,10 +793,12 @@ export default function ChartProductionCommonFish({
 
           {/* Semester */}
           <div>
-            <label className="text-sm font-medium">Semester</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Semester
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={String(selectedSemester)}
                 onChange={(e) => {
                   const v = e.target.value as "all" | "1" | "2";
@@ -584,19 +807,36 @@ export default function ChartProductionCommonFish({
                   );
                 }}
               >
-                <option value="all">Semua</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
+                <option
+                  value="1"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  1
+                </option>
+                <option
+                  value="2"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  2
+                </option>
               </select>
             </div>
           </div>
 
-          {/* Kabupaten (single) */}
+          {/* Kabupaten */}
           <div>
-            <label className="text-sm font-medium">Kabupaten</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Kabupaten
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm min-w-[220px]"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={selectedKab}
                 onChange={(e) =>
                   setSelectedKab(
@@ -604,9 +844,18 @@ export default function ChartProductionCommonFish({
                   )
                 }
               >
-                <option value="all">Semua</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
                 {kabOptions.map((k) => (
-                  <option key={k} value={k}>
+                  <option
+                    key={k}
+                    value={k}
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  >
                     {k}
                   </option>
                 ))}
@@ -614,12 +863,48 @@ export default function ChartProductionCommonFish({
             </div>
           </div>
 
-          {/* Sorting */}
+          {/* Landing */}
           <div>
-            <label className="text-sm font-medium">Urutkan</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Landing
+            </label>
+            <div>
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                value={selectedLanding}
+                onChange={(e) =>
+                  setSelectedLanding(
+                    e.target.value === "all" ? "all" : e.target.value
+                  )
+                }
+              >
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
+                {landingOptions.map((l) => (
+                  <option
+                    key={l}
+                    value={l}
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  >
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Sorting + Order */}
+          <div>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Urutkan
+            </label>
             <div className="flex gap-3">
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
               >
@@ -627,7 +912,7 @@ export default function ChartProductionCommonFish({
                 <option value="value">Nilai</option>
               </select>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={order}
                 onChange={(e) => setOrder(e.target.value as Order)}
               >
@@ -637,12 +922,14 @@ export default function ChartProductionCommonFish({
             </div>
           </div>
 
-          {/* Top N */}
+          {/* Top */}
           <div>
-            <label className="text-sm font-medium">Top</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Top
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={topN}
                 onChange={(e) => {
                   const v = e.target.value as "all" | "5" | "10";
@@ -656,35 +943,14 @@ export default function ChartProductionCommonFish({
             </div>
           </div>
 
-          {/* Landing */}
+          {/* Download */}
           <div>
-            <label className="text-sm font-medium">Landing</label>
-            <div>
-              <select
-                className="rounded border px-2 py-1 text-sm min-w-[220px]"
-                value={selectedLanding}
-                onChange={(e) =>
-                  setSelectedLanding(
-                    e.target.value === "all" ? "all" : e.target.value
-                  )
-                }
-              >
-                <option value="all">Semua</option>
-                {landingOptions.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Download (your button) */}
-          <div>
-            <label className="text-sm font-medium">Download</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Download
+            </label>
             <div>
               <button
-                className={`px-3 py-1 rounded w-full border text-sm ${
+                className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   noDatasetSelected || items.length === 0
                     ? "opacity-50 cursor-not-allowed"
                     : "bg-teal-600 text-white hover:bg-teal-500"
@@ -699,19 +965,22 @@ export default function ChartProductionCommonFish({
         </div>
 
         {/* Chart */}
-        <div className="mt-4">
-          <BarCharts
-            chartTitle=""
-            labels={labels}
-            datasets={datasets}
-            stacked={false}
-            tooltipLabels={tooltipLabels} // uses full `name` in tooltip
-          />
-        </div>
+        <BarCharts
+          chartTitle=""
+          labels={labels}
+          datasets={datasets}
+          stacked={false}
+          datalabel={false}
+          yAxis={true}
+          tooltipLabels={tooltipLabels}
+          // If supported in BarCharts, rotate long labels:
+          // @ts-ignore
+          rotateXLabels={45}
+        />
 
         {/* Table */}
-        <div className="mt-8 overflow-x-auto mb-12">
-          <table className="min-w-full text-sm">
+        <div className="overflow-x-auto mb-12">
+          <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
             <thead className="bg-teal-100">
               <tr>
                 <th className="px-3 py-2 border border-gray-400 text-center">
@@ -756,7 +1025,7 @@ export default function ChartProductionCommonFish({
             )}
           </table>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

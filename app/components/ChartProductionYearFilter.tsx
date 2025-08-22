@@ -7,7 +7,7 @@ import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 
 type Row = {
   kab: string | null;
-  year: number | string | null; // x-axis
+  year: number | string | null; // x-axis (year)
   tot_produksi?: number | string | null; // budidaya
   weight?: number | string | null; // tangkap
 };
@@ -25,12 +25,12 @@ interface Props {
 
 const TITLE = "Produksi Perikanan Tangkap dan Budidaya per Tahun";
 
-// tolerant number parser: "164,158,670" / "164.158.670" / "164 158 670"
+// tolerant number parser
 function toNum(v: unknown) {
   if (v == null) return NaN;
   if (typeof v === "number") return v;
   if (typeof v === "string") {
-    const cleaned = v.replace(/[^\d.-]/g, ""); // keep digits, dot, minus
+    const cleaned = v.replace(/[^\d.-]/g, "");
     return Number(cleaned);
   }
   return NaN;
@@ -100,14 +100,15 @@ export default function ChartProductionYearFilter({
   const [rowsTangkap, setRowsTangkap] = useState<Row[]>([]);
 
   // filters
-  const [selectedYears, setSelectedYears] = useState<number[]>([]); // sidebar (multi)
-  const [selectedKab, setSelectedKab] = useState<"all" | string>("all"); // dropdown (single)
+  const [selectedYears, setSelectedYears] = useState<number[]>([]); // sidebar multi-select (mobile)
+  const [selectedKab, setSelectedKab] = useState<"all" | string>("all"); // dropdown single
   const [showBudidaya, setShowBudidaya] = useState(true);
   const [showTangkap, setShowTangkap] = useState(true);
   const [stacked, setStacked] = useState(false);
   const [sortBy, setSortBy] = useState<"value" | "year">("year");
   const [order, setOrder] = useState<"desc" | "asc">("asc");
   const [showDropDown, setShowDropDown] = useState(false);
+  const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
 
   // fetch (with pagination)
   useEffect(() => {
@@ -257,7 +258,7 @@ export default function ChartProductionYearFilter({
       .replace(/\s+/g, "_") + ".csv";
 
   const csvCell = (v: unknown) => {
-    if (typeof v === "number" && Number.isFinite(v)) return String(v); // numeric -> raw
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
     const s = String(v ?? "");
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
@@ -293,7 +294,7 @@ export default function ChartProductionYearFilter({
     body.push(grandRow);
 
     const csv = toCsv(header, body);
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }); // BOM for Excel
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -321,83 +322,262 @@ export default function ChartProductionYearFilter({
 
   return (
     <div className="flex w-full">
-      {/* Sidebar: YEAR checkboxes */}
-      <div className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] text-white">
-        <div>
-          <h3>Tahun</h3>
+      {/* //! SIDE MENU (mobile) */}
+      <aside
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+          showSideMenu ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div
+          className={`flex flex-col gap-3 bg-teal-900 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full`}
+        >
+          <h3 className="font-bold">Filter</h3>
 
-          {yearOptions.map((y) => {
-            const checked = selectedYears.includes(y);
-            return (
-              <label key={y} className="flex items-center gap-2 py-0.5">
-                <input
-                  type="checkbox"
-                  className="accent-teal-600"
-                  checked={checked}
-                  onChange={(e) => {
-                    setSelectedYears((prev) =>
-                      e.target.checked
-                        ? [...prev, y]
-                        : prev.filter((v) => v !== y)
-                    );
-                  }}
-                />
-                <span className="text-sm">{y}</span>
-              </label>
-            );
-          })}
+          {/* Tahun (multi) */}
+          <div className="w-full">
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Tahun
+            </label>
+            <div className="flex flex-col gap-2 mt-1">
+              {yearOptions.map((y) => {
+                const checked = selectedYears.includes(y);
+                return (
+                  <label key={y} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        setSelectedYears((prev) =>
+                          e.target.checked
+                            ? [...prev, y]
+                            : prev.filter((v) => v !== y)
+                        );
+                      }}
+                    />
+                    <h6 className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                      {y}
+                    </h6>
+                  </label>
+                );
+              })}
 
-          <div className="flex flex-col gap-2 mt-6">
-            <button
-              className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
-              onClick={() => setSelectedYears(yearOptions)}
-            >
-              Semua
-            </button>
-            <button
-              className="flex p-2 bg-teal-600 rounded-xl text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
-              onClick={() => setSelectedYears([])}
-            >
-              Reset
-            </button>
+              <div className="flex flex-col gap-3 mt-3">
+                <button
+                  className="flex py-1 bg-teal-600 rounded-md text-white hover:bg-teal-700 cursor-pointer justify-center items-center lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  onClick={() => setSelectedYears(yearOptions)}
+                >
+                  Semua
+                </button>
+                <button
+                  className="flex py-1 bg-teal-600 rounded-md text-white hover:bg-teal-700 cursor-pointer justify-center items-center lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  onClick={() => setSelectedYears([])}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
           </div>
+
+          {/* //! FILTERS */}
+          {/* Kabupaten (single) */}
+          <div className="flex flex-col gap-6 md:hidden">
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Kabupaten
+              </label>
+              <div>
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={selectedKab}
+                  onChange={(e) =>
+                    setSelectedKab(e.target.value as "all" | string)
+                  }
+                >
+                  <option value="all" className="text-black">
+                    Semua
+                  </option>
+                  {kabOptions.map((k) => (
+                    <option key={k} value={k} className="text-black">
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Datasets */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Datasets
+              </label>
+              <div className="flex flex-col gap-3">
+                <button
+                  className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    showBudidaya
+                      ? "bg-teal-600 text-white border-teal-600"
+                      : "border-white"
+                  }`}
+                  onClick={() => setShowBudidaya(!showBudidaya)}
+                >
+                  Budidaya
+                </button>
+                <button
+                  className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    showTangkap
+                      ? "bg-sky-600 text-white border-teal-600"
+                      : "border-white"
+                  }`}
+                  onClick={() => setShowTangkap(!showTangkap)}
+                >
+                  Tangkap
+                </button>
+              </div>
+            </div>
+
+            {/* Tampilan */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Tampilan
+              </label>
+              <div className="flex flex-col gap-3">
+                <button
+                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    stacked
+                      ? "bg-teal-600 text-white border-teal-600"
+                      : "border-white"
+                  }`}
+                  onClick={() => setStacked(true)}
+                >
+                  Tumpuk
+                </button>
+                <button
+                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    !stacked
+                      ? "bg-teal-600 text-white border-teal-600"
+                      : "border-white"
+                  }`}
+                  onClick={() => setStacked(false)}
+                >
+                  Grup
+                </button>
+              </div>
+            </div>
+
+            {/* Sorting */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Urutkan
+              </label>
+              <div className="flex flex-col gap-3">
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(e.target.value as "value" | "year")
+                  }
+                >
+                  <option value="year" className="text-black">
+                    Tahun
+                  </option>
+                  <option value="value" className="text-black">
+                    Nilai
+                  </option>
+                </select>
+
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={order}
+                  onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
+                >
+                  <option value="asc" className="text-black">
+                    Naik
+                  </option>
+                  <option value="desc" className="text-black">
+                    Turun
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* Download */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Download
+              </label>
+              <div>
+                <button
+                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
+                    noDatasetSelected || tableRows.length === 0
+                      ? "opacity-50 cursor-not-allowed"
+                      : "bg-teal-600 text-white hover:bg-teal-500"
+                  }`}
+                  onClick={downloadCsv}
+                  disabled={noDatasetSelected || tableRows.length === 0}
+                >
+                  CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* //! RETRACT "❬" BUTTON SIDEMENU (visible when open) */}
+        <div
+          className={`${showSideMenu ? "flex" : "hidden"} justify-center items-center text-6xl text-stone-300 md:hidden cursor-pointer`}
+        >
+          <div className="px-4" onClick={() => setShowSideMenu(false)}>
+            ❬
+          </div>
+        </div>
+      </aside>
+
+      {/* //! RETRACT "❭" BUTTON SIDEMENU (always on mobile) */}
+      <div className="flex fixed top-0 justify-center items-center text-6xl text-stone-300 h-[100vh] md:hidden cursor-pointer">
+        <div className="px-2 py-4" onClick={() => setShowSideMenu((v) => !v)}>
+          ❭
         </div>
       </div>
 
-      {/* Controls + Chart + Table */}
-      <div className="flex flex-col ml-12 w-full">
-        {/* //! HEAD DROPDOWN */}
+      {/* //! POP UP FOCUS OVERLAY */}
+      <div
+        className={`${showSideMenu ? "flex" : "hidden"} md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
+        onClick={() => setShowSideMenu(false)}
+      />
+
+      {/* Main */}
+      <div className="flex flex-col lg:mx-12 mx-8 w-full">
         <div className="flex w-full">
+          {/* //! HEAD + PAGE NAV */}
           <div
-            className="flex justify-center items-center pr-6 py-3 cursor-pointer"
+            className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
             onClick={() => fromChild(pages[0])}
           >
-            <LeftChevron width={30} height={30} />
+            <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
           </div>
-          <div className="relative flex flex-col justify-center items-center my-3 w-full">
+
+          <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
             <div
               onClick={() => setShowDropDown(!showDropDown)}
-              className="flex items-center justify-between w-full h-10 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
+              className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
             >
-              <p>Lihat Data Lainnya</p>
+              <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Lihat Data Lainnya
+              </p>
+
               <DownChevron
-                width={20}
-                height={20}
-                className={showDropDown ? "hidden" : "flex"}
+                className={`${showDropDown ? "hidden" : "flex"} lg:w-7 lg:h-7 w-4 h-4`}
               />
               <UpChevron
-                width={20}
-                height={20}
-                className={showDropDown ? "flex" : "hidden"}
+                className={`${showDropDown ? "flex" : "hidden"} lg:w-7 lg:h-7 w-4 h-4`}
               />
             </div>
+
             {/* //! DROPDOWN */}
             <div
               className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
             >
               {pages.map((e, idx) => {
-                if (e === "Home") return;
-
+                if (e === "Home") return null;
                 return (
                   <div
                     key={idx}
@@ -405,7 +585,7 @@ export default function ChartProductionYearFilter({
                       setShowDropDown(false);
                       fromChild(pages[idx]);
                     }}
-                    className="px-3 py-1.5 hover:bg-stone-100"
+                    className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   >
                     {e}
                   </div>
@@ -416,15 +596,18 @@ export default function ChartProductionYearFilter({
         </div>
 
         {/* //! MAIN TITLE */}
-        <h2 className="mb-6">{TITLE}</h2>
+        <h2 className="md:mb-6 mb-3">{TITLE}</h2>
 
-        <div className="flex flex-wrap gap-6">
-          {/* Kabupaten dropdown */}
+        {/* //! TOP CONTROL (desktop only) */}
+        <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
+          {/* Kabupaten (single) */}
           <div>
-            <label className="text-sm font-medium">Kabupaten</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Kabupaten
+            </label>
             <div>
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={selectedKab}
                 onChange={(e) =>
                   setSelectedKab(
@@ -432,9 +615,18 @@ export default function ChartProductionYearFilter({
                   )
                 }
               >
-                <option value="all">Semua</option>
+                <option
+                  value="all"
+                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  Semua
+                </option>
                 {kabOptions.map((k) => (
-                  <option key={k} value={k}>
+                  <option
+                    key={k}
+                    value={k}
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  >
                     {k}
                   </option>
                 ))}
@@ -442,18 +634,28 @@ export default function ChartProductionYearFilter({
             </div>
           </div>
 
-          {/* Datasets toggle */}
+          {/* Datasets */}
           <div>
-            <label>Datasets</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Datasets
+            </label>
             <div className="flex gap-3">
               <button
-                className={`flex px-3 py-1 rounded border items-center gap-1 text-sm ${showBudidaya ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
+                className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
+                  showBudidaya
+                    ? "bg-teal-600 text-white border-teal-600"
+                    : "bg-white"
+                }`}
                 onClick={() => setShowBudidaya(!showBudidaya)}
               >
                 Budidaya
               </button>
               <button
-                className={`flex px-3 py-1 rounded border items-center gap-1 text-sm ${showTangkap ? "bg-sky-600 text-white border-teal-600" : "bg-white"}`}
+                className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
+                  showTangkap
+                    ? "bg-sky-600 text-white border-teal-600"
+                    : "bg-white"
+                }`}
                 onClick={() => setShowTangkap(!showTangkap)}
               >
                 Tangkap
@@ -461,18 +663,28 @@ export default function ChartProductionYearFilter({
             </div>
           </div>
 
-          {/* Layout */}
+          {/* Tampilan */}
           <div>
-            <label className="text-sm font-medium">Tampilan</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Tampilan
+            </label>
             <div className="flex gap-3">
               <button
-                className={`px-3 py-1 rounded border text-sm ${stacked ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
+                className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
+                  stacked
+                    ? "bg-teal-600 text-white border-teal-600"
+                    : "bg-white"
+                }`}
                 onClick={() => setStacked(true)}
               >
                 Tumpuk
               </button>
               <button
-                className={`px-3 py-1 rounded border text-sm ${!stacked ? "bg-teal-600 text-white border-teal-600" : "bg-white"}`}
+                className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
+                  !stacked
+                    ? "bg-teal-600 text-white border-teal-600"
+                    : "bg-white"
+                }`}
                 onClick={() => setStacked(false)}
               >
                 Grup
@@ -482,10 +694,12 @@ export default function ChartProductionYearFilter({
 
           {/* Sorting */}
           <div>
-            <label className="text-sm font-medium">Urutkan</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Urutkan
+            </label>
             <div className="flex gap-3">
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as "value" | "year")}
               >
@@ -494,7 +708,7 @@ export default function ChartProductionYearFilter({
               </select>
 
               <select
-                className="rounded border px-2 py-1 text-sm"
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                 value={order}
                 onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
               >
@@ -504,12 +718,14 @@ export default function ChartProductionYearFilter({
             </div>
           </div>
 
-          {/* Download (your button) */}
+          {/* Download */}
           <div>
-            <label className="text-sm font-medium">Download</label>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Download
+            </label>
             <div>
               <button
-                className={`px-3 py-1 rounded w-full border text-sm ${
+                className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   noDatasetSelected || tableRows.length === 0
                     ? "opacity-50 cursor-not-allowed"
                     : "bg-teal-600 text-white hover:bg-teal-500"
@@ -523,18 +739,20 @@ export default function ChartProductionYearFilter({
           </div>
         </div>
 
-        {/* Chart */}
-
+        {/* //! CHART */}
         <BarCharts
           chartTitle=""
           labels={years.map(String)}
           datasets={datasets}
           stacked={stacked}
+          datalabel={false}
+          yAxis={true}
+          rotateXLabels={0}
         />
 
         {/* Table */}
-        <div className="mt-8 overflow-x-auto mb-12">
-          <table className="min-w-full text-sm">
+        <div className="overflow-x-auto mb-12">
+          <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
             <thead className="bg-teal-100">
               <tr>
                 <th className="px-3 py-2 border border-gray-400">Tahun</th>

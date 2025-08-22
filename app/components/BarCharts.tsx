@@ -35,6 +35,9 @@ interface BarChartProps {
   stacked: boolean;
   chartTitle: string;
   tooltipLabels?: string[];
+  datalabel?: boolean;
+  yAxis?: boolean;
+  rotateXLabels?: number;
 }
 
 export default function BarCharts({
@@ -43,6 +46,9 @@ export default function BarCharts({
   stacked,
   chartTitle,
   tooltipLabels,
+  datalabel = false,
+  yAxis = true,
+  rotateXLabels = 0,
 }: BarChartProps) {
   const data = {
     labels,
@@ -55,14 +61,26 @@ export default function BarCharts({
 
   const nf = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 
+  let showTitle = true;
+
+  if (chartTitle === "") {
+    showTitle = false;
+  }
+
   const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
     layout: { padding: { top: 16 } },
     plugins: {
-      legend: { position: "bottom" },
-      title: { display: true, text: chartTitle },
-      datalabels: { display: false },
+      legend: {
+        position: "bottom",
+        labels: {
+          font: {
+            size: 10,
+          },
+        },
+      },
+      title: { display: showTitle, text: chartTitle },
       tooltip: {
         callbacks: {
           title: (items) => {
@@ -77,16 +95,17 @@ export default function BarCharts({
           },
         },
       },
-      // datalabels: {
-      //   anchor: "end",
-      //   align: "end",
-      //   clamp: true,
-      //   color: "#111",
-      //   font: { weight: "normal", size: 12 },
-      //   rotation: -90,
-      //   formatter: (value: unknown) =>
-      //     typeof value === "number" ? value.toLocaleString() : "",
-      // },
+      datalabels: {
+        display: datalabel,
+        anchor: "end",
+        align: "end",
+        clamp: true,
+        color: "#111",
+        font: { weight: "normal", size: 12 },
+        rotation: -90,
+        formatter: (value: unknown) =>
+          typeof value === "number" ? value.toLocaleString() : "",
+      },
     },
 
     datasets: {
@@ -105,11 +124,24 @@ export default function BarCharts({
 
     scales: {
       // ! Creating Stacked Bar or Not
-      x: { stacked },
+      x: {
+        stacked,
+        ticks: {
+          minRotation: rotateXLabels,
+          maxRotation: rotateXLabels,
+          font: {
+            size: 10,
+          },
+        },
+      },
       y: {
+        display: yAxis,
         stacked,
         beginAtZero: true,
         ticks: {
+          font: {
+            size: 10,
+          },
           callback: (v) => {
             const num = typeof v === "number" ? v : Number(v);
 
