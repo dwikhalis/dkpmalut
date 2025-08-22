@@ -7,7 +7,7 @@ import StaffList from "../components/ListManager";
 export default function Page() {
   return (
     <>
-      <section className="lg:mx-24 my-12 mx-12 min-h-[70vh]">
+      <section className="lg:mx-12 2xl:mx-24 mx-8 lg:my-12 2xl:my-24 my-8 min-h-[70vh]">
         <div className="flex flex-col gap-3">
           <h2>Organisasi</h2>
           <h5>

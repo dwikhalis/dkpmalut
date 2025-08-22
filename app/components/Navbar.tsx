@@ -63,82 +63,84 @@ export default function Navbar() {
     <>
       {/* //! DESKTOP */}
       <nav
-        className={`hidden md:flex sticky z-10 top-0  xl:h-[6vw] h-[8vw] justify-between items-center bg-white w-full transition-transform duration-300 ${
+        className={`hidden md:flex sticky z-10 top-0 xl:h-[6vw] h-[8vw] bg-white w-full transition-transform duration-300 ${
           show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
-        {/* Logo Home Desktop */}
-        <Link
-          href="/"
-          className="hidden md:flex h-full justify-between items-center ml-12 2xl:ml-24"
-        >
-          <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3">
-            <Image
-              src="/assets/logo_malut.png"
-              alt="Logo"
-              className="object-contain"
-              height={600}
-              width={800}
-            />
-          </div>
-          <div className="flex flex-col justify-center">
-            <p className="font-bold md:text-xs lg:text-lg">
-              Dinas Kelautan dan Perikanan
-            </p>
-            <p className="md:text-xs lg:text-lg">Provinsi Maluku Utara</p>
-          </div>
-        </Link>
-
-        {/* Desktop Menu */}
-        <div className="hidden md:flex 2xl:gap-12 gap-6 h-full">
+        <div className="flex justify-between w-full mx-8 lg:mx-12 2xl:mx-24">
+          {/* Logo Home Desktop */}
           <Link
-            href="/Organisasi"
-            className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+            href="/"
+            className="hidden md:flex h-full justify-between items-center"
           >
-            <h6>Organisasi</h6>
-          </Link>
-          <Link
-            href="/Berita"
-            className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-          >
-            <h6>Berita</h6>
-          </Link>
-          <Link
-            href="/Galeri"
-            className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-          >
-            <h6>Galeri</h6>
-          </Link>
-          <Link
-            href="/Data"
-            className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-          >
-            <h6>Data</h6>
-          </Link>
-          <Link
-            href="/Kontak"
-            className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-          >
-            <h6>Kontak</h6>
-          </Link>
-
-          {isLoggedIn ? (
-            <div className="flex justify-center items-center">
-              <button
-                className="px-[2vw] py-2.5 text-[1.2vw] mr-12 2xl:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
-                onClick={() => router.push("/Admin")}
-              >
-                Dashboard
-              </button>
+            <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3">
+              <Image
+                src="/assets/logo_malut.png"
+                alt="Logo"
+                className="object-contain"
+                height={600}
+                width={800}
+              />
             </div>
-          ) : (
-            <Link href="/Masuk" className="flex justify-center items-center">
-              <button className="px-[2vw] py-2.5 text-[1.2vw] mr-12 2xl:mr-24 bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
-                <h6>Masuk</h6>
-              </button>
+            <div className="flex flex-col justify-center">
+              <p className="font-bold md:text-xs lg:text-lg">
+                Dinas Kelautan dan Perikanan
+              </p>
+              <p className="md:text-xs lg:text-lg">Provinsi Maluku Utara</p>
+            </div>
+          </Link>
+
+          {/* Desktop Menu */}
+          <div className="hidden md:flex 2xl:gap-12 gap-6 h-full">
+            <Link
+              href="/Organisasi"
+              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+            >
+              <h6>Organisasi</h6>
             </Link>
-          )}
+            <Link
+              href="/Berita"
+              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+            >
+              <h6>Berita</h6>
+            </Link>
+            <Link
+              href="/Galeri"
+              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+            >
+              <h6>Galeri</h6>
+            </Link>
+            <Link
+              href="/Data"
+              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+            >
+              <h6>Data</h6>
+            </Link>
+            <Link
+              href="/Kontak"
+              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+            >
+              <h6>Kontak</h6>
+            </Link>
+
+            {isLoggedIn ? (
+              <div className="flex justify-center items-center">
+                <button
+                  className="px-[2vw] py-2.5 text-[1.2vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
+                  onClick={() => router.push("/Admin")}
+                >
+                  Dashboard
+                </button>
+              </div>
+            ) : (
+              <Link href="/Masuk" className="flex justify-center items-center">
+                <button className="px-[2vw] py-2.5 text-[1.2vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
+                  <h6>Masuk</h6>
+                </button>
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
 

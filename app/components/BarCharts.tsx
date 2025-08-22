@@ -73,7 +73,7 @@ export default function BarCharts({
           label: (ctx) => {
             const v = ctx.parsed?.y ?? ctx.parsed ?? 0;
             const ds = ctx.dataset?.label ? `${ctx.dataset.label}: ` : "";
-            return `${ds}${nf.format(v)}`;
+            return `${ds}${nf.format(v)} kg`;
           },
         },
       },
@@ -112,7 +112,16 @@ export default function BarCharts({
         ticks: {
           callback: (v) => {
             const num = typeof v === "number" ? v : Number(v);
-            return `${nf.format(num)} Ton`;
+
+            if (num >= 1000000000) {
+              return `${nf.format(num / 1000000000)}B kg`;
+            } else if (num >= 1000000) {
+              return `${nf.format(num / 1000000)}M kg`;
+            } else if (num >= 1000) {
+              return `${nf.format(num / 1000)}K kg`;
+            } else {
+              return `${nf.format(num)} kg`;
+            }
           },
         },
       },

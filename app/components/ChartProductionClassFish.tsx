@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
+import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 
 type Row = {
   kab: string | null;
@@ -18,6 +19,11 @@ type DatasetConf = {
   values: number[];
   backgroundColor?: string;
 };
+
+interface Props {
+  fromChild?: (sendData: string) => void;
+  pages: string[];
+}
 
 const TITLE = "Produksi Perikanan Tangkap per Kelas Komoditas";
 
@@ -114,7 +120,10 @@ function aggregateByClass(
   return totals;
 }
 
-export default function ChartProductionClassFish() {
+export default function ChartProductionClassFish({
+  fromChild = () => {},
+  pages,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -129,6 +138,7 @@ export default function ChartProductionClassFish() {
   const [selectedLanding, setSelectedLanding] = useState<"all" | string>("all");
   const [sortBy, setSortBy] = useState<"value" | "class">("class");
   const [order, setOrder] = useState<"desc" | "asc">("asc");
+  const [showDropDown, setShowDropDown] = useState(false);
 
   // fetch ALL rows (pagination) — include semester & landing
   useEffect(() => {
@@ -215,7 +225,7 @@ export default function ChartProductionClassFish() {
   // Build X labels (classes) and dataset
   const { labels, datasets }: { labels: string[]; datasets: DatasetConf[] } =
     useMemo(() => {
-      let labs = Array.from(totals.keys());
+      const labs = Array.from(totals.keys());
 
       if (sortBy === "class") {
         labs.sort((a, b) => a.localeCompare(b) * (order === "asc" ? 1 : -1));
@@ -365,7 +375,56 @@ export default function ChartProductionClassFish() {
       </aside>
 
       {/* Main */}
-      <main className="flex flex-col ml-12 mt-12 w-full">
+      <main className="flex flex-col ml-12 w-full">
+        {/* //! HEAD DROPDOWN */}
+        <div className="flex w-full">
+          <div
+            className="flex justify-center items-center pr-6 py-3 cursor-pointer"
+            onClick={() => fromChild(pages[0])}
+          >
+            <LeftChevron width={30} height={30} />
+          </div>
+          <div className="relative flex flex-col justify-center items-center my-3 w-full">
+            <div
+              onClick={() => setShowDropDown(!showDropDown)}
+              className="flex items-center justify-between w-full h-10 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
+            >
+              <p>Lihat Data Lainnya</p>
+              <DownChevron
+                width={20}
+                height={20}
+                className={showDropDown ? "hidden" : "flex"}
+              />
+              <UpChevron
+                width={20}
+                height={20}
+                className={showDropDown ? "flex" : "hidden"}
+              />
+            </div>
+            {/* //! DROPDOWN */}
+            <div
+              className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
+            >
+              {pages.map((e, idx) => {
+                if (e === "Home") return;
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setShowDropDown(false);
+                      fromChild(pages[idx]);
+                    }}
+                    className="px-3 py-1.5 hover:bg-stone-100"
+                  >
+                    {e}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         <h2 className="mb-6">{TITLE}</h2>
 
         <div className="flex flex-wrap gap-6">

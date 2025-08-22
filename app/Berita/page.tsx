@@ -10,7 +10,7 @@ const page = async () => {
 
   return (
     <>
-      <section className="lg:mx-24 my-12 md:mx-12 mx-8">
+      <section className="lg:mx-12 2xl:mx-24 mx-8 lg:my-12 2xl:my-24 my-8 min-h-[70vh]">
         <div className="flex flex-col gap-3">
           <h2>Kabar Kelautan Perikanan</h2>
           <h5>

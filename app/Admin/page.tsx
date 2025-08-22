@@ -41,7 +41,7 @@ export default function Page() {
     <AuthProtect>
       <div className="flex">
         {/* //! SIDE MENU */}
-        <div
+        <aside
           className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[20vw] w-[45vw] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
             showSideMenu ? "translate-x-0" : "-translate-x-full"
           }`}
@@ -109,7 +109,7 @@ export default function Page() {
               ❬
             </div>
           </div>
-        </div>
+        </aside>
 
         {/* //! RETRACT "❭" BUTTON SIDEMENU */}
         <div className="flex fixed top-0 justify-center items-center text-6xl text-stone-300 h-[100vh] md:hidden cursor-pointer">

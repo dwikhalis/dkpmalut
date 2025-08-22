@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
+import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 
 type Row = {
   kab: string | null;
@@ -18,6 +19,11 @@ type DatasetConf = {
   values: number[];
   backgroundColor?: string;
 };
+
+interface Props {
+  fromChild?: (sendData: string) => void;
+  pages: string[];
+}
 
 const TITLE = "Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara";
 
@@ -89,7 +95,10 @@ function aggregateByKab(
   return totals;
 }
 
-export default function ChartBudidayaByKab() {
+export default function ChartBudidayaByKab({
+  fromChild = () => {},
+  pages,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -106,6 +115,9 @@ export default function ChartBudidayaByKab() {
   const [showPembudi, setShowPembudi] = useState(true);
   const [showLahan, setShowLahan] = useState(true);
   const [showProduksi, setShowProduksi] = useState(true);
+
+  // dropdown
+  const [showDropDown, setShowDropDown] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,7 +204,7 @@ export default function ChartBudidayaByKab() {
       if (showPembudi) totals.tPembudi.forEach((_, k) => unionKabs.add(k));
       if (showLahan) totals.tLahan.forEach((_, k) => unionKabs.add(k));
       if (showProduksi) totals.tProd.forEach((_, k) => unionKabs.add(k));
-      let labs = Array.from(unionKabs);
+      const labs = Array.from(unionKabs);
 
       const sumForKab = (k: string) =>
         (showRTP ? (totals.tRTP.get(k) ?? 0) : 0) +
@@ -366,8 +378,8 @@ export default function ChartBudidayaByKab() {
 
   return (
     <div className="flex w-full">
-      {/* Sidebar: Kabupaten (multi) */}
-      <div className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] text-white">
+      {/* //! SIDE MENU */}
+      <aside className="flex flex-col bg-teal-900 md:pt-10 pt-20 p-6 top-0 md:top-auto md:static fixed z-5 md:z-0 md:w-[18%] w-[45vw] md:h-auto h-[100vh] text-white">
         <div>
           <h3>Kabupaten</h3>
           {allKabOptions.map((kab) => {
@@ -406,10 +418,59 @@ export default function ChartBudidayaByKab() {
             </button>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Main */}
-      <div className="flex flex-col ml-12 mt-12 w-full">
+      <div className="flex flex-col ml-12 w-full">
+        {/* //! HEAD DROPDOWN */}
+        <div className="flex w-full">
+          <div
+            className="flex justify-center items-center pr-6 py-3 cursor-pointer"
+            onClick={() => fromChild(pages[0])}
+          >
+            <LeftChevron width={30} height={30} />
+          </div>
+          <div className="relative flex flex-col justify-center items-center my-3 w-full">
+            <div
+              onClick={() => setShowDropDown(!showDropDown)}
+              className="flex items-center justify-between w-full h-10 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
+            >
+              <p>Lihat Data Lainnya</p>
+              <DownChevron
+                width={20}
+                height={20}
+                className={showDropDown ? "hidden" : "flex"}
+              />
+              <UpChevron
+                width={20}
+                height={20}
+                className={showDropDown ? "flex" : "hidden"}
+              />
+            </div>
+            {/* //! DROPDOWN */}
+            <div
+              className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
+            >
+              {pages.map((e, idx) => {
+                if (e === "Home") return;
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setShowDropDown(false);
+                      fromChild(pages[idx]);
+                    }}
+                    className="px-3 py-1.5 hover:bg-stone-100"
+                  >
+                    {e}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         <h2 className="mb-6">{TITLE}</h2>
 
         <div className="flex flex-wrap gap-6 items-start">
@@ -533,28 +594,21 @@ export default function ChartBudidayaByKab() {
               <tr>
                 <th className="px-3 py-2 border border-gray-400">Kabupaten</th>
                 {showRTP && (
-                  <th className="px-3 py-2 border border-gray-400 text-right">
-                    RTP
-                  </th>
+                  <th className="px-3 py-2 border border-gray-400">RTP</th>
                 )}
                 {showPembudi && (
-                  <th className="px-3 py-2 border border-gray-400 text-right">
+                  <th className="px-3 py-2 border border-gray-400">
                     Pembudidaya
                   </th>
                 )}
                 {showLahan && (
-                  <th className="px-3 py-2 border border-gray-400 text-right">
+                  <th className="px-3 py-2 border border-gray-400">
                     Luas Lahan
                   </th>
                 )}
                 {showProduksi && (
-                  <th className="px-3 py-2 border border-gray-400 text-right">
-                    Produksi
-                  </th>
+                  <th className="px-3 py-2 border border-gray-400">Produksi</th>
                 )}
-                <th className="px-3 py-2 border border-gray-400 text-right">
-                  Total
-                </th>
               </tr>
             </thead>
 
@@ -600,9 +654,6 @@ export default function ChartBudidayaByKab() {
                         {nf.format(r.prod)}
                       </td>
                     )}
-                    <td className="px-3 py-2 border border-gray-400 text-right font-medium">
-                      {nf.format(r.total)}
-                    </td>
                   </tr>
                 ))
               )}
@@ -634,9 +685,6 @@ export default function ChartBudidayaByKab() {
                       {nf.format(grand.prod)}
                     </td>
                   )}
-                  <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                    {nf.format(grand.total)}
-                  </td>
                 </tr>
               </tfoot>
             )}
