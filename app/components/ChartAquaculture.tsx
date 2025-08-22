@@ -460,7 +460,7 @@ export default function ChartBudidayaByKab({
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                     showRTP
                       ? "bg-orange-500 text-white border-orange-500"
-                      : "bg-white"
+                      : "border-white"
                   }`}
                   onClick={() => setShowRTP((v) => !v)}
                 >
@@ -470,7 +470,7 @@ export default function ChartBudidayaByKab({
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                     showPembudi
                       ? "bg-teal-600 text-white border-teal-600"
-                      : "bg-white"
+                      : "border-white"
                   }`}
                   onClick={() => setShowPembudi((v) => !v)}
                 >
@@ -480,7 +480,7 @@ export default function ChartBudidayaByKab({
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                     showLahan
                       ? "bg-purple-600 text-white border-purple-600"
-                      : "bg-white"
+                      : "border-white"
                   }`}
                   onClick={() => setShowLahan((v) => !v)}
                 >
@@ -490,7 +490,7 @@ export default function ChartBudidayaByKab({
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                     showProduksi
                       ? "bg-sky-600 text-white border-sky-600"
-                      : "bg-white"
+                      : "border-white"
                   }`}
                   onClick={() => setShowProduksi((v) => !v)}
                 >
