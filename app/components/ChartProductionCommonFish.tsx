@@ -973,8 +973,6 @@ export default function ChartProductionCommonFish({
           datalabel={false}
           yAxis={true}
           tooltipLabels={tooltipLabels}
-          // If supported in BarCharts, rotate long labels:
-          // @ts-ignore
           rotateXLabels={45}
         />
 

@@ -207,7 +207,7 @@ export default function ChartBudidayaByKab({
       if (showPembudi) totals.tPembudi.forEach((_, k) => unionKabs.add(k));
       if (showLahan) totals.tLahan.forEach((_, k) => unionKabs.add(k));
       if (showProduksi) totals.tProd.forEach((_, k) => unionKabs.add(k));
-      let labs = Array.from(unionKabs);
+      const labs = Array.from(unionKabs);
 
       const sumForKab = (k: string) =>
         (showRTP ? (totals.tRTP.get(k) ?? 0) : 0) +
