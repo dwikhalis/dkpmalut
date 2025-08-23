@@ -681,7 +681,10 @@ export default function ChartProductionCommonFish({
         </div>
 
         {/* //! Close Side Menu */}
-        <div className="flex justify-center items-center text-6xl md:hidden cursor-pointer">
+        <div
+          className="flex justify-center items-center md:hidden cursor-pointer"
+          onClick={() => setShowSideMenu(!showSideMenu)}
+        >
           <div
             className="px-0 pb-3 -rotate-90 -translate-x-6"
             onClick={() => setShowSideMenu(!showSideMenu)}
@@ -696,11 +699,11 @@ export default function ChartProductionCommonFish({
 
       {/* //! Open Side Menu */}
       <div
-        className="flex fixed top-0 items-center justify-start text-6xl h-[100vh] md:hidden cursor-pointer
-            -translate-x-6"
+        className="flex fixed top-[50%] items-center justify-start md:hidden cursor-pointer
+              -translate-x-12"
       >
         <div
-          className="px-0 pb-3 -rotate-90 "
+          className="-rotate-90 pb-2 px-6"
           onClick={() => setShowSideMenu(!showSideMenu)}
         >
           <div className="flex justify-center items-center bg-stone-300 px-2 rounded-b-md">
