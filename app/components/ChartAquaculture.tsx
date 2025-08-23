@@ -553,18 +553,33 @@ export default function ChartBudidayaByKab({
             </div>
           </div>
         </div>
-        {/* Close chevron when open */}
-        <div className="flex justify-center items-center text-6xl text-stone-300 md:hidden cursor-pointer">
-          <div className="px-4" onClick={() => setShowSideMenu(false)}>
-            ❬
+        {/* //! Close Side Menu */}
+        <div className="flex justify-center items-center text-6xl md:hidden cursor-pointer">
+          <div
+            className="px-0 pb-3 -rotate-90 -translate-x-6"
+            onClick={() => setShowSideMenu(!showSideMenu)}
+          >
+            <div className="flex justify-center items-center bg-teal-900 px-2 rounded-b-md">
+              <p className="text-sm w-full text-white">Filters </p>
+              <UpChevron className="w-6 h-6" color="white" />
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Open chevron (mobile) */}
-      <div className="flex fixed top-0 justify-center items-center text-6xl text-stone-300 h-[100vh] md:hidden cursor-pointer">
-        <div className="px-2 py-4" onClick={() => setShowSideMenu((v) => !v)}>
-          ❭
+      {/* //! Open Side Menu */}
+      <div
+        className="flex fixed top-0 items-center justify-start text-6xl h-[100vh] md:hidden cursor-pointer
+      -translate-x-6"
+      >
+        <div
+          className="px-0 pb-3 -rotate-90 "
+          onClick={() => setShowSideMenu(!showSideMenu)}
+        >
+          <div className="flex justify-center items-center bg-stone-300 px-2 rounded-b-md">
+            <p className="text-sm w-full text-white">Filters </p>
+            <DownChevron className="w-6 h-6" color="white" />
+          </div>
         </div>
       </div>
 
@@ -773,7 +788,7 @@ export default function ChartBudidayaByKab({
                   <th className="px-3 py-2 border border-gray-400">RTP</th>
                 )}
                 {showPembudi && (
-                  <th className="px-3 py-2 border border-gray-400">
+                  <th className="px-3 py-2 border border-gray-400 wrap-anywhere">
                     Pembudidaya
                   </th>
                 )}
