@@ -51,10 +51,10 @@ export default function Hero() {
         </h3>
         <div className="flex gap-6 justify-center">
           <button className="px-[4vw] py-2.5 bg-black text-white rounded-3xl hover:bg-stone-400 hover:text-black cursor-pointer">
-            <h3>Program</h3>
+            <Link href="/Organisasi">Program</Link>
           </button>
           <button className="px-[4vw] py-2.5 bg-black text-white rounded-3xl hover:bg-stone-400 hover:text-black cursor-pointer">
-            <h3>Organisasi</h3>
+            <Link href="/Organisasi">Organisasi</Link>
           </button>
         </div>
       </div>
