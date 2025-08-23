@@ -40,13 +40,22 @@ export default function Footer() {
           {/* COL 1 */}
           <div className="flex flex-col gap-2">
             <h6 className="font-bold">Organisasi</h6>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Organisasi"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Struktur</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Organisasi"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Visi dan Misi</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Kontak"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Kontak</h6>
             </Link>
           </div>
@@ -55,13 +64,22 @@ export default function Footer() {
 
           <div className="flex flex-col gap-2">
             <h6 className="font-bold">Berita</h6>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Berita"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Artikel</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Berita"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Jurnal</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Berita"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Peraturan</h6>
             </Link>
           </div>
@@ -69,13 +87,22 @@ export default function Footer() {
           {/* COL 3 */}
           <div className="flex flex-col gap-2">
             <h6 className="font-bold">Data</h6>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Data"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Perikanan Tangkap</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Data"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Perikanan Budidaya</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Data"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Ruang Laut</h6>
             </Link>
           </div>
@@ -89,13 +116,22 @@ export default function Footer() {
           {/* COL 1 */}
           <div className="flex flex-col gap-2 text-center">
             <h6 className="font-bold">Organisasi</h6>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Organisasi"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Struktur</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Organisasi"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Visi dan Misi</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Kontak"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Kontak</h6>
             </Link>
           </div>
@@ -103,13 +139,22 @@ export default function Footer() {
           {/* COL 2 */}
           <div className="flex flex-col gap-2 text-center">
             <h6 className="font-bold">Berita</h6>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Berita"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Artikel</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Berita"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Jurnal</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Berita"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Peraturan</h6>
             </Link>
           </div>
@@ -117,13 +162,22 @@ export default function Footer() {
           {/* COL 3 */}
           <div className="flex flex-col gap-2 text-center">
             <h6 className="font-bold">Data</h6>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Data"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Perikanan Tangkap</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Data"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Perikanan Budidaya</h6>
             </Link>
-            <Link href={"#"} className="hover:text-stone-400 cursor-pointer">
+            <Link
+              href={"/Data"}
+              className="hover:text-stone-400 cursor-pointer"
+            >
               <h6>Ruang Laut</h6>
             </Link>
           </div>

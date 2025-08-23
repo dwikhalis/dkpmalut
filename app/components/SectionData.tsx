@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 
 export default function SectionFive() {
@@ -13,7 +14,8 @@ export default function SectionFive() {
 
       <div className="flex justify-center gap-6 flex-wrap mb-6">
         {/* //! BUTTON 1 */}
-        <button
+        <Link
+          href={"/Data"}
           className="flex justify-center items-center bg-white rounded-xl gap-3 p-3 hover:shadow-xl"
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
@@ -30,10 +32,11 @@ export default function SectionFive() {
             Perikanan Tangkap
             <span className="text-xl text-stone-800">&#10095;</span>
           </h5>
-        </button>
+        </Link>
 
         {/* //! BUTTON 2 */}
-        <button
+        <Link
+          href={"/Data"}
           className="flex justify-center items-center bg-white rounded-xl gap-3 p-3 hover:shadow-xl"
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
@@ -50,10 +53,11 @@ export default function SectionFive() {
             Budidaya
             <span className="text-xl text-stone-800">&#10095;</span>
           </h5>
-        </button>
+        </Link>
 
         {/* //! BUTTON 3 */}
-        <button
+        <Link
+          href={"/Data"}
           className="flex justify-center items-center bg-white rounded-xl gap-3 p-3 hover:shadow-xl"
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
@@ -70,7 +74,7 @@ export default function SectionFive() {
             Pemanfaatan Ruang Laut
             <span className="text-xl text-stone-800">&#10095;</span>
           </h5>
-        </button>
+        </Link>
       </div>
 
       <div>
