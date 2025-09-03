@@ -38,6 +38,7 @@ interface BarChartProps {
   datalabel?: boolean;
   yAxis?: boolean;
   rotateXLabels?: number;
+  unit?: string;
 }
 
 export default function BarCharts({
@@ -49,6 +50,7 @@ export default function BarCharts({
   datalabel = false,
   yAxis = true,
   rotateXLabels = 0,
+  unit,
 }: BarChartProps) {
   const data = {
     labels,
@@ -91,7 +93,25 @@ export default function BarCharts({
           label: (ctx) => {
             const v = ctx.parsed?.y ?? ctx.parsed ?? 0;
             const ds = ctx.dataset?.label ? `${ctx.dataset.label}: ` : "";
-            return `${ds}${nf.format(v)} kg`;
+
+            if (ctx.dataset.label === "Budidaya" || "Tangkap") {
+              if (unit === "ton") {
+                return `${ds}${nf.format(v / 1000)} ton`;
+              } else if (unit === "kg") {
+                return `${ds}${nf.format(v)} kg`;
+              }
+            }
+
+            if (ctx.dataset.label === "Produksi")
+              return `${ds}${nf.format(v / 1000)} ton`;
+
+            if (ctx.dataset.label === "Pembudidaya")
+              return `${ds}${nf.format(v)} org`;
+
+            if (ctx.dataset.label === "Luas Lahan")
+              return `${ds}${nf.format(v)} ha`;
+
+            if (ctx.dataset.label === "RTP") return `${ds}${nf.format(v)}`;
           },
         },
       },
@@ -145,14 +165,36 @@ export default function BarCharts({
           callback: (v) => {
             const num = typeof v === "number" ? v : Number(v);
 
-            if (num >= 1000000000) {
-              return `${nf.format(num / 1000000000)}B kg`;
-            } else if (num >= 1000000) {
-              return `${nf.format(num / 1000000)}M kg`;
-            } else if (num >= 1000) {
-              return `${nf.format(num / 1000)}K kg`;
-            } else {
-              return `${nf.format(num)} kg`;
+            if (!unit || unit === "") {
+              if (num >= 1000000000) {
+                return `${nf.format(num / 1000000000)}B`;
+              } else if (num >= 1000000) {
+                return `${nf.format(num / 1000000)}M`;
+              } else if (num >= 1000) {
+                return `${nf.format(num / 1000)}K`;
+              } else {
+                return `${nf.format(num)}`;
+              }
+            }
+
+            if (unit === "kg") {
+              if (num >= 1000000000) {
+                return `${nf.format(num / 1000000000)}B kg`;
+              } else if (num >= 1000000) {
+                return `${nf.format(num / 1000000)}M kg`;
+              } else if (num >= 1000) {
+                return `${nf.format(num / 1000)}K kg`;
+              } else {
+                return `${nf.format(num)} kg`;
+              }
+            } else if (unit === "ton") {
+              if (num >= 1000000000) {
+                return `${nf.format(num / 1000000000)}M ton`;
+              } else if (num >= 1000000) {
+                return `${nf.format(num / 1000000)}K ton`;
+              } else {
+                return `${nf.format(num / 1000)} ton`;
+              }
             }
           },
         },

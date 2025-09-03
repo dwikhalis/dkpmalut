@@ -95,6 +95,7 @@ export default function ChartProductionKabFilter({
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const [showDropDown, setShowDropDown] = useState(false);
   const [showSideMenu, setShowSideMenu] = useState(false);
+  const [unit, setUnit] = useState("ton");
 
   // fetch once on mount — NOW USING PAGINATION
   useEffect(() => {
@@ -510,6 +511,33 @@ export default function ChartProductionKabFilter({
               </div>
             </div>
 
+            {/* Unit */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Satuan
+              </label>
+              <div className="flex flex-col gap-3">
+                <select
+                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
+                >
+                  <option
+                    value="kg"
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw] text-black"
+                  >
+                    kg
+                  </option>
+                  <option
+                    value="ton"
+                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw] text-black"
+                  >
+                    ton
+                  </option>
+                </select>
+              </div>
+            </div>
+
             {/* Download (your button) */}
             <div className="w-full">
               <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -748,6 +776,23 @@ export default function ChartProductionKabFilter({
             </div>
           </div>
 
+          {/* Unit */}
+          <div>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Satuan
+            </label>
+            <div className="flex gap-3">
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
+              >
+                <option value="kg">kg</option>
+                <option value="ton">ton</option>
+              </select>
+            </div>
+          </div>
+
           {/* Download (your button) */}
           <div>
             <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -779,6 +824,7 @@ export default function ChartProductionKabFilter({
           datalabel={false}
           yAxis={true}
           rotateXLabels={45}
+          unit={unit}
         />
 
         {/* Table */}
@@ -789,15 +835,17 @@ export default function ChartProductionKabFilter({
                 <th className="px-3 py-2 border border-gray-400">Kabupaten</th>
                 {showBudidaya && (
                   <th className="px-3 py-2 border border-gray-400">
-                    Budidaya (kg)
+                    Budidaya ({unit})
                   </th>
                 )}
                 {showTangkap && (
                   <th className="px-3 py-2 border border-gray-400">
-                    Tangkap (kg)
+                    Tangkap ({unit})
                   </th>
                 )}
-                <th className="px-3 py-2 border border-gray-400">Total (kg)</th>
+                <th className="px-3 py-2 border border-gray-400">
+                  Total ({unit})
+                </th>
               </tr>
             </thead>
 
@@ -819,16 +867,16 @@ export default function ChartProductionKabFilter({
                     </td>
                     {showBudidaya && (
                       <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.bud)}
+                        {nf.format(unit === "ton" ? r.bud / 1000 : r.bud)}
                       </td>
                     )}
                     {showTangkap && (
                       <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.tang)}
+                        {nf.format(unit === "ton" ? r.tang / 1000 : r.tang)}
                       </td>
                     )}
                     <td className="px-3 py-2 border border-gray-400 text-right font-medium">
-                      {nf.format(r.total)}
+                      {nf.format(unit === "ton" ? r.total / 1000 : r.total)}
                     </td>
                   </tr>
                 ))
@@ -843,16 +891,20 @@ export default function ChartProductionKabFilter({
                   </td>
                   {showBudidaya && (
                     <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.bud)}
+                      {nf.format(unit === "ton" ? grand.bud / 1000 : grand.bud)}
                     </td>
                   )}
                   {showTangkap && (
                     <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.tang)}
+                      {nf.format(
+                        unit === "ton" ? grand.tang / 1000 : grand.tang
+                      )}
                     </td>
                   )}
                   <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                    {nf.format(grand.total)}
+                    {nf.format(
+                      unit === "ton" ? grand.total / 1000 : grand.total
+                    )}
                   </td>
                 </tr>
               </tfoot>

@@ -140,6 +140,7 @@ export default function ChartProductionClassFish({
   const [order, setOrder] = useState<"desc" | "asc">("asc");
   const [showDropDown, setShowDropDown] = useState(false);
   const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
+  const [unit, setUnit] = useState("ton");
 
   // fetch ALL rows (pagination) — include semester & landing
   useEffect(() => {
@@ -498,6 +499,26 @@ export default function ChartProductionClassFish({
               </div>
             </div>
 
+            {/* Unit */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Satuan
+              </label>
+
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
+              >
+                <option value="kg" className="text-black">
+                  kg
+                </option>
+                <option value="ton" className="text-black">
+                  ton
+                </option>
+              </select>
+            </div>
+
             {/* Download */}
             <div className="w-full">
               <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -744,6 +765,23 @@ export default function ChartProductionClassFish({
             </div>
           </div>
 
+          {/* Unit */}
+          <div>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Satuan
+            </label>
+            <div className="flex gap-3">
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
+              >
+                <option value="kg">kg</option>
+                <option value="ton">ton</option>
+              </select>
+            </div>
+          </div>
+
           {/* Download */}
           <div>
             <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -774,6 +812,7 @@ export default function ChartProductionClassFish({
           datalabel={false}
           yAxis={true}
           rotateXLabels={45}
+          unit={unit}
         />
 
         {/* Table */}
@@ -785,7 +824,7 @@ export default function ChartProductionClassFish({
                   Kelas
                 </th>
                 <th className="px-3 py-2 border border-gray-400 text-center">
-                  Total
+                  Total ({unit})
                 </th>
               </tr>
             </thead>
@@ -803,7 +842,7 @@ export default function ChartProductionClassFish({
                       {r.cls}
                     </td>
                     <td className="px-3 py-2 border border-gray-400 text-right">
-                      {nf.format(r.val)}
+                      {nf.format(unit === "ton" ? r.val / 1000 : r.val)}
                     </td>
                   </tr>
                 ))
@@ -816,7 +855,7 @@ export default function ChartProductionClassFish({
                     Jumlah
                   </td>
                   <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                    {nf.format(grandTotal)}
+                    {nf.format(unit === "ton" ? grandTotal / 1000 : grandTotal)}
                   </td>
                 </tr>
               </tfoot>

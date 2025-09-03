@@ -793,16 +793,18 @@ export default function ChartBudidayaByKab({
                 )}
                 {showPembudi && (
                   <th className="px-3 py-2 border border-gray-400 wrap-anywhere">
-                    Pembudidaya
+                    {"Pembudidaya (org)"}
                   </th>
                 )}
                 {showLahan && (
                   <th className="px-3 py-2 border border-gray-400">
-                    Luas Lahan
+                    {"Luas Lahan (ha)"}
                   </th>
                 )}
                 {showProduksi && (
-                  <th className="px-3 py-2 border border-gray-400">Produksi</th>
+                  <th className="px-3 py-2 border border-gray-400">
+                    {"Produksi (ton)"}
+                  </th>
                 )}
               </tr>
             </thead>
@@ -845,7 +847,7 @@ export default function ChartBudidayaByKab({
                     )}
                     {showProduksi && (
                       <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.prod)}
+                        {nf.format(r.prod / 1000)}
                       </td>
                     )}
                   </tr>
@@ -876,7 +878,7 @@ export default function ChartBudidayaByKab({
                   )}
                   {showProduksi && (
                     <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.prod)}
+                      {nf.format(grand.prod / 1000)}
                     </td>
                   )}
                 </tr>

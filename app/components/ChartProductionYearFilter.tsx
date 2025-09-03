@@ -109,6 +109,7 @@ export default function ChartProductionYearFilter({
   const [order, setOrder] = useState<"desc" | "asc">("asc");
   const [showDropDown, setShowDropDown] = useState(false);
   const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
+  const [unit, setUnit] = useState("ton");
 
   // fetch (with pagination)
   useEffect(() => {
@@ -322,7 +323,8 @@ export default function ChartProductionYearFilter({
 
   return (
     <div className="flex w-full">
-      {/* //! SIDE MENU (mobile) */}
+      {/* //! MOBILE FILTERS */}
+      {/* //! SIDE MENU */}
       <aside
         className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
           showSideMenu ? "translate-x-0" : "-translate-x-full"
@@ -378,7 +380,7 @@ export default function ChartProductionYearFilter({
             </div>
           </div>
 
-          {/* //! FILTERS */}
+          {/* FILTERS */}
           {/* Kabupaten (single) */}
           <div className="flex flex-col gap-6 md:hidden">
             <div className="w-full">
@@ -499,6 +501,25 @@ export default function ChartProductionYearFilter({
               </div>
             </div>
 
+            {/* Unit */}
+            <div className="w-full">
+              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+                Satuan
+              </label>
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
+              >
+                <option value="kg" className="text-black">
+                  kg
+                </option>
+                <option value="ton" className="text-black">
+                  ton
+                </option>
+              </select>
+            </div>
+
             {/* Download */}
             <div className="w-full">
               <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -613,6 +634,8 @@ export default function ChartProductionYearFilter({
 
         {/* //! MAIN TITLE */}
         <h2 className="md:mb-6 mb-3">{TITLE}</h2>
+
+        {/* //! DESKTOP FILTERS */}
 
         {/* //! TOP CONTROL (desktop only) */}
         <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
@@ -734,6 +757,23 @@ export default function ChartProductionYearFilter({
             </div>
           </div>
 
+          {/* Unit */}
+          <div>
+            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Satuan
+            </label>
+            <div className="flex gap-3">
+              <select
+                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
+              >
+                <option value="kg">kg</option>
+                <option value="ton">ton</option>
+              </select>
+            </div>
+          </div>
+
           {/* Download */}
           <div>
             <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
@@ -764,6 +804,7 @@ export default function ChartProductionYearFilter({
           datalabel={false}
           yAxis={true}
           rotateXLabels={0}
+          unit={unit}
         />
 
         {/* Table */}
@@ -773,12 +814,18 @@ export default function ChartProductionYearFilter({
               <tr>
                 <th className="px-3 py-2 border border-gray-400">Tahun</th>
                 {showBudidaya && (
-                  <th className="px-3 py-2 border border-gray-400">Budidaya</th>
+                  <th className="px-3 py-2 border border-gray-400">
+                    {`Budidaya (${unit})`}
+                  </th>
                 )}
                 {showTangkap && (
-                  <th className="px-3 py-2 border border-gray-400">Tangkap</th>
+                  <th className="px-3 py-2 border border-gray-400">
+                    {`Tangkap (${unit})`}
+                  </th>
                 )}
-                <th className="px-3 py-2 border border-gray-400">Total</th>
+                <th className="px-3 py-2 border border-gray-400">
+                  {`Total (${unit})`}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -799,16 +846,16 @@ export default function ChartProductionYearFilter({
                     </td>
                     {showBudidaya && (
                       <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.bud)}
+                        {nf.format(unit === "ton" ? r.bud / 1000 : r.bud)}
                       </td>
                     )}
                     {showTangkap && (
                       <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.tang)}
+                        {nf.format(unit === "ton" ? r.tang / 1000 : r.tang)}
                       </td>
                     )}
                     <td className="px-3 py-2 border border-gray-400 text-right font-medium">
-                      {nf.format(r.total)}
+                      {nf.format(unit === "ton" ? r.total / 1000 : r.total)}
                     </td>
                   </tr>
                 ))
@@ -822,16 +869,16 @@ export default function ChartProductionYearFilter({
                   </td>
                   {showBudidaya && (
                     <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.bud)}
+                      {nf.format(grand.bud / 1000)}
                     </td>
                   )}
                   {showTangkap && (
                     <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.tang)}
+                      {nf.format(grand.tang / 1000)}
                     </td>
                   )}
                   <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                    {nf.format(grand.total)}
+                    {nf.format(grand.total / 1000)}
                   </td>
                 </tr>
               </tfoot>
