@@ -84,3 +84,36 @@ export const updateData = async (
 
   return true;
 };
+
+export const getNumOf = async (dataset: string) => {
+  const { count, error } = await supabase
+    .from(dataset)
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    alert("Fetching numOf Data failed");
+    console.error(error);
+    throw error;
+  }
+
+  return count ?? 0;
+};
+
+export const getMessage = async () => {
+  const { data, error } = await supabase.from("message").select("*");
+
+  if (error) {
+    alert("Fetching messages failed");
+    console.error(error);
+    throw error;
+  }
+
+  return (data || []).map((item) => ({
+    id: item.id ?? "",
+    name: item.name ?? "",
+    email: item.email ?? "",
+    phone: item.phone ?? "",
+    message: item.message ?? "",
+    status: item.status ?? "",
+  }));
+};

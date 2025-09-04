@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import AuthProtect from "../Auth/AuthProtect";
 import SpinnerLoading from "../components/SpinnerLoading";
 import AlertNotif from "../components/AlertNotif";
+import AdminMessage from "../components/AdminMessage";
 
 export default function Page() {
   const router = useRouter();
@@ -35,6 +36,10 @@ export default function Page() {
       setShowSideMenu(false);
       setLogoutConfirm([false, "hidden"]);
     }
+  };
+
+  const handleSelect = (option: string) => {
+    setContent(option);
   };
 
   return (
@@ -76,6 +81,12 @@ export default function Page() {
               onClick={() => setContent("Data")}
             >
               Data
+            </h3>
+            <h3
+              className={`${content === "Inbox" ? selected : unselected} p-3`}
+              onClick={() => setContent("Inbox")}
+            >
+              Inbox
             </h3>
 
             {/* SEPARATOR */}
@@ -133,11 +144,14 @@ export default function Page() {
 
         {/* //! CONTENT */}
         <div className="h-full w-full lg:mx-12 mx-8 ">
-          {content === "Dashboard" ? <AdminDashboard /> : null}
+          {content === "Dashboard" ? (
+            <AdminDashboard select={handleSelect} />
+          ) : null}
           {content === "Berita" ? <AdminPages type="news" /> : null}
           {content === "Galeri" ? <AdminPages type="gallery" /> : null}
           {content === "Organisasi" ? <AdminPages type="staff" /> : null}
           {content === "Data" ? <AdminData /> : null}
+          {content === "Inbox" ? <AdminMessage /> : null}
         </div>
 
         {/* //! LOGOUT POPUP CONFIRMATION  */}

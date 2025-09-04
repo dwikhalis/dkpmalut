@@ -7,6 +7,7 @@ import {
   getGallery,
   getNews,
   getStaff,
+  getMessage,
 } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Delete, Edit } from "@/public/icons/iconSets";
@@ -14,7 +15,7 @@ import AlertNotif from "./AlertNotif";
 
 interface Prop {
   admin: boolean;
-  type: "staff" | "news" | "gallery";
+  type: "staff" | "news" | "gallery" | "message";
   sendToParent?: (sendData: DataTypes) => void;
 }
 
@@ -31,6 +32,10 @@ interface DataTypes {
   content?: string;
   source?: string;
   description?: string;
+  email?: string;
+  phone?: string;
+  message?: string;
+  status?: string;
 }
 
 const typeConfig = {
@@ -71,9 +76,20 @@ const typeConfig = {
     titleField: "title",
     subtitleField: "date",
   },
+  message: {
+    fetch: getMessage,
+    table: "message",
+    groupKey: "status",
+    labels: {
+      lama: "Inbox",
+      baru: "Pesan Baru",
+    },
+    titleField: "name",
+    subtitleField: "email",
+  },
 } as const;
 
-export default function ListData({
+export default function ListManager({
   admin,
   type,
   sendToParent = () => {},
@@ -131,12 +147,15 @@ export default function ListData({
   if (loading) return <p>Loading...</p>;
   if (!data.length) return <p>Belum ada data terdaftar</p>;
 
-  const groupedData = data.reduce((acc, item) => {
-    const key = (item[groupKey as keyof DataTypes] as string) ?? "undefined";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {} as Record<string, DataTypes[]>);
+  const groupedData = data.reduce(
+    (acc, item) => {
+      const key = (item[groupKey as keyof DataTypes] as string) ?? "undefined";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    },
+    {} as Record<string, DataTypes[]>
+  );
 
   return (
     <div className="flex flex-col md:gap-12 gap-6 w-full">
@@ -165,7 +184,9 @@ export default function ListData({
                   key={idx}
                   className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-6"
                 >
-                  <div className="md:w-[30%] w-[20%] flex items-center justify-center md:justify-start">
+                  <div
+                    className={`${type === "message" ? "hidden" : "flex"} md:w-[30%] w-[20%]  items-center justify-center md:justify-start`}
+                  >
                     <Image
                       src={e.photo || e.image || "/assets/icon_profile_u.png"}
                       width={120}

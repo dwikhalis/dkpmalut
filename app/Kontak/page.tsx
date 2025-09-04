@@ -21,6 +21,7 @@ export default function Page() {
           email: formData.email,
           phone: formData.phone,
           message: formData.message,
+          status: "baru",
         },
       ];
 
