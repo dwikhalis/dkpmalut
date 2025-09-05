@@ -1,88 +1,53 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Image from "next/image";
-import {
-  deleteData,
-  getGallery,
-  getNews,
-  getStaff,
-  getMessage,
-} from "@/lib/supabase/supabaseHelper";
+import { deleteData, getMessage } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Delete, Edit } from "@/public/icons/iconSets";
 import AlertNotif from "./AlertNotif";
 
+type MessageAction = "read" | "unread";
+
 interface Prop {
   admin: boolean;
-  type: "staff" | "news" | "gallery";
-  sendToParent?: (sendData: DataTypes) => void;
+  sendToParent?: (
+    sendData: DataTypes,
+    action: MessageAction
+  ) => void | Promise<void>;
 }
 
 interface DataTypes {
   id: string;
   name?: string;
-  image?: string;
-  photo?: string;
-  title?: string;
-  division?: string;
-  gender?: string;
-  tag?: string;
-  date?: string;
-  content?: string;
-  source?: string;
-  description?: string;
   email?: string;
   phone?: string;
   message?: string;
   status?: string;
+  created_at?: string;
 }
 
 const typeConfig = {
-  staff: {
-    fetch: getStaff,
-    table: "staff",
-    groupKey: "division",
+  message: {
+    fetch: getMessage,
+    table: "message",
+    groupKey: "status",
     labels: {
-      PRL: "Bidang Pemanfaatan Ruang Laut (PRL)",
-      Budidaya: "Bidang Budidaya",
-      Penangkapan: "Bidang Penangkapan",
-      PSDKP: "Bidang Pengawasan Sumber Daya Kelautan dan Perikanan (PSDKP)",
+      lama: "Inbox",
+      baru: "Pesan Baru",
     },
     titleField: "name",
-    subtitleField: "title",
-  },
-  news: {
-    fetch: getNews,
-    table: "news",
-    groupKey: "tag",
-    labels: {
-      Artikel: "Artikel",
-      Berita: "Berita",
-      Peraturan: "Peraturan",
-    },
-    titleField: "title",
-    subtitleField: "date",
-  },
-  gallery: {
-    fetch: getGallery,
-    table: "gallery",
-    groupKey: "tag",
-    labels: {
-      Alam: "Keindahan Alam Maluku Utara",
-      Kegiatan: "Kegiatan DKP Maluku Utara",
-      Lainnya: "Lainnya",
-    },
-    titleField: "title",
-    subtitleField: "date",
+    subtitleField: "email",
+    dateField: "created_at",
   },
 } as const;
 
-export default function ListManager({
-  admin,
-  type,
-  sendToParent = () => {},
-}: Prop) {
+const getTimeSafe = (v: unknown): number => {
+  if (!v) return 0;
+  const d = v instanceof Date ? v : new Date(String(v));
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
   const [data, setData] = useState<DataTypes[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -91,8 +56,15 @@ export default function ListManager({
     "",
   ]);
 
-  const { fetch, table, groupKey, labels, titleField, subtitleField } =
-    typeConfig[type];
+  const {
+    fetch,
+    table,
+    groupKey,
+    labels,
+    titleField,
+    subtitleField,
+    dateField,
+  } = typeConfig["message"];
 
   useEffect(() => {
     async function fetchData() {
@@ -121,7 +93,7 @@ export default function ListManager({
     const dataId = confirmAction[1];
     if (confirmation) {
       setLoadingAction(true);
-      const executed = await deleteData(type, dataId);
+      const executed = await deleteData("message", dataId);
       if (executed) {
         setLoadingAction(false);
         setConfirmAction([true, ""]);
@@ -134,7 +106,7 @@ export default function ListManager({
   }
 
   if (loading) return <p>Loading...</p>;
-  if (!data.length) return <p>Belum ada data terdaftar</p>;
+  if (!data.length) return <p>Belum ada pesan masuk</p>;
 
   const groupedData = data.reduce(
     (acc, item) => {
@@ -159,58 +131,72 @@ export default function ListManager({
             </h4>
 
             {items
-              .sort((a, b) =>
-                (a[titleField] ?? "").localeCompare(
+              .sort((a, b) => {
+                const tA = getTimeSafe(a[dateField as keyof DataTypes]);
+                const tB = getTimeSafe(b[dateField as keyof DataTypes]);
+                if (tA !== tB) return tB - tA; // newest first
+                // tie-breaker by title to keep order stable
+                return (a[titleField] ?? "").localeCompare(
                   b[titleField] ?? "",
                   undefined,
                   {
                     sensitivity: "base",
                   }
-                )
-              )
+                );
+              })
               .map((e, idx) => (
                 <div
+                  className="flex justify-center items-center gap-3"
                   key={idx}
-                  className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-6"
                 >
-                  <div className="flex md:w-[30%] w-[20%]  items-center justify-center md:justify-start">
-                    <Image
-                      src={e.photo || e.image || "/assets/icon_profile_u.png"}
-                      width={120}
-                      height={120}
-                      alt="photo"
-                      className="object-contain h-12 w-12 md:h-30 md:w-30"
-                    />
-                  </div>
+                  <div
+                    className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-6 cursor-pointer hover:bg-stone-200"
+                    onClick={() => sendToParent(e, "read")}
+                  >
+                    {/* Desktop */}
+                    <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
+                      {e[titleField] as string}
+                    </h5>
 
-                  {/* Desktop */}
-                  <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
-                    {e[titleField] as string}
-                  </h5>
-                  <h5 className="hidden md:flex text-sm break-words w-[30%]">
-                    {subtitleField === "date" && e.date
-                      ? new Date(e.date).toLocaleDateString("id-ID", {
-                          day: "numeric",
+                    {/* === Message Only === */}
+                    <h5 className="md:flex hidden text-sm break-words w-[30%]">
+                      {(e[dateField as keyof DataTypes] &&
+                        new Date(
+                          e[dateField as keyof DataTypes] as string
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
                           month: "long",
                           year: "numeric",
-                        })
-                      : (e[subtitleField] as string)}
-                  </h5>
+                        })) ||
+                        ""}
+                    </h5>
 
-                  {/* Mobile */}
-                  <div className="flex md:hidden flex-col w-[60%] gap-1 px-2">
-                    <h6 className="text-sm font-bold break-words">
-                      {e[titleField] as string}
-                    </h6>
-                    <h6 className="text-sm break-words">
-                      {subtitleField === "date" && e.date
-                        ? new Date(e.date).toLocaleDateString("id-ID", {
-                            day: "numeric",
+                    <h5 className="hidden md:flex text-sm break-words w-[30%]">
+                      {e[subtitleField] as string}
+                    </h5>
+
+                    {/* Mobile */}
+                    <div className="flex md:hidden flex-col w-[60%] gap-1 px-2">
+                      <h6 className="text-sm font-bold break-words">
+                        {e[titleField] as string}
+                      </h6>
+
+                      <h6 className="md:flex hidden text-sm break-words w-[30%]">
+                        {(e[dateField as keyof DataTypes] &&
+                          new Date(
+                            e[dateField as keyof DataTypes] as string
+                          ).toLocaleDateString("en-GB", {
+                            day: "2-digit",
                             month: "long",
                             year: "numeric",
-                          })
-                        : (e[subtitleField] as string)}
-                    </h6>
+                          })) ||
+                          ""}
+                      </h6>
+
+                      <h6 className="text-sm break-words">
+                        {e[subtitleField] as string}
+                      </h6>
+                    </div>
                   </div>
 
                   {/* Admin Buttons */}
@@ -218,7 +204,7 @@ export default function ListManager({
                     <div className="flex gap-2">
                       <div
                         className="flex w-8 h-8 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
-                        onClick={() => sendToParent(e)}
+                        onClick={() => sendToParent(e, "unread")}
                       >
                         <Edit className="size-6 text-white" />
                       </div>

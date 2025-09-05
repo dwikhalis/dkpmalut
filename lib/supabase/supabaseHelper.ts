@@ -77,7 +77,7 @@ export const updateData = async (
   const { error } = await supabase.from(table).update(newData).eq("id", id);
 
   if (error) {
-    alert("Delete staff Gagal!");
+    alert("Update staff Gagal!");
     console.error(error);
     throw error;
   }
@@ -115,5 +115,6 @@ export const getMessage = async () => {
     phone: item.phone ?? "",
     message: item.message ?? "",
     status: item.status ?? "",
+    created_at: item.created_at ?? "",
   }));
 };
