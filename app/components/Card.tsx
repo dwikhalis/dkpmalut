@@ -14,7 +14,7 @@ interface DataItem {
 }
 
 interface Props {
-  type: string;
+  type: "container" | "container-sm" | "open";
   data: DataItem[] | null;
   id: string;
   loading?: boolean; // optional flag
@@ -38,9 +38,33 @@ export default function Card({ type, data, id, loading }: Props) {
     const { tag, title, image } = select;
     return (
       <Link href={`/Berita/${id}`}>
-        <div className="flex flex-col w-70 h-120 p-6 shadow-2xl hover:shadow-xl justify-between rounded-2xl">
+        <div className="flex flex-col w-70 h-120 p-6 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
           <div className="w-full">
             <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
+              <Image
+                src={image}
+                alt="Gambar"
+                width={800}
+                height={600}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <h6 className="text-stone-500 mb-1">{tag}</h6>
+            <h5 className="font-bold">{title}</h5>
+          </div>
+          <h5 className="text-teal-500 hover:text-teal-300 py-6">
+            Selengkapnya →
+          </h5>
+        </div>
+      </Link>
+    );
+  } else if (type === "container-sm") {
+    const { tag, title, image } = select;
+    return (
+      <Link href={`/Berita/${id}`}>
+        <div className="flex flex-col w-45 h-70 p-3 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
+          <div className="w-full">
+            <div className="flex justify-center items-center h-30 mb-3 overflow-hidden">
               <Image
                 src={image}
                 alt="Gambar"

@@ -9,8 +9,10 @@ import SectionOrg from "./components/SectionOrg";
 import SectionNumber from "./components/SectionNumber";
 import SectionNews from "./components/SectionNews";
 import SectionGallery from "./components/SectionGallery";
-import SectionData from "./components/SectionData";
 import SpinnerLoading from "./components/SpinnerLoading";
+
+// ! DEPRECATED
+// import SectionData from "./components/SectionData";
 
 const Loading = () => <SpinnerLoading size="sm" color="black" />;
 
@@ -60,7 +62,6 @@ export default function Page() {
       <SectionNumber />
       <SectionNews />
       <SectionGallery />
-      <SectionData />
       <Suspense fallback={<Loading />}>
         <SectionAddr />
       </Suspense>

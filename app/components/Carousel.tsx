@@ -37,9 +37,10 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
               alt={`Slide ${idx}`}
               width={800}
               height={600}
-              className="w-full object-cover h-120 2xl:h-160 mb-12 rounded-2xl"
+              className="w-full object-cover h-120 lg:h-120 md:h-80 2xl:h-160 mb-12 rounded-2xl"
               onClick={() => (
-                swiperRef.current?.slideTo(idx), setShowImage("fixed")
+                swiperRef.current?.slideTo(idx),
+                setShowImage("fixed")
               )}
             />
           </SwiperSlide>

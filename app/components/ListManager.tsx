@@ -7,7 +7,6 @@ import {
   getGallery,
   getNews,
   getStaff,
-  getMessage,
 } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Delete, Edit } from "@/public/icons/iconSets";

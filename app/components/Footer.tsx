@@ -1,42 +1,42 @@
 import Link from "next/link";
+import { FaFacebook, FaInstagram, FaYoutube } from "react-icons/fa";
 
 export default function Footer() {
   return (
     <>
       {/* //! DESKTOP */}
-      <hr className="border-t border-gray-300" />
-      <div className="hidden md:flex justify-between py-12 lg:px-24 px-12 bg-stone-200 w-full">
+      <div className="hidden md:flex justify-between py-12 lg:px-24 px-12 bg-sky-900 w-full">
         {/* LEFT SIDE */}
         <div className="w-[50%]">
-          <h6>© 2025 DKP Malut. All right reserved.</h6>
+          <h6 className="text-white">© 2025 DKP Malut. All right reserved.</h6>
           <Link href="https://www.linkedin.com/in/khalisdwih/">
-            <h6>Design and build by Khalis</h6>
+            <h6 className="text-white">Design and build by Khalis</h6>
           </Link>
           <br />
-          <div className="flex space-x-4">
+          <div className="flex h-10 gap-4 items-center">
             <Link
               href="#"
               className="text-stone-600 hover:text-blue-700 text-2xl"
             >
-              <i className="fab fa-facebook"></i>
+              <FaFacebook className="text-white" />
             </Link>
             <Link
               href="#"
               className="text-stone-600 hover:text-pink-700 text-2xl"
             >
-              <i className="fab fa-instagram"></i>
+              <FaInstagram className="text-white" />
             </Link>
             <Link
               href="#"
               className="text-stone-600 hover:text-red-700 text-2xl"
             >
-              <i className="fab fa-youtube"></i>
+              <FaYoutube className="text-white" />
             </Link>
           </div>
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="flex w-[50%] justify-between">
+        <div className="flex w-[50%] justify-between text-white">
           {/* COL 1 */}
           <div className="flex flex-col gap-2">
             <h6 className="font-bold">Organisasi</h6>
