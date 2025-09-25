@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React from "react";
 import Image from "next/image";
+import { RightChevron } from "@/public/icons/iconSets";
 
 interface DataItem {
   id: string;
@@ -14,7 +15,7 @@ interface DataItem {
 }
 
 interface Props {
-  type: "container" | "container-sm" | "open";
+  type: "container" | "container-sm" | "container-mobile" | "open";
   data: DataItem[] | null;
   id: string;
   loading?: boolean; // optional flag
@@ -52,9 +53,10 @@ export default function Card({ type, data, id, loading }: Props) {
             <h6 className="text-stone-500 mb-1">{tag}</h6>
             <h5 className="font-bold">{title}</h5>
           </div>
-          <h5 className="text-teal-500 hover:text-teal-300 py-6">
-            Selengkapnya →
-          </h5>
+          <div className="flex items-center text-sky-500 hover:text-sky-300">
+            <h5 className="py-6">Selengkapnya</h5>
+            <RightChevron className="w-3 h-3" />
+          </div>
         </div>
       </Link>
     );
@@ -76,9 +78,35 @@ export default function Card({ type, data, id, loading }: Props) {
             <h6 className="text-stone-500 mb-1">{tag}</h6>
             <h5 className="font-bold">{title}</h5>
           </div>
-          <h5 className="text-teal-500 hover:text-teal-300 py-6">
-            Selengkapnya →
-          </h5>
+          <div className="flex items-center text-sky-500 hover:text-sky-300">
+            <h5 className="py-6">Selengkapnya</h5>
+            <RightChevron className="w-3 h-3" />
+          </div>
+        </div>
+      </Link>
+    );
+  } else if (type === "container-mobile") {
+    const { tag, title, image } = select;
+    return (
+      <Link href={`/Berita/${id}`}>
+        <div className="flex flex-col w-full h-90 p-3 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
+          <div className="w-full">
+            <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
+              <Image
+                src={image}
+                alt="Gambar"
+                width={800}
+                height={600}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <h6 className="text-stone-500 mb-1">{tag}</h6>
+            <h5 className="font-bold">{title}</h5>
+          </div>
+          <div className="flex items-center text-sky-500 hover:text-sky-300">
+            <h5 className="py-6">Selengkapnya</h5>
+            <RightChevron className="w-3 h-3" />
+          </div>
         </div>
       </Link>
     );

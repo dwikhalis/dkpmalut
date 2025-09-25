@@ -118,7 +118,7 @@ h6 {
   }
 }
 
-@media (max-width: 426px) {
+@media (max-width: 450px) {
   h1 {
     font-size: 12vw;
     line-height: 1.2;
@@ -131,7 +131,7 @@ h6 {
   }
 
   h3 {
-    font-size: 4.2vw;
+    font-size: 4vw;
   }
 
   h4 {
@@ -139,7 +139,7 @@ h6 {
   }
 
   h5 {
-    font-size: 4vw;
+    font-size: 3vw;
   }
 
   h6 {

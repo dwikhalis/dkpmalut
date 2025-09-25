@@ -110,7 +110,7 @@ export default function Footer() {
       </div>
 
       {/* //! MOBILE */}
-      <div className="md:hidden px-12 py-6 bg-stone-200 w-full">
+      <div className="md:hidden px-12 py-6 bg-sky-900 w-full text-white">
         {/* LEFT SIDE */}
         <div className="flex justify-between">
           {/* COL 1 */}
@@ -184,25 +184,25 @@ export default function Footer() {
         </div>
 
         <div className="pt-6">
-          {/* MIDDLE SIDE */}
-          <div className="flex space-x-4 justify-center">
+          {/* Middle */}
+          <div className="flex h-10 gap-4 items-center justify-center">
             <Link
               href="#"
               className="text-stone-600 hover:text-blue-700 text-2xl"
             >
-              <i className="fab fa-facebook"></i>
+              <FaFacebook className="text-white" />
             </Link>
             <Link
               href="#"
               className="text-stone-600 hover:text-pink-700 text-2xl"
             >
-              <i className="fab fa-instagram"></i>
+              <FaInstagram className="text-white" />
             </Link>
             <Link
               href="#"
               className="text-stone-600 hover:text-red-700 text-2xl"
             >
-              <i className="fab fa-youtube"></i>
+              <FaYoutube className="text-white" />
             </Link>
           </div>
 

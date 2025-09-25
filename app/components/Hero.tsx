@@ -35,28 +35,26 @@ export default function Hero() {
       </div>
 
       {/* Mobile Hero */}
-      <div className="md:hidden flex flex-col gap-6 justify-between items-center py-10 mx-12">
+      <div className="md:hidden bg-gradient-to-b from-sky-700 via-sky-500 to-sky-300">
+        <div className="flex flex-col gap-6 justify-between items-center pt-10 pb-6 mx-10">
+          <h1 className="text-left text-white">Mewujudkan Ekonomi Biru</h1>
+          <h3 className="text-left text-white">
+            Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi
+            untuk mewujudkan Ekonomi Biru.
+          </h3>
+          <div className="flex gap-6 w-full">
+            <Button size="mobile-xl" text="Program" link="/Organisasi" />
+            <Button size="mobile-xl" text="Organisasi" link="/Organisasi" />
+          </div>
+        </div>
         <Image
           alt="Gambar"
-          src="/assets/hero_2.svg"
+          src="/assets/hero_3.svg"
           width={800}
           height={600}
-          className="w-[100%] mb-3"
+          className="w-full"
           priority
         />
-        <h1 className="text-center">Mewujudkan Ekonomi Biru</h1>
-        <h3 className="text-center">
-          Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi
-          untuk mewujudkan Ekonomi Biru.
-        </h3>
-        <div className="flex gap-6 justify-center">
-          <button className="px-[4vw] py-2.5 bg-black text-white rounded-3xl hover:bg-stone-400 hover:text-black cursor-pointer">
-            <Link href="/Organisasi">Program</Link>
-          </button>
-          <button className="px-[4vw] py-2.5 bg-black text-white rounded-3xl hover:bg-stone-400 hover:text-black cursor-pointer">
-            <Link href="/Organisasi">Organisasi</Link>
-          </button>
-        </div>
       </div>
     </section>
   );
