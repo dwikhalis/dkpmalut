@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
 import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
+import Link from "next/link";
 
 type Row = {
   kab: string | null;
@@ -26,11 +27,11 @@ type SortBy = "name" | "value";
 type Order = "asc" | "desc";
 type TopN = "all" | 5 | 10;
 
-interface Props {
-  fromChild?: (sendData: string) => void;
-  pages: string[];
-}
+type Pages = { title: string; slug: string }[];
 
+interface Props {
+  pages: Pages;
+}
 const TITLE = "Produksi Perikanan Tangkap per Jenis Komoditas";
 
 /* ================= Helpers ================= */
@@ -102,10 +103,7 @@ async function fetchAllRows<T>(
 }
 
 /* ================= Component ================= */
-export default function ChartProductionCommonFish({
-  fromChild = () => {},
-  pages,
-}: Props) {
+export default function ChartProductionCommonFish({ pages }: Props) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -428,7 +426,7 @@ export default function ChartProductionCommonFish({
 
   if (loading) {
     return (
-      <div className="w-full h-[50vh] flex items-center justify-center">
+      <div className="w-full h-[70vh] flex items-center justify-center">
         <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -449,7 +447,7 @@ export default function ChartProductionCommonFish({
           showSideMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col gap-3 bg-teal-900 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full">
+        <div className="flex flex-col gap-3 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full">
           <h3 className="font-bold">Kelas Komoditas</h3>
 
           {/* Kelas (multi) */}
@@ -477,13 +475,13 @@ export default function ChartProductionCommonFish({
 
           <div className="flex flex-col gap-3">
             <button
-              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              className="flex py-1 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center"
               onClick={() => setSelectedClasses(classOptions)}
             >
               Semua
             </button>
             <button
-              className="flex py-1 bg-teal-600 rounded-md text-xs text-white hover:bg-teal-700 cursor-pointer justify-center items-center"
+              className="flex py-1 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center"
               onClick={() => setSelectedClasses([])}
             >
               Reset
@@ -690,7 +688,7 @@ export default function ChartProductionCommonFish({
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     noDatasetSelected || items.length === 0
                       ? "opacity-50 cursor-not-allowed"
-                      : "bg-teal-600 text-white hover:bg-teal-500"
+                      : "bg-sky-600 text-white hover:bg-sky-500"
                   }`}
                   onClick={downloadCsv}
                   disabled={noDatasetSelected || items.length === 0}
@@ -711,7 +709,7 @@ export default function ChartProductionCommonFish({
             className="px-0 pb-3 -rotate-90 -translate-x-6"
             onClick={() => setShowSideMenu(!showSideMenu)}
           >
-            <div className="flex justify-center items-center bg-teal-900 px-2 rounded-b-md">
+            <div className="flex justify-center items-center bg-sky-800 px-2 rounded-b-md">
               <p className="text-sm w-full text-white">Filters </p>
               <UpChevron className="w-6 h-6" color="white" />
             </div>
@@ -735,7 +733,7 @@ export default function ChartProductionCommonFish({
         </div>
       </div>
 
-      {/* Overlay */}
+      {/* //! POP UP FOCUS */}
       <div
         className={`${showSideMenu ? "flex" : "hidden"} md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
         onClick={() => setShowSideMenu(false)}
@@ -745,12 +743,13 @@ export default function ChartProductionCommonFish({
       <div className="flex flex-col lg:mx-12 mx-8 w-full">
         {/* Header + page nav */}
         <div className="flex w-full">
-          <div
+          {/* //! HEAD DROPDOWN */}
+          <Link
+            href={"/Data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
-            onClick={() => fromChild(pages[0])}
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
-          </div>
+          </Link>
 
           <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
             <div
@@ -773,18 +772,19 @@ export default function ChartProductionCommonFish({
               className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
             >
               {pages.map((e, idx) => {
-                if (e === "Home") return null;
+                if (e.title === "Home") return;
+
                 return (
-                  <div
+                  <Link
+                    href={`/Data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
-                      fromChild(pages[idx]);
                     }}
                     className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   >
-                    {e}
-                  </div>
+                    <h5>{e.title}</h5>
+                  </Link>
                 );
               })}
             </div>
@@ -1010,7 +1010,7 @@ export default function ChartProductionCommonFish({
                 className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   noDatasetSelected || items.length === 0
                     ? "opacity-50 cursor-not-allowed"
-                    : "bg-teal-600 text-white hover:bg-teal-500"
+                    : "bg-sky-600 text-white hover:bg-sky-500"
                 }`}
                 onClick={downloadCsv}
                 disabled={noDatasetSelected || items.length === 0}
@@ -1037,7 +1037,7 @@ export default function ChartProductionCommonFish({
         {/* Table */}
         <div className="overflow-x-auto mb-12">
           <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-            <thead className="bg-teal-100">
+            <thead className="bg-sky-100">
               <tr>
                 <th className="px-3 py-2 border border-gray-400 text-center">
                   Nama
@@ -1068,7 +1068,7 @@ export default function ChartProductionCommonFish({
               )}
             </tbody>
             {items.length > 0 && (
-              <tfoot className="bg-teal-50">
+              <tfoot className="bg-sky-50">
                 <tr>
                   <td className="px-3 py-2 border border-gray-400 font-semibold">
                     Jumlah

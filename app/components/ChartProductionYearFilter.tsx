@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
 import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
+import Link from "next/link";
 
 type Row = {
   kab: string | null;
@@ -18,9 +19,10 @@ type DatasetConf = {
   backgroundColor?: string;
 };
 
+type Pages = { title: string; slug: string }[];
+
 interface Props {
-  fromChild?: (sendData: string) => void;
-  pages: string[];
+  pages: Pages;
 }
 
 const TITLE = "Produksi Perikanan Tangkap dan Budidaya per Tahun";
@@ -88,10 +90,7 @@ function aggregateByYear(
   return totals;
 }
 
-export default function ChartProductionYearFilter({
-  fromChild = () => {},
-  pages,
-}: Props) {
+export default function ChartProductionYearFilter({ pages }: Props) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -308,7 +307,7 @@ export default function ChartProductionYearFilter({
 
   if (loading) {
     return (
-      <div className="w-full h-[50vh] flex items-center justify-center">
+      <div className="w-full h-[70vh] flex items-center justify-center">
         <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -331,7 +330,7 @@ export default function ChartProductionYearFilter({
         }`}
       >
         <div
-          className={`flex flex-col gap-3 bg-teal-900 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full`}
+          className={`flex flex-col gap-3 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full`}
         >
           <h3 className="font-bold">Filter</h3>
 
@@ -365,13 +364,13 @@ export default function ChartProductionYearFilter({
 
               <div className="flex flex-col gap-3 mt-3">
                 <button
-                  className="flex py-1 bg-teal-600 rounded-md text-white hover:bg-teal-700 cursor-pointer justify-center items-center lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  className="flex py-1 bg-sky-600 rounded-md text-white hover:bg-sky-700 cursor-pointer justify-center items-center lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   onClick={() => setSelectedYears(yearOptions)}
                 >
                   Semua
                 </button>
                 <button
-                  className="flex py-1 bg-teal-600 rounded-md text-white hover:bg-teal-700 cursor-pointer justify-center items-center lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                  className="flex py-1 bg-sky-600 rounded-md text-white hover:bg-sky-700 cursor-pointer justify-center items-center lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   onClick={() => setSelectedYears([])}
                 >
                   Reset
@@ -416,7 +415,7 @@ export default function ChartProductionYearFilter({
                 <button
                   className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     showBudidaya
-                      ? "bg-teal-600 text-white border-teal-600"
+                      ? "bg-sky-600 text-white border-sky-600"
                       : "border-white"
                   }`}
                   onClick={() => setShowBudidaya(!showBudidaya)}
@@ -426,7 +425,7 @@ export default function ChartProductionYearFilter({
                 <button
                   className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     showTangkap
-                      ? "bg-sky-600 text-white border-teal-600"
+                      ? "bg-sky-600 text-white border-sky-600"
                       : "border-white"
                   }`}
                   onClick={() => setShowTangkap(!showTangkap)}
@@ -445,7 +444,7 @@ export default function ChartProductionYearFilter({
                 <button
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     stacked
-                      ? "bg-teal-600 text-white border-teal-600"
+                      ? "bg-sky-600 text-white border-sky-600"
                       : "border-white"
                   }`}
                   onClick={() => setStacked(true)}
@@ -455,7 +454,7 @@ export default function ChartProductionYearFilter({
                 <button
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     !stacked
-                      ? "bg-teal-600 text-white border-teal-600"
+                      ? "bg-sky-600 text-white border-sky-600"
                       : "border-white"
                   }`}
                   onClick={() => setStacked(false)}
@@ -530,7 +529,7 @@ export default function ChartProductionYearFilter({
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
                     noDatasetSelected || tableRows.length === 0
                       ? "opacity-50 cursor-not-allowed"
-                      : "bg-teal-600 text-white hover:bg-teal-500"
+                      : "bg-sky-600 text-white hover:bg-sky-500"
                   }`}
                   onClick={downloadCsv}
                   disabled={noDatasetSelected || tableRows.length === 0}
@@ -551,7 +550,7 @@ export default function ChartProductionYearFilter({
             className="px-0 pb-3 -rotate-90 -translate-x-6"
             onClick={() => setShowSideMenu(!showSideMenu)}
           >
-            <div className="flex justify-center items-center bg-teal-900 px-2 rounded-b-md">
+            <div className="flex justify-center items-center bg-sky-800 px-2 rounded-b-md">
               <p className="text-sm w-full text-white">Filters </p>
               <UpChevron className="w-6 h-6" color="white" />
             </div>
@@ -585,12 +584,12 @@ export default function ChartProductionYearFilter({
       <div className="flex flex-col lg:mx-12 mx-8 w-full">
         <div className="flex w-full">
           {/* //! HEAD + PAGE NAV */}
-          <div
+          <Link
+            href={"/Data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
-            onClick={() => fromChild(pages[0])}
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
-          </div>
+          </Link>
 
           <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
             <div
@@ -614,18 +613,19 @@ export default function ChartProductionYearFilter({
               className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
             >
               {pages.map((e, idx) => {
-                if (e === "Home") return null;
+                if (e.title === "Home") return;
+
                 return (
-                  <div
+                  <Link
+                    href={`/Data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
-                      fromChild(pages[idx]);
                     }}
                     className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
                   >
-                    {e}
-                  </div>
+                    <h5>{e.title}</h5>
+                  </Link>
                 );
               })}
             </div>
@@ -682,7 +682,7 @@ export default function ChartProductionYearFilter({
               <button
                 className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   showBudidaya
-                    ? "bg-teal-600 text-white border-teal-600"
+                    ? "bg-sky-600 text-white border-sky-600"
                     : "bg-white"
                 }`}
                 onClick={() => setShowBudidaya(!showBudidaya)}
@@ -692,7 +692,7 @@ export default function ChartProductionYearFilter({
               <button
                 className={`flex px-3 py-1 rounded border items-center gap-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   showTangkap
-                    ? "bg-sky-600 text-white border-teal-600"
+                    ? "bg-sky-600 text-white border-sky-600"
                     : "bg-white"
                 }`}
                 onClick={() => setShowTangkap(!showTangkap)}
@@ -710,9 +710,7 @@ export default function ChartProductionYearFilter({
             <div className="flex gap-3">
               <button
                 className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  stacked
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "bg-white"
+                  stacked ? "bg-sky-600 text-white border-sky-600" : "bg-white"
                 }`}
                 onClick={() => setStacked(true)}
               >
@@ -720,9 +718,7 @@ export default function ChartProductionYearFilter({
               </button>
               <button
                 className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  !stacked
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "bg-white"
+                  !stacked ? "bg-sky-600 text-white border-sky-600" : "bg-white"
                 }`}
                 onClick={() => setStacked(false)}
               >
@@ -784,7 +780,7 @@ export default function ChartProductionYearFilter({
                 className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   noDatasetSelected || tableRows.length === 0
                     ? "opacity-50 cursor-not-allowed"
-                    : "bg-teal-600 text-white hover:bg-teal-500"
+                    : "bg-sky-600 text-white hover:bg-sky-500"
                 }`}
                 onClick={downloadCsv}
                 disabled={noDatasetSelected || tableRows.length === 0}
@@ -810,7 +806,7 @@ export default function ChartProductionYearFilter({
         {/* Table */}
         <div className="overflow-x-auto mb-12">
           <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-            <thead className="bg-teal-100">
+            <thead className="bg-sky-100">
               <tr>
                 <th className="px-3 py-2 border border-gray-400">Tahun</th>
                 {showBudidaya && (
@@ -862,7 +858,7 @@ export default function ChartProductionYearFilter({
               )}
             </tbody>
             {tableRows.length > 0 && (
-              <tfoot className="bg-teal-50">
+              <tfoot className="bg-sky-50">
                 <tr>
                   <td className="px-3 py-2 border border-gray-400 font-semibold">
                     Jumlah

@@ -94,16 +94,6 @@ h6 {
   }
 }
 
-@media (max-width: 1024px) {
-  h5 {
-    font-size: 1.8vw;
-  }
-
-  h6 {
-    font-size: 1.5vw;
-  }
-}
-
 @media (max-width: 769px) {
   h4 {
     font-size: 1.8vw;
