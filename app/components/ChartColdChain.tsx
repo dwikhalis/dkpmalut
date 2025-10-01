@@ -96,7 +96,9 @@ export default function ChartColdChain({ pages }: Props) {
     if (!dataColdChain || dataColdChain.length === 0) return;
 
     // 1. Extract headers
-    const headers = Object.keys(dataColdChain[0]);
+    const headers = Object.keys(dataColdChain[0]).filter(
+      (h) => h !== "id" && h !== "created_at"
+    );
 
     // 2. Build CSV content
     const rows = dataColdChain.map((row) =>
@@ -121,7 +123,7 @@ export default function ChartColdChain({ pages }: Props) {
 
   if (loading) {
     return (
-      <div className="w-full h-[50vh] flex items-center justify-center">
+      <div className="w-full h-[70vh] flex items-center justify-center">
         <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -138,7 +140,7 @@ export default function ChartColdChain({ pages }: Props) {
         <div className="flex flex-col gap-3 min-w-50 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white pb-20 w-full h-full overflow-y-scroll scrollbar-hide">
           <h3 className="font-bold">Legenda</h3>
           <div className="flex flex-col mt-3 gap-3 w-full">
-            <h5>Pendaratan</h5>
+            <p className="text-sm">Pendaratan</p>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
               onClick={() => {
@@ -152,7 +154,7 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Pelabuhan Perikanan</h5>
+              <p className="text-xs">Pelabuhan Perikanan</p>
             </div>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
@@ -167,9 +169,9 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Perusahaan Perikanan</h5>
+              <p className="text-xs">Perusahaan Perikanan</p>
             </div>
-            <h5 className="mt-6">Fasilitas Pendukung</h5>
+            <p className="mt-6 text-sm">Fasilitas Pendukung</p>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
               onClick={() => {
@@ -183,7 +185,7 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Pabrik Es</h5>
+              <p className="text-xs">Pabrik Es</p>
             </div>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
@@ -198,7 +200,7 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Penyimpanan Es</h5>
+              <p className="text-xs">Penyimpanan Es</p>
             </div>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
@@ -213,7 +215,7 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Cold Storage</h5>
+              <p className="text-xs">Cold Storage</p>
             </div>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
@@ -228,7 +230,7 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Air Blast Freezer (ABF)</h5>
+              <p className="text-xs">Air Blast Freezer (ABF)</p>
             </div>
             <div
               className="flex w-full justify-start items-center gap-3 cursor-pointer border-1 border-sky-600 px-2 py-1 rounded-xl hover:bg-sky-700"
@@ -243,7 +245,7 @@ export default function ChartColdChain({ pages }: Props) {
                 height={30}
                 alt="pin"
               />
-              <h5>Contact Plate Freezer (CPF)</h5>
+              <p className="text-xs">Contact Plate Freezer (CPF)</p>
             </div>
 
             <button
