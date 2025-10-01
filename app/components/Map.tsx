@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 
 type ColdChainRow = {
@@ -50,13 +50,10 @@ interface Props {
 
 export default function Map({ legend, data, fromChild }: Props) {
   const mapRef = useRef<L.Map | null>(null);
+  const ctrlDownRef = useRef(false);
+  const hoveredRef = useRef(false);
 
-  useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.closePopup();
-      console.log("Closed all popups because legend changed to:", legend);
-    }
-  }, [legend]);
+  const [showCtrlNotif, setShowCtrlNotif] = useState(false);
 
   const pinPort = new L.Icon({
     iconUrl: "/assets/pin_port.png",
@@ -98,8 +95,78 @@ export default function Map({ legend, data, fromChild }: Props) {
     iconSize: [0, 0],
   });
 
+  useEffect(() => {
+    if (mapRef.current) {
+      mapRef.current.closePopup();
+    }
+  }, [legend]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !ctrlDownRef.current) {
+        ctrlDownRef.current = true;
+        console.log("ctrl/meta down");
+        if (hoveredRef.current && mapRef.current) {
+          mapRef.current.scrollWheelZoom.enable();
+        }
+        setShowCtrlNotif(false);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) {
+        ctrlDownRef.current = false;
+        console.log("ctrl/meta up");
+        mapRef.current?.scrollWheelZoom.disable();
+        if (hoveredRef.current) {
+          setShowCtrlNotif(true);
+        }
+      }
+    };
+
+    const handleBlur = () => {
+      ctrlDownRef.current = false;
+      mapRef.current?.scrollWheelZoom.disable();
+      console.log("reset on blur");
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, []);
+
   return (
-    <div className="flex gap-3 w-full h-[90vh]">
+    <div
+      className="relative flex justify-center gap-3 w-full h-[70vh]"
+      onMouseEnter={() => {
+        hoveredRef.current = true;
+        if (ctrlDownRef.current && mapRef.current) {
+          mapRef.current.scrollWheelZoom.enable();
+        } else {
+          setShowCtrlNotif(true);
+        }
+      }}
+      onMouseLeave={() => {
+        hoveredRef.current = false;
+        mapRef.current?.scrollWheelZoom.disable();
+        setShowCtrlNotif(false);
+      }}
+    >
+      {/* //! CTRL PRESS NOTIFICATION */}
+      {showCtrlNotif && (
+        <div className="absolute flex justify-center items-center w-100 h-8 top-3 z-1000 text-white bg-black/40 rounded-xl">
+          <h5>
+            Tekan <kbd>Ctrl</kbd> + Scroll untuk Zoom
+          </h5>
+        </div>
+      )}
+
       <MapContainer
         center={[0.7213405231465007, 127.97671266232439]}
         zoom={7}
