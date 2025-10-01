@@ -2,8 +2,11 @@
 
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import AlertNotif from "../components/AlertNotif";
 
 export default function Page() {
+  const [showAlert, setShowAlert] = useState("");
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -31,12 +34,17 @@ export default function Page() {
 
       if (insertError) throw insertError;
 
-      alert("Pesan terkirim!");
+      setShowAlert("success");
+
       setFormData({ name: "", email: "", phone: "", message: "" });
     } catch (err) {
       console.error(err);
-      alert("Pengiriman pesan gagal. Terdapat masalah pada server!");
+      setShowAlert("failed");
     }
+  };
+
+  const handleCorfirm = (confirmation: boolean) => {
+    confirmation && setShowAlert("");
   };
 
   return (
@@ -54,7 +62,7 @@ export default function Page() {
         </div>
 
         <form
-          className="flex flex-col p-10 border-1 border-stone-100 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%]"
+          className="flex flex-col p-10 border-1 border-stone-100 mx-12 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%] bg-white"
           onSubmit={handleSubmit}
         >
           <label
@@ -129,9 +137,18 @@ export default function Page() {
           <input
             type="submit"
             value="Kirim"
-            className="bg-black text-white p-1.5 md:p-3 rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            className="bg-sky-800 text-white p-1.5 md:p-3 rounded-lg md:rounded-2xl hover:bg-sky-300 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
           />
         </form>
+        {showAlert === "success" && (
+          <AlertNotif
+            type="single"
+            msg="Pesan Terkirim"
+            yesText="Ok"
+            icon="success"
+            confirm={handleCorfirm}
+          />
+        )}
       </div>
     </>
   );

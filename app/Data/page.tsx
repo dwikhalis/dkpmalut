@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { DownChevron, UpChevron } from "@/public/icons/iconSets";
 import Link from "next/link";
+import CardData from "../components/CardData";
 
 export default function Page() {
   const [viewData, setViewData] = useState("Home");
@@ -91,6 +92,40 @@ export default function Page() {
                 );
               }
             })}
+          </div>
+        </div>
+        <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
+          <div className="w-[30%]">
+            <CardData
+              tag="Tangkap, Budidaya"
+              title="Produksi Perikanan Tangkap dan Budidaya per Kabupaten"
+              image="/assets/pic_data_perikanan_kabupaten.png"
+              link="/Data/produksi-perikanan-kabupaten"
+            />
+          </div>
+          <div className="w-[30%]">
+            <CardData
+              tag="Tangkap"
+              title="Produksi Perikanan Tangkap per Kelas Komoditas"
+              image="/assets/pic_data_perikanan_kelas.png"
+              link="/Data/produksi-kelas-komoditas"
+            />
+          </div>
+          <div className="w-[30%]">
+            <CardData
+              tag="Budidaya"
+              title="Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara"
+              image="/assets/pic_data_perikanan_budidaya.png"
+              link="/Data/perikanan-budidaya-maluku-utara"
+            />
+          </div>
+          <div className="w-[30%]">
+            <CardData
+              tag="Infrastruktur"
+              title="Infrastruktur Rantai Dingin"
+              image="/assets/pic_data_rantai_dingin.png"
+              link="/Data/infrastruktur-rantai-dingin"
+            />
           </div>
         </div>
       </div>

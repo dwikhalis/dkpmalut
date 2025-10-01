@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { deleteData, getMessage } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import { Delete, Edit } from "@/public/icons/iconSets";
+import { Delete, Switch } from "@/public/icons/iconSets";
 import AlertNotif from "./AlertNotif";
 
-type MessageAction = "read" | "unread";
+type MessageAction = "read" | "unread" | "switch";
 
 interface Prop {
   admin: boolean;
@@ -32,7 +32,7 @@ const typeConfig = {
     table: "message",
     groupKey: "status",
     labels: {
-      lama: "Inbox",
+      lama: "Pesan Lama",
       baru: "Pesan Baru",
     },
     titleField: "name",
@@ -125,8 +125,8 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
           a.localeCompare(b, undefined, { sensitivity: "base" })
         )
         .map(([key, items]) => (
-          <div key={key}>
-            <h4 className="font-bold mb-6 md:mb-12">
+          <div key={key} className="mb-6">
+            <h4 className="font-bold mb-6 md:mb-3">
               {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
             </h4>
 
@@ -150,7 +150,7 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                   key={idx}
                 >
                   <div
-                    className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-6 cursor-pointer hover:bg-stone-200"
+                    className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200"
                     onClick={() => sendToParent(e, "read")}
                   >
                     {/* Desktop */}
@@ -204,9 +204,9 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                     <div className="flex gap-2">
                       <div
                         className="flex w-8 h-8 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
-                        onClick={() => sendToParent(e, "unread")}
+                        onClick={() => sendToParent(e, "switch")}
                       >
-                        <Edit className="size-6 text-white" />
+                        <Switch className="size-6 text-white" />
                       </div>
                       <div
                         className="flex w-8 h-8 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"

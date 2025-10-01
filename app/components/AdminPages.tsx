@@ -131,7 +131,7 @@ export default function AdminPages({ type }: Props) {
           <div
             className={`${
               page === labels.home ? "flex" : "hidden"
-            } flex-col p-3 border-1 border-stone-100 bg-stone-100 hover:bg-black hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+            } flex-col p-3 border-1 border-stone-100 bg-stone-100 hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
             onClick={() => {
               setSelectedItem(null);
               setPage(labels.list);
@@ -144,7 +144,7 @@ export default function AdminPages({ type }: Props) {
           <div
             className={`${
               page === labels.home ? "flex" : "hidden"
-            } flex-col p-3 hover:bg-black border-1 border-stone-100 hover:text-white bg-stone-100 rounded-2xl shadow-xl text-center cursor-pointer`}
+            } flex-col p-3 hover:bg-sky-800 border-1 border-stone-100 hover:text-white bg-stone-100 rounded-2xl shadow-xl text-center cursor-pointer`}
             onClick={() => {
               setSelectedItem(null);
               setPage(labels.add);

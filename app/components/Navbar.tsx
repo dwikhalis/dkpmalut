@@ -127,7 +127,7 @@ export default function Navbar() {
             {isLoggedIn ? (
               <div className="flex justify-center items-center">
                 <button
-                  className="px-[2vw] py-2.5 text-[1.2vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer"
+                  className="px-[2vw] py-2.5 text-[1.2vw] bg-sky-900 text-white rounded-full hover:bg-sky-700 cursor-pointer"
                   onClick={() => router.push("/Admin")}
                 >
                   Dashboard
@@ -135,7 +135,7 @@ export default function Navbar() {
               </div>
             ) : (
               <Link href="/Masuk" className="flex justify-center items-center">
-                <button className="px-[2vw] py-2.5 text-[1.2vw] bg-black text-white rounded-full hover:bg-stone-400 hover:text-black cursor-pointer">
+                <button className="px-[2vw] py-2.5 text-[1.2vw] bg-sky-900 text-white rounded-full hover:bg-sky-700 cursor-pointer">
                   <h6>Masuk</h6>
                 </button>
               </Link>

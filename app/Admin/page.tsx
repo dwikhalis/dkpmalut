@@ -18,9 +18,9 @@ export default function Page() {
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [showSideMenu, setShowSideMenu] = useState(false);
 
-  const selected = "bg-teal-100 text-black font-bold p-3";
+  const selected = "bg-sky-100 text-black font-bold p-3";
   const unselected =
-    "bg-teal-900 hover:bg-teal-800 text-white cursor-pointer p-3";
+    "bg-sky-800 hover:bg-sky-950 text-white cursor-pointer p-3";
 
   //! LOGOUT Handler
   const handleLogout = async () => {
@@ -51,7 +51,7 @@ export default function Page() {
             showSideMenu ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex flex-col bg-teal-900 md:pt-10 pt-20 grow">
+          <div className="flex flex-col bg-sky-800 md:pt-10 pt-20 grow">
             <h3
               className={`${content === "Dashboard" ? selected : unselected}`}
               onClick={() => setContent("Dashboard")}
@@ -95,7 +95,7 @@ export default function Page() {
             {/* //! LOGOUT */}
             <div
               className={
-                "p-3 cursor-pointer text-white bg-teal-900 hover:bg-teal-950 w-full"
+                "p-3 cursor-pointer text-white bg-sky-800 hover:bg-sky-950 w-full"
               }
               onClick={() => {
                 setLogoutConfirm([false, "flex"]);
