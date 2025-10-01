@@ -143,7 +143,7 @@ export default function Page() {
         ></div>
 
         {/* //! CONTENT */}
-        <div className="h-full w-full lg:mx-12 mx-8 ">
+        <div className="h-full w-full lg:mx-12 mx-8 min-h-[70vh]">
           {content === "Dashboard" ? (
             <AdminDashboard select={handleSelect} />
           ) : null}

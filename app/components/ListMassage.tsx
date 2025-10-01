@@ -1,5 +1,7 @@
 "use client";
 
+export const revalidate = 0;
+
 import React, { useEffect, useState } from "react";
 import { deleteData, getMessage } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
@@ -126,9 +128,15 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
         )
         .map(([key, items]) => (
           <div key={key} className="mb-6">
-            <h4 className="font-bold mb-6 md:mb-3">
+            {/* Title Desktop */}
+            <h4 className="hidden md:block font-bold mb-3 md:mb-3">
               {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
             </h4>
+
+            {/* Title Mobile */}
+            <h3 className="block md:hidden font-bold mb-3 md:mb-3">
+              {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
+            </h3>
 
             {items
               .sort((a, b) => {
@@ -153,7 +161,7 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                     className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200"
                     onClick={() => sendToParent(e, "read")}
                   >
-                    {/* Desktop */}
+                    {/* //! Desktop */}
                     <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
                       {e[titleField] as string}
                     </h5>
@@ -175,19 +183,19 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                       {e[subtitleField] as string}
                     </h5>
 
-                    {/* Mobile */}
-                    <div className="flex md:hidden flex-col w-[60%] gap-1 px-2">
+                    {/* //! Mobile */}
+                    <div className="flex md:hidden flex-col w-full gap-1 px-2">
                       <h6 className="text-sm font-bold break-words">
                         {e[titleField] as string}
                       </h6>
 
-                      <h6 className="md:flex hidden text-sm break-words w-[30%]">
+                      <h6 className="flex md:hidden text-sm break-words w-full">
                         {(e[dateField as keyof DataTypes] &&
                           new Date(
                             e[dateField as keyof DataTypes] as string
                           ).toLocaleDateString("en-GB", {
                             day: "2-digit",
-                            month: "long",
+                            month: "short",
                             year: "numeric",
                           })) ||
                           ""}
@@ -197,11 +205,29 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                         {e[subtitleField] as string}
                       </h6>
                     </div>
+
+                    {/* Admin Buttons Mobile */}
+                    {admin && (
+                      <div className="flex md:hidden gap-2">
+                        <div
+                          className="flex w-6 h-6 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
+                          onClick={() => sendToParent(e, "switch")}
+                        >
+                          <Switch className="size-4 text-white" />
+                        </div>
+                        <div
+                          className="flex w-6 h-6 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"
+                          onClick={() => setConfirmAction([false, e.id])}
+                        >
+                          <Delete className="size-4 text-white" />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Admin Buttons */}
                   {admin && (
-                    <div className="flex gap-2">
+                    <div className="hidden md:flex gap-2">
                       <div
                         className="flex w-8 h-8 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
                         onClick={() => sendToParent(e, "switch")}
