@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 
 type ColdChainRow = {
@@ -126,7 +126,7 @@ export default function Map({ legend, data, fromChild }: Props) {
         />
 
         {/* //! Landing Sites */}
-        {data.map((e: any, idx: number) =>
+        {data.map((e, idx) =>
           legend === "landing_sites" ? (
             <Marker
               key={`ports-${idx}`}
@@ -182,7 +182,7 @@ export default function Map({ legend, data, fromChild }: Props) {
         )}
 
         {/* //! ice_factory */}
-        {data.map((e: any, idx: number) =>
+        {data.map((e, idx) =>
           e.es_pabrik > 0 ? (
             <Marker
               key={`ice_factory-${idx}`}
@@ -218,7 +218,7 @@ export default function Map({ legend, data, fromChild }: Props) {
         )}
 
         {/* //! ice_storage */}
-        {data.map((e: any, idx: number) =>
+        {data.map((e, idx) =>
           e.es_storage > 0 ? (
             <Marker
               key={`ice_storage-${idx}`}
@@ -229,10 +229,7 @@ export default function Map({ legend, data, fromChild }: Props) {
                 <p className="font-bold">{e.name}</p>
                 <p className="text-sm">
                   {" "}
-                  Jumlah : {e.es_storage_jum_unit
-                    ? e.es_storage_jum_unit
-                    : "-"}{" "}
-                  unit{" "}
+                  Jumlah : {e.es_storage_jum ? e.es_storage_jum : "-"} unit{" "}
                 </p>{" "}
                 <p className="text-sm">
                   {" "}
@@ -254,7 +251,7 @@ export default function Map({ legend, data, fromChild }: Props) {
         )}
 
         {/* //! cs */}
-        {data.map((e: any, idx: number) =>
+        {data.map((e, idx) =>
           e.cs > 0 ? (
             <Marker
               key={`cs-${idx}`}
@@ -282,7 +279,7 @@ export default function Map({ legend, data, fromChild }: Props) {
         )}
 
         {/* //! abf */}
-        {data.map((e: any, idx: number) =>
+        {data.map((e, idx) =>
           e.abf > 0 ? (
             <Marker
               key={`abf-${idx}`}
@@ -310,7 +307,7 @@ export default function Map({ legend, data, fromChild }: Props) {
         )}
 
         {/* //! cpf */}
-        {data.map((e: any, idx: number) =>
+        {data.map((e, idx) =>
           e.cpf > 0 ? (
             <Marker
               key={`cpf-${idx}`}
