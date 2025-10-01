@@ -35,6 +35,11 @@
   -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
 }
 
+/* //! Leaflet line height for each <p> tag */
+.leaflet-popup-content p {
+  margin: 2px 0 !important;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

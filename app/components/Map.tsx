@@ -2,10 +2,8 @@
 
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { getColdChain } from "@/lib/supabase/supabaseHelper";
-import Image from "next/image";
 
 type ColdChainRow = {
   id: string;
@@ -44,48 +42,21 @@ type ColdChainRow = {
   desc: string;
 };
 
-export default function Map() {
+interface Props {
+  legend: string;
+  data: ColdChainRow[];
+  fromChild?: (id: string) => void;
+}
+
+export default function Map({ legend, data, fromChild }: Props) {
   const mapRef = useRef<L.Map | null>(null);
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const center: [number, number] = [0.7213405231465007, 127.97671266232439];
 
-  const [dataColdChain, setDataColdChain] = useState<ColdChainRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Recalculate when the container changes size (e.g., from hidden -> visible)
   useEffect(() => {
-    if (!hostRef.current) return;
-    const ro = new ResizeObserver(() => mapRef.current?.invalidateSize());
-    ro.observe(hostRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  // Fetch data — DEFINE AND CALL the async IIFE
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        // depending on your helper shape, pick ONE of these:
-
-        // 1) if helper returns rows directly:
-        // const rows = await getColdChain();
-
-        // 2) if helper returns { data, error } like supabase:
-        const data = await getColdChain();
-
-        setDataColdChain((data ?? []) as ColdChainRow[]);
-      } catch (e) {
-        console.error("getColdChain failed:", e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (mapRef.current) {
+      mapRef.current.closePopup();
+      console.log("Closed all popups because legend changed to:", legend);
+    }
+  }, [legend]);
 
   const pinPort = new L.Icon({
     iconUrl: "/assets/pin_port.png",
@@ -122,122 +93,250 @@ export default function Map() {
     iconSize: [30, 30],
   });
 
-  if (loading) {
-    return (
-      <div className="w-full h-[50vh] flex items-center justify-center">
-        <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const pinDisabled = new L.Icon({
+    iconUrl: "/assets/pin_cpf.png",
+    iconSize: [0, 0],
+  });
 
   return (
-    <div ref={hostRef} className="flex gap-3 w-full h-[80vh]">
+    <div className="flex gap-3 w-full h-[90vh]">
       <MapContainer
-        ref={mapRef}
-        center={center}
+        center={[0.7213405231465007, 127.97671266232439]}
         zoom={7}
+        minZoom={7}
         scrollWheelZoom={false}
+        // ! Prevent user wandering off (giving max panning constraint)
+        // ! [[SW coordinate],[NE coordinate]]
+        maxBounds={[
+          [-3.831117, 123.129132],
+          [3.831117, 132.548618],
+        ]}
+        // ! Max pan contraint elasticity, soft to hard (0 > x > 1.0)
+        maxBoundsViscosity={0.8}
         className="w-full h-full"
-        whenReady={() => {
-          // defer to next tick to ensure layout settled
-          setTimeout(() => mapRef.current?.invalidateSize(), 0);
+        ref={(mapInstance: L.Map | null) => {
+          if (mapInstance) {
+            mapRef.current = mapInstance; // save the instance
+          }
         }}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {dataColdChain.map((e: any, idx: number) => {
-          return (
+
+        {/* //! Landing Sites */}
+        {data.map((e: any, idx: number) =>
+          legend === "landing_sites" ? (
             <Marker
-              key={idx}
+              key={`ports-${idx}`}
               position={[e.lat, e.lon]}
-              icon={e.type === "UPTD" ? pinPort : pinCompany}
+              icon={
+                e.type === "UPTD"
+                  ? pinPort
+                  : e.type === "Swasta"
+                    ? pinCompany
+                    : pinDisabled
+              }
             >
               <Popup>
-                <p>{e.name}</p>
+                <p
+                  className="font-bold cursor-pointer text-sky-600 hover:underline"
+                  onClick={() => fromChild?.(e.id)}
+                >
+                  {e.name}
+                </p>
               </Popup>
             </Marker>
-          );
-        })}
+          ) : e.type === "UPTD" ? (
+            <Marker
+              key={`ports-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "ports" ? pinPort : pinDisabled}
+            >
+              <Popup>
+                <p
+                  className="font-bold cursor-pointer text-sky-600 hover:underline"
+                  onClick={() => fromChild?.(e.id)}
+                >
+                  {e.name}
+                </p>
+              </Popup>
+            </Marker>
+          ) : e.type === "Swasta" ? (
+            <Marker
+              key={`companies-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "companies" ? pinCompany : pinDisabled}
+            >
+              <Popup>
+                <p
+                  className="font-bold cursor-pointer text-sky-600 hover:underline"
+                  onClick={() => fromChild?.(e.id)}
+                >
+                  {e.name}
+                </p>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
+
+        {/* //! ice_factory */}
+        {data.map((e: any, idx: number) =>
+          e.es_pabrik > 0 ? (
+            <Marker
+              key={`ice_factory-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "ice_factory" ? pinIceFactory : pinDisabled}
+            >
+              <Popup>
+                <p className="font-bold">{e.name}</p>
+                <p className="text-sm">
+                  {" "}
+                  Jumlah : {e.es_pabrik_jum_unit
+                    ? e.es_pabrik_jum_unit
+                    : "-"}{" "}
+                  unit{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kapasitas : {e.es_pabrik ? e.es_pabrik : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Tahun Operasi :{" "}
+                  {e.es_pabrik_tahun ? e.es_pabrik_tahun : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kondisi :{" "}
+                  {e.es_pabrik_kondisi ? e.es_pabrik_kondisi : "-"}{" "}
+                </p>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
+
+        {/* //! ice_storage */}
+        {data.map((e: any, idx: number) =>
+          e.es_storage > 0 ? (
+            <Marker
+              key={`ice_storage-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "ice_storage" ? pinIceStorage : pinDisabled}
+            >
+              <Popup>
+                <p className="font-bold">{e.name}</p>
+                <p className="text-sm">
+                  {" "}
+                  Jumlah : {e.es_storage_jum_unit
+                    ? e.es_storage_jum_unit
+                    : "-"}{" "}
+                  unit{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kapasitas : {e.es_storage ? e.es_storage : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Tahun Operasi :{" "}
+                  {e.es_storage_tahun ? e.es_storage_tahun : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kondisi :{" "}
+                  {e.es_storage_kondisi ? e.es_storage_kondisi : "-"}{" "}
+                </p>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
+
+        {/* //! cs */}
+        {data.map((e: any, idx: number) =>
+          e.cs > 0 ? (
+            <Marker
+              key={`cs-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "cs" ? pinCS : pinDisabled}
+            >
+              <Popup>
+                <p className="font-bold">{e.name}</p>
+                <p className="text-sm">
+                  {" "}
+                  Jumlah : {e.cs_jum_unit ? e.cs_jum_unit : "-"} unit{" "}
+                </p>{" "}
+                <p className="text-sm"> Kapasitas : {e.cs ? e.cs : "-"} </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Tahun Operasi : {e.cs_tahun ? e.cs_tahun : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kondisi : {e.cs_kondisi ? e.cs_kondisi : "-"}{" "}
+                </p>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
+
+        {/* //! abf */}
+        {data.map((e: any, idx: number) =>
+          e.abf > 0 ? (
+            <Marker
+              key={`abf-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "abf" ? pinABF : pinDisabled}
+            >
+              <Popup>
+                <p className="font-bold">{e.name}</p>
+                <p className="text-sm">
+                  {" "}
+                  Jumlah : {e.abf_jum_unit ? e.abf_jum_unit : "-"} unit{" "}
+                </p>{" "}
+                <p className="text-sm"> Kapasitas : {e.abf ? e.abf : "-"} </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Tahun Operasi : {e.abf_tahun ? e.abf_tahun : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kondisi : {e.abf_kondisi ? e.abf_kondisi : "-"}{" "}
+                </p>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
+
+        {/* //! cpf */}
+        {data.map((e: any, idx: number) =>
+          e.cpf > 0 ? (
+            <Marker
+              key={`cpf-${idx}`}
+              position={[e.lat, e.lon]}
+              icon={legend === "cpf" ? pinCPF : pinDisabled}
+            >
+              <Popup>
+                <p className="font-bold">{e.name}</p>
+                <p className="text-sm">
+                  {" "}
+                  Jumlah : {e.cpf_jum_unit ? e.cpf_jum_unit : "-"} unit{" "}
+                </p>{" "}
+                <p className="text-sm"> Kapasitas : {e.cpf ? e.cpf : "-"} </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Tahun Operasi : {e.cpf_tahun ? e.cpf_tahun : "-"}{" "}
+                </p>{" "}
+                <p className="text-sm">
+                  {" "}
+                  Kondisi : {e.cpf_kondisi ? e.cpf_kondisi : "-"}{" "}
+                </p>
+              </Popup>
+            </Marker>
+          ) : null
+        )}
       </MapContainer>
-      <div className="w-[30%]">
-        <h4 className="font-bold">Legenda</h4>
-        <div className="flex flex-col mt-3 gap-3 w-full">
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_port.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Pelabuhan Perikanan</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_company.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Perusahaan Perikanan</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_ice_factory.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Pabrik Es</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_ice_storage.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Penyimpanan Es</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_cs.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Cold Storage</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_abf.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Air Blast Freezer (ABF)</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_abf.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Air Blast Freezer (ABF)</h5>
-          </div>
-          <div className="flex w-full justify-start items-center gap-3">
-            <Image
-              src={"/assets/pin_cpf.png"}
-              width={30}
-              height={30}
-              alt="pin"
-            />
-            <h5>Contact Plate Freezer (CPF)</h5>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
