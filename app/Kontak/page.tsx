@@ -44,7 +44,7 @@ export default function Page() {
   };
 
   const handleCorfirm = (confirmation: boolean) => {
-    confirmation && setShowAlert("");
+    if (confirmation) setShowAlert("");
   };
 
   return (
