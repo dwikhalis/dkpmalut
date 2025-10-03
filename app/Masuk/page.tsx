@@ -102,7 +102,7 @@ export default function Page() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="border p-2 rounded"
+                  className="bg-stone-100 p-2 rounded-xl"
                 />
                 <input
                   type="password"
@@ -110,12 +110,12 @@ export default function Page() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="border p-2 rounded"
+                  className="bg-stone-100 p-2 rounded-xl"
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
+                  className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
                 >
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
@@ -150,12 +150,12 @@ export default function Page() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="border p-2 rounded"
+                  className="bg-stone-100 p-2 rounded-xl"
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-black text-white p-2 rounded hover:bg-stone-700 disabled:opacity-50"
+                  className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
                 >
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />

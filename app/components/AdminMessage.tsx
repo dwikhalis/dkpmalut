@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import ListMassage from "./ListMassage";
-import { LeftChevron } from "@/public/icons/iconSets";
+import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 import { updateData } from "@/lib/supabase/supabaseHelper";
 
 interface DataTypes {
@@ -18,6 +18,7 @@ interface DataTypes {
 export default function AdminMessage() {
   const [selectedItem, setSelectedItem] = useState<DataTypes | null>(null);
   const [showMessage, setShowMessage] = useState(false);
+  const [senderOpen, setSenderOpen] = useState(false);
 
   // tiny helper: update just the status column
   const updateStatus = async (id: string, status: "lama" | "baru") => {
@@ -75,51 +76,65 @@ export default function AdminMessage() {
 
   return (
     <div className="mt-12">
+      {/* //! LIST MESSAGE */}
       <div className={`${showMessage ? "hidden" : "flex"}`}>
         <ListMassage admin={true} sendToParent={handleDataFromChild} />
       </div>
 
+      {/* //! READ MESSAGE */}
       <div className={`${!showMessage ? "hidden" : "flex"} flex-col`}>
-        <div className="flex items-center w-full h-20 rounded-2xl shadow-lg mb-3">
+        {/* //! Header */}
+        <div className="flex items-center w-full rounded-2xl shadow-lg mb-3 border border-stone-200">
           <div
-            onClick={async () => {
-              if (selectedItem && selectedItem.status !== "lama") {
-                await updateStatus(selectedItem.id, "lama");
-              }
+            onClick={() => {
               setShowMessage(false);
               setSelectedItem(null);
             }}
-            className="flex justify-center items-center w-[5%] h-full cursor-pointer"
+            className="flex justify-center w-[15%] md:w-[8%] h-full cursor-pointer"
           >
-            <LeftChevron className="w-5 h-5" />
+            <LeftChevron className="w-4 h-4 lg:w-5 lg:h-5" />
           </div>
-          <div className="flex justify-center items-center frow m-3 w-[20%]">
-            <p>{selectedItem?.name}</p>
-          </div>
-          <div className="flex justify-center items-center frow m-3 grow">
-            <p>{selectedItem?.email}</p>
-          </div>
-          <div className="flex justify-center items-center frow m-3 grow">
-            <p>{selectedItem?.phone}</p>
-          </div>
-          <div className="flex justify-center items-center frow m-3 w-[20%]">
-            <p>
-              {selectedItem?.created_at
-                ? new Date(selectedItem.created_at).toLocaleDateString(
-                    "en-GB",
-                    {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    }
-                  )
-                : null}
-            </p>
+          <div className="w-full">
+            <div className="flex w-full h-full justify-center items-center">
+              <div
+                className="flex justify-start items-center m-0 md:m-3 grow"
+                onClick={() => setSenderOpen(!senderOpen)}
+              >
+                <h5>{selectedItem?.name}</h5>
+                <DownChevron
+                  className={`${senderOpen ? "hidden" : "block"} w-3 h-3 ml-3`}
+                />
+                <UpChevron
+                  className={`${senderOpen ? "block" : "hidden"} w-3 h-3 ml-3`}
+                />
+              </div>
+              <div className="flex justify-end items-center m-3">
+                <h5 className="mr-0 md:mr-6 text-right">
+                  {selectedItem?.created_at
+                    ? new Date(selectedItem.created_at).toLocaleDateString(
+                        "en-GB",
+                        {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        }
+                      )
+                    : null}
+                </h5>
+              </div>
+            </div>
+            <div
+              className={`${senderOpen ? "flex" : "hidden"} justify-between md:justify-start items-center h-full mx-0 md:mx-3 mb-3 w-full flex-wrap`}
+            >
+              <h5 className="mr-3">{selectedItem?.email}</h5>
+              <h5 className="mx-3">{selectedItem?.phone}</h5>
+            </div>
           </div>
         </div>
 
-        <div className="w-full min-h-[60vh] rounded-2xl shadow-lg p-6 mb-10">
-          <p>{selectedItem?.message}</p>
+        {/* //! Body */}
+        <div className="w-full min-h-[60vh] rounded-2xl shadow-lg p-6 mb-10 border border-stone-200">
+          <h5>{selectedItem?.message}</h5>
         </div>
       </div>
     </div>

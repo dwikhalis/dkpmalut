@@ -91,6 +91,16 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
     };
   }, [fetch, table]);
 
+  const groupedData = data.reduce(
+    (acc, item) => {
+      const key = (item[groupKey as keyof DataTypes] as string) ?? "undefined";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    },
+    {} as Record<string, DataTypes[]>
+  );
+
   async function actionConfirmed(confirmation: boolean) {
     const dataId = confirmAction[1];
     if (confirmation) {
@@ -109,16 +119,6 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
 
   if (loading) return <p>Loading...</p>;
   if (!data.length) return <p>Belum ada pesan masuk</p>;
-
-  const groupedData = data.reduce(
-    (acc, item) => {
-      const key = (item[groupKey as keyof DataTypes] as string) ?? "undefined";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    },
-    {} as Record<string, DataTypes[]>
-  );
 
   return (
     <div className="flex flex-col md:gap-12 gap-6 w-full">
@@ -157,91 +157,78 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                   className="flex justify-center items-center gap-3"
                   key={idx}
                 >
-                  <div
-                    className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200"
-                    onClick={() => sendToParent(e, "read")}
-                  >
+                  <div className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200">
                     {/* //! Desktop */}
-                    <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
-                      {e[titleField] as string}
-                    </h5>
-
-                    {/* === Message Only === */}
-                    <h5 className="md:flex hidden text-sm break-words w-[30%]">
-                      {(e[dateField as keyof DataTypes] &&
-                        new Date(
-                          e[dateField as keyof DataTypes] as string
-                        ).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })) ||
-                        ""}
-                    </h5>
-
-                    <h5 className="hidden md:flex text-sm break-words w-[30%]">
-                      {e[subtitleField] as string}
-                    </h5>
-
-                    {/* //! Mobile */}
-                    <div className="flex md:hidden flex-col w-full gap-1 px-2">
-                      <h6 className="text-sm font-bold break-words">
+                    <div
+                      className="flex w-full justify-center items-center"
+                      onClick={() => {
+                        sendToParent(e, "read");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
                         {e[titleField] as string}
-                      </h6>
+                      </h5>
 
-                      <h6 className="flex md:hidden text-sm break-words w-full">
+                      {/* === Message Only === */}
+                      <h5 className="md:flex hidden text-sm break-words w-[30%]">
                         {(e[dateField as keyof DataTypes] &&
                           new Date(
                             e[dateField as keyof DataTypes] as string
                           ).toLocaleDateString("en-GB", {
                             day: "2-digit",
-                            month: "short",
+                            month: "long",
                             year: "numeric",
                           })) ||
                           ""}
-                      </h6>
+                      </h5>
 
-                      <h6 className="text-sm break-words">
+                      <h5 className="hidden md:flex text-sm break-words w-[30%]">
                         {e[subtitleField] as string}
-                      </h6>
+                      </h5>
+
+                      {/* //! Mobile */}
+                      <div className="flex md:hidden flex-col w-full gap-1 px-2">
+                        <h6 className="text-sm font-bold break-words">
+                          {e[titleField] as string}
+                        </h6>
+
+                        <h6 className="flex md:hidden text-sm break-words w-full">
+                          {(e[dateField as keyof DataTypes] &&
+                            new Date(
+                              e[dateField as keyof DataTypes] as string
+                            ).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })) ||
+                            ""}
+                        </h6>
+
+                        <h6 className="text-sm break-words">
+                          {e[subtitleField] as string}
+                        </h6>
+                      </div>
                     </div>
 
-                    {/* Admin Buttons Mobile */}
+                    {/* Admin Buttons */}
                     {admin && (
-                      <div className="flex md:hidden gap-2">
+                      <div className="flex gap-2">
                         <div
-                          className="flex w-6 h-6 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
+                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-18 2xl:h-18 bg-sky-500 rounded-lg 2xl:rounded-2xl justify-center items-center cursor-pointer"
                           onClick={() => sendToParent(e, "switch")}
                         >
-                          <Switch className="size-4 text-white" />
+                          <Switch className="size-5 md:size-4 xl:size-6 2xl:size-10 text-white" />
                         </div>
                         <div
-                          className="flex w-6 h-6 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"
+                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-18 2xl:h-18 bg-rose-500 rounded-lg 2xl:rounded-2xl justify-center items-center cursor-pointer"
                           onClick={() => setConfirmAction([false, e.id])}
                         >
-                          <Delete className="size-4 text-white" />
+                          <Delete className="size-5 md:size-4 xl:size-6 2xl:size-10 text-white" />
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Admin Buttons */}
-                  {admin && (
-                    <div className="hidden md:flex gap-2">
-                      <div
-                        className="flex w-8 h-8 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
-                        onClick={() => sendToParent(e, "switch")}
-                      >
-                        <Switch className="size-6 text-white" />
-                      </div>
-                      <div
-                        className="flex w-8 h-8 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"
-                        onClick={() => setConfirmAction([false, e.id])}
-                      >
-                        <Delete className="size-6 text-white" />
-                      </div>
-                    </div>
-                  )}
                 </div>
               ))}
           </div>

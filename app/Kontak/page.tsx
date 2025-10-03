@@ -76,7 +76,7 @@ export default function Page() {
             id="name"
             name="name"
             placeholder="Nama"
-            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-xl mt-2 md:mb-6 mb-3"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
@@ -92,7 +92,7 @@ export default function Page() {
             id="email"
             name="email"
             placeholder="Email"
-            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-xl mt-2 md:mb-6 mb-3"
             value={formData.email}
             onChange={(e) =>
               setFormData({ ...formData, email: e.target.value })
@@ -110,7 +110,7 @@ export default function Page() {
             id="phone"
             name="phone"
             placeholder="Nomor Handphone"
-            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
+            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-xl mt-2 md:mb-6 mb-3"
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
@@ -127,7 +127,7 @@ export default function Page() {
             id="message"
             name="message"
             placeholder="Ketik pesan anda"
-            className="h-30 mt-2 md:grow text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md md-2 md:mb-6 mb-3"
+            className="h-30 mt-2 md:grow text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-xl md-2 md:mb-6 mb-3"
             value={formData.message}
             onChange={(e) =>
               setFormData({ ...formData, message: e.target.value })
@@ -137,7 +137,7 @@ export default function Page() {
           <input
             type="submit"
             value="Kirim"
-            className="bg-sky-800 text-white p-1.5 md:p-3 rounded-lg md:rounded-2xl hover:bg-sky-300 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+            className="bg-sky-800 text-white p-1.5 md:p-3 rounded-xl hover:bg-sky-300 hover:text-black text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
           />
         </form>
         {showAlert === "success" && (

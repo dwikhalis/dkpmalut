@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AdminDashboard from "../components/AdminDashboard";
 import AdminPages from "../components/AdminPages";
 import AdminData from "../components/AdminData";
@@ -52,42 +52,44 @@ export default function Page() {
           }`}
         >
           <div className="flex flex-col bg-sky-800 md:pt-10 pt-20 grow">
-            <h3
-              className={`${content === "Dashboard" ? selected : unselected}`}
+            <h5
+              className={`${content === "Dashboard" ? selected : unselected} 2xl:pl-6`}
               onClick={() => setContent("Dashboard")}
             >
               Dashboard
-            </h3>
-            <h3
-              className={`${content === "Organisasi" ? selected : unselected}`}
-              onClick={() => setContent("Organisasi")}
-            >
-              Organisasi
-            </h3>
-            <h3
-              className={`${content === "Berita" ? selected : unselected}`}
-              onClick={() => setContent("Berita")}
-            >
-              Berita
-            </h3>
-            <h3
-              className={`${content === "Galeri" ? selected : unselected}`}
-              onClick={() => setContent("Galeri")}
-            >
-              Galeri
-            </h3>
-            <h3
-              className={`${content === "Data" ? selected : unselected} p-3`}
-              onClick={() => setContent("Data")}
-            >
-              Data
-            </h3>
-            <h3
-              className={`${content === "Inbox" ? selected : unselected} p-3`}
+            </h5>
+
+            <h5
+              className={`${content === "Inbox" ? selected : unselected} 2xl:pl-6`}
               onClick={() => setContent("Inbox")}
             >
               Inbox
-            </h3>
+            </h5>
+
+            <h5
+              className={`${content === "Organisasi" ? selected : unselected} 2xl:pl-6`}
+              onClick={() => setContent("Organisasi")}
+            >
+              Organisasi
+            </h5>
+            <h5
+              className={`${content === "Berita" ? selected : unselected} 2xl:pl-6`}
+              onClick={() => setContent("Berita")}
+            >
+              Berita
+            </h5>
+            <h5
+              className={`${content === "Galeri" ? selected : unselected} 2xl:pl-6`}
+              onClick={() => setContent("Galeri")}
+            >
+              Galeri
+            </h5>
+            <h5
+              className={`${content === "Data" ? selected : unselected} 2xl:pl-6`}
+              onClick={() => setContent("Data")}
+            >
+              Data
+            </h5>
 
             {/* SEPARATOR */}
             <div className={"p-3 w-full"}></div>
@@ -95,7 +97,7 @@ export default function Page() {
             {/* //! LOGOUT */}
             <div
               className={
-                "p-3 cursor-pointer text-white bg-sky-800 hover:bg-sky-950 w-full"
+                "p-3 cursor-pointer text-white bg-sky-800 hover:bg-sky-950 w-full 2xl:pl-6"
               }
               onClick={() => {
                 setLogoutConfirm([false, "flex"]);
@@ -104,7 +106,7 @@ export default function Page() {
               {loading ? (
                 <SpinnerLoading size="sm" color="white" />
               ) : (
-                <h3>Keluar</h3>
+                <h5>Keluar</h5>
               )}
             </div>
           </div>

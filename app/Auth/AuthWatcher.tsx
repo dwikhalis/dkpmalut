@@ -31,6 +31,7 @@ export default function AuthWatcher({
         <AlertNotif
           type="single"
           msg="Anda keluar secara otomatis untuk memproteksi fungsi Admin"
+          icon="warning"
           yesText="OK"
           confirm={handleConfirm}
         />
