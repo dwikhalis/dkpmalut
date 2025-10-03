@@ -157,10 +157,10 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                   className="flex justify-center items-center gap-3"
                   key={idx}
                 >
-                  <div className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200">
+                  <div className="flex w-full justify-between items-center bg-white rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200 border border-stone-200">
                     {/* //! Desktop */}
                     <div
-                      className="flex w-full justify-center items-center"
+                      className="flex w-full justify-between items-center"
                       onClick={() => {
                         sendToParent(e, "read");
                         window.scrollTo({ top: 0, behavior: "smooth" });

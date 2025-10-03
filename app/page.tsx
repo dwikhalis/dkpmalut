@@ -17,7 +17,7 @@ import SpinnerLoading from "./components/SpinnerLoading";
 const Loading = () => <SpinnerLoading size="sm" color="black" />;
 
 const SectionAddr = dynamic(() => import("./components/SectionAddr"), {
-  loading: () => <Loading />,
+  loading: () => <SpinnerLoading size="sm" color="black" />,
   ssr: false,
 });
 
