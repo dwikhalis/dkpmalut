@@ -124,35 +124,39 @@ export default function ChartKKD({ pages }: Props) {
             </button>
 
             {/* //! Download Buttons */}
-            <h5 className="mt-6 font-bold">Download</h5>
-            <div className="flex w-full justify-between items-center">
-              <button
-                className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center w-[45%]"
-                onClick={() => {
-                  const fileName = `/maps/map_${kkd}.png`;
+            <div
+              className={`${kkd === "malut" ? "hidden" : "flex"} flex-col gap-2`}
+            >
+              <h5 className="mt-6 font-bold">Download</h5>
+              <div className="flex w-full justify-between items-center">
+                <button
+                  className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center w-[45%]"
+                  onClick={() => {
+                    const fileName = `/maps/map_${kkd}.png`;
 
-                  const link = document.createElement("a");
-                  link.href = fileName;
-                  link.download = fileName.split("/").pop() || "map.png";
-                  link.click();
-                }}
-              >
-                Peta
-              </button>
+                    const link = document.createElement("a");
+                    link.href = fileName;
+                    link.download = fileName.split("/").pop() || "map.png";
+                    link.click();
+                  }}
+                >
+                  Peta
+                </button>
 
-              <button
-                className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center w-[45%]"
-                onClick={() => {
-                  const fileName = `/documents/rpz_${kkd}.pdf`;
+                <button
+                  className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center w-[45%]"
+                  onClick={() => {
+                    const fileName = `/documents/rpz_${kkd}.pdf`;
 
-                  const link = document.createElement("a");
-                  link.href = fileName;
-                  link.download = fileName.split("/").pop() || "rpz.pdf";
-                  link.click();
-                }}
-              >
-                RPZ
-              </button>
+                    const link = document.createElement("a");
+                    link.href = fileName;
+                    link.download = fileName.split("/").pop() || "rpz.pdf";
+                    link.click();
+                  }}
+                >
+                  RPZ
+                </button>
+              </div>
             </div>
           </div>
         </div>
