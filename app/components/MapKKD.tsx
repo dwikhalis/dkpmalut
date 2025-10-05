@@ -158,7 +158,7 @@ export default function MapKKD({ legend, kkd, fromChild }: Props) {
 
   return (
     <div
-      className="relative flex justify-center gap-3 w-full h-[70vh]"
+      className="relative flex justify-center gap-3 w-full h-[80vh]"
       onMouseEnter={() => {
         hoveredRef.current = true;
         if (ctrlDownRef.current && mapRef.current) {

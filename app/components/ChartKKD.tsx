@@ -44,7 +44,7 @@ export default function ChartKKD({ pages }: Props) {
     <div className="flex w-full">
       {/*//! ===== SIDEBAR =====  */}
       <aside
-        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto transition-transform duration-300 md:translate-x-0 ${
           showSideMenu ? "translate-x-0" : "-translate-x-75"
         }`}
       >
@@ -99,7 +99,7 @@ export default function ChartKKD({ pages }: Props) {
 
             {/* //! ZONA LAINNYA */}
             <div
-              className={`${kkd === "makian_moti" || kkd === "makian_moti" ? "flex" : "hidden"} flex-col gap-3`}
+              className={`${kkd === "makian_moti" || kkd === "malut" ? "flex" : "hidden"} flex-col gap-3`}
             >
               <p className="mt-3 text-sm">Zona Lainnya</p>
               <p className="mt-0 text-xs">Sub Zona</p>
@@ -130,13 +130,45 @@ export default function ChartKKD({ pages }: Props) {
             </div>
 
             <button
-              className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center mt-6"
+              className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center mt-3"
               onClick={() => {
                 setLegend("All");
               }}
             >
               Reset
             </button>
+
+            {/* //! Download Buttons */}
+            <h5 className="mt-6 font-bold">Download</h5>
+            <div className="flex w-full justify-between items-center">
+              <button
+                className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center w-[45%]"
+                onClick={() => {
+                  const fileName = `/maps/map_${kkd}.png`;
+
+                  const link = document.createElement("a");
+                  link.href = fileName;
+                  link.download = fileName.split("/").pop() || "map.png";
+                  link.click();
+                }}
+              >
+                Peta
+              </button>
+
+              <button
+                className="flex py-2 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center w-[45%]"
+                onClick={() => {
+                  const fileName = `/documents/rpz_${kkd}.pdf`;
+
+                  const link = document.createElement("a");
+                  link.href = fileName;
+                  link.download = fileName.split("/").pop() || "rpz.pdf";
+                  link.click();
+                }}
+              >
+                RPZ
+              </button>
+            </div>
           </div>
         </div>
 
@@ -240,7 +272,7 @@ export default function ChartKKD({ pages }: Props) {
 
         <div className="flex justify-between mb-6">
           {/* //! Dropdown */}
-          <form className="w-full md:w-[50%]">
+          <form className="w-full">
             <select
               className="w-full p-2 rounded-xl border border-stone-200"
               onChange={(e) => setKkd(e.target.value)}
@@ -260,27 +292,10 @@ export default function ChartKKD({ pages }: Props) {
               {/* <option value={"guraici"}>TPK Kepulauan Guraici</option> */}
             </select>
           </form>
-
-          {/* //! Download Button */}
-          <div className={`${kkd === "malut" ? "hidden" : "flex"} gap-2 `}>
-            <button
-              className="hidden md:flex px-3 py-1 rounded-lg border lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-sky-500 text-white hover:bg-sky-600"
-              // onClick={downloadCSV}
-            >
-              Download Peta
-            </button>
-
-            <button
-              className="hidden md:flex px-3 py-1 rounded-lg border lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-sky-500 text-white hover:bg-sky-600"
-              // onClick={downloadCSV}
-            >
-              Download RPZ
-            </button>
-          </div>
         </div>
 
         {/* //! MAP */}
-        <div className="z-0 mb-8">
+        <div className="z-0">
           <MapKKD_dynamic
             legend={legend}
             kkd={kkd}
