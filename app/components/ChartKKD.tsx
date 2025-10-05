@@ -29,7 +29,7 @@ export default function ChartKKD({ pages }: Props) {
     <div className="flex w-full">
       {/*//! ===== SIDEBAR =====  */}
       <aside
-        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto transition-transform duration-300 md:translate-x-0 ${
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
           showSideMenu ? "translate-x-0" : "-translate-x-75"
         }`}
       >
