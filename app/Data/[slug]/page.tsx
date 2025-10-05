@@ -1,5 +1,6 @@
 import ChartAquaculture from "@/app/components/ChartAquaculture";
 import ChartColdChain from "@/app/components/ChartColdChain";
+import ChartKKD from "@/app/components/ChartKKD";
 import ChartProductionClassFish from "@/app/components/ChartProductionClassFish";
 import ChartProductionCommonFish from "@/app/components/ChartProductionCommonFish";
 import ChartProductionKabFilter from "@/app/components/ChartProductionKabFilter";
@@ -37,6 +38,10 @@ export default async function Page({ params }: Props) {
       title: "Infrastruktur Rantai Dingin",
       slug: "infrastruktur-rantai-dingin",
     },
+    {
+      title: "Kawasan Konservasi Daerah",
+      slug: "kawasan-konservasi-daerah",
+    },
   ];
 
   if (slug === pages[0].slug) {
@@ -51,5 +56,7 @@ export default async function Page({ params }: Props) {
     return <ChartAquaculture pages={pages} />;
   } else if (slug === pages[5].slug) {
     return <ChartColdChain pages={pages} />;
+  } else if (slug === pages[6].slug) {
+    return <ChartKKD pages={pages} />;
   }
 }

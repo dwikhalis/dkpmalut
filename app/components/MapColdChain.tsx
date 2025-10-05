@@ -48,7 +48,7 @@ interface Props {
   fromChild?: (id: string) => void;
 }
 
-export default function Map({ legend, data, fromChild }: Props) {
+export default function MapColdChain({ legend, data, fromChild }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const ctrlDownRef = useRef(false);
   const hoveredRef = useRef(false);
@@ -105,7 +105,6 @@ export default function Map({ legend, data, fromChild }: Props) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !ctrlDownRef.current) {
         ctrlDownRef.current = true;
-        console.log("ctrl/meta down");
         if (hoveredRef.current && mapRef.current) {
           mapRef.current.scrollWheelZoom.enable();
         }
@@ -116,7 +115,6 @@ export default function Map({ legend, data, fromChild }: Props) {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.metaKey) {
         ctrlDownRef.current = false;
-        console.log("ctrl/meta up");
         mapRef.current?.scrollWheelZoom.disable();
         if (hoveredRef.current) {
           setShowCtrlNotif(true);
@@ -127,7 +125,6 @@ export default function Map({ legend, data, fromChild }: Props) {
     const handleBlur = () => {
       ctrlDownRef.current = false;
       mapRef.current?.scrollWheelZoom.disable();
-      console.log("reset on blur");
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -160,7 +157,7 @@ export default function Map({ legend, data, fromChild }: Props) {
     >
       {/* //! CTRL PRESS NOTIFICATION */}
       {showCtrlNotif && (
-        <div className="absolute flex justify-center items-center w-100 h-8 top-3 z-1000 text-white bg-black/40 rounded-xl">
+        <div className="absolute hidden md:flex justify-center items-center w-100 h-8 top-3 z-1000 text-white bg-black/40 rounded-xl">
           <h5>
             Tekan <kbd>Ctrl</kbd> + Scroll untuk Zoom
           </h5>

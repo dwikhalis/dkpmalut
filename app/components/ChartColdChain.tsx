@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 import "leaflet/dist/leaflet.css";
-import Map_dynamic from "./Map_dynamic";
+import MapColdChain_dynamic from "./MapColdChain_dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { getColdChain } from "@/lib/supabase/supabaseHelper";
@@ -134,7 +134,7 @@ export default function ChartColdChain({ pages }: Props) {
       {/*//! ===== SIDEBAR =====  */}
       <aside
         className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
-          showSideMenu ? "translate-x-0" : "-translate-x-full"
+          showSideMenu ? "translate-x-0" : "-translate-x-60"
         }`}
       >
         <div className="flex flex-col gap-3 min-w-50 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white pb-20 w-full h-full overflow-y-scroll scrollbar-hide">
@@ -369,7 +369,7 @@ export default function ChartColdChain({ pages }: Props) {
 
         {/* //! MAP */}
         <div className="z-0 mb-8">
-          <Map_dynamic
+          <MapColdChain_dynamic
             legend={legend}
             data={dataColdChain}
             fromChild={handleFromChild}

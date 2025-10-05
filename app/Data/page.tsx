@@ -35,6 +35,10 @@ export default function Page() {
       title: "Infrastruktur Rantai Dingin",
       slug: "infrastruktur-rantai-dingin",
     },
+    {
+      title: "Kawasan Konservasi Daerah",
+      slug: "kawasan-konservasi-daerah",
+    },
   ];
 
   return (
