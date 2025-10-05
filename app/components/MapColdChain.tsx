@@ -46,9 +46,15 @@ interface Props {
   legend: string;
   data: ColdChainRow[];
   fromChild?: (id: string) => void;
+  loadStatus?: (status: boolean) => void;
 }
 
-export default function MapColdChain({ legend, data, fromChild }: Props) {
+export default function MapColdChain({
+  legend,
+  data,
+  fromChild,
+  loadStatus,
+}: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const ctrlDownRef = useRef(false);
   const hoveredRef = useRef(false);
@@ -183,6 +189,7 @@ export default function MapColdChain({ legend, data, fromChild }: Props) {
             mapRef.current = mapInstance; // save the instance
           }
         }}
+        whenReady={() => loadStatus?.(false)}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

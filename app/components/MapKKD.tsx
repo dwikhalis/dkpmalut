@@ -14,17 +14,19 @@ interface GeoDatas {
 interface Props {
   legend: string;
   kkd?: string;
-  fromChild?: (id: string) => void;
+  loadStatus?: (status: boolean) => void;
 }
 
-export default function MapKKD({ legend, kkd, fromChild }: Props) {
+export default function MapKKD({ legend, kkd, loadStatus }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const ctrlDownRef = useRef(false);
   const hoveredRef = useRef(false);
 
   const [showCtrlNotif, setShowCtrlNotif] = useState(false);
   const [geoData, setGeoData] = useState<GeoDatas>({});
+  const [mapReady, setMapReady] = useState(false);
 
+  // ! Refresh All Popups
   useEffect(() => {
     if (mapRef.current) {
       mapRef.current.closePopup();
@@ -108,7 +110,14 @@ export default function MapKKD({ legend, kkd, fromChild }: Props) {
     loadGeoData();
   }, []);
 
-  const geoStyle = (feature: Feature<Geometry, any>) => {
+  // ! Loading if mapReady and geoData fetched
+  useEffect(() => {
+    if (mapReady && geoData.kkdWidi && geoData.kkdMakianMoti) {
+      loadStatus?.(false);
+    }
+  }, [mapReady, geoData, loadStatus]);
+
+  const geoStyle = (feature: Feature<Geometry>) => {
     const group = feature.properties?.Sub_Zona;
     switch (group) {
       case "Pariwisata Alam Perairan":
@@ -201,6 +210,7 @@ export default function MapKKD({ legend, kkd, fromChild }: Props) {
             mapRef.current = mapInstance; // save the instance
           }
         }}
+        whenReady={() => setMapReady(true)}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

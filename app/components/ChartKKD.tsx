@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
@@ -17,28 +17,13 @@ interface Props {
 export default function ChartKKD({ pages }: Props) {
   const [showDropDown, setShowDropDown] = useState(false);
   const [legend, setLegend] = useState("All");
-  // const [loading, setLoading] = useState(true);
-
   const [kkd, setKkd] = useState("malut");
-
   const [showSideMenu, setShowSideMenu] = useState(false);
+  const [mapLoad, setMapLoad] = useState(true);
 
-  const handleFromChild = (id: string) => {
-    // dataColdChain.find((e) => e.id === id && setSelected(e));
-    // document.getElementById("scrollToThis")?.scrollIntoView({
-    //   behavior: "smooth",
-    //   block: "center",
-    //   inline: "nearest",
-    // });
+  const handleFromChild = (status: boolean) => {
+    setMapLoad(status);
   };
-
-  // if (loading) {
-  //   return (
-  //     <div className="w-full h-[70vh] flex items-center justify-center">
-  //       <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="flex w-full">
@@ -272,34 +257,44 @@ export default function ChartKKD({ pages }: Props) {
 
         <div className="flex justify-between mb-6">
           {/* //! Dropdown */}
-          <form className="w-full">
+          <form>
             <select
               className="w-full p-2 rounded-xl border border-stone-200"
               onChange={(e) => setKkd(e.target.value)}
               defaultValue={"malut"}
             >
-              <option value={"malut"}>Provinsi Maluku Utara</option>
-              <option value={"makian_moti"}>
+              <option className="text-xs" value={"malut"}>
+                Provinsi Maluku Utara
+              </option>
+              <option className="text-xs" value={"makian_moti"}>
                 TWP Pulau Makian dan Pulau Moti
               </option>
-              <option value={"widi"}>TPK Kepulauan Widi</option>
+              <option className="text-xs" value={"widi"}>
+                TPK Kepulauan Widi
+              </option>
 
               {/* //! Unavailable KKD */}
-              {/* <option value={"morotai"}>
+              {/* <option className="text-xs" value={"morotai"}>
                 TWP Pulau Rao - Tanjung Dehegila
               </option> */}
-              {/* <option value={"mare"}>TWP Pulau Mare</option> */}
-              {/* <option value={"guraici"}>TPK Kepulauan Guraici</option> */}
+              {/* <option className="text-xs" value={"mare"}>TWP Pulau Mare</option> */}
+              {/* <option className="text-xs" value={"guraici"}>TPK Kepulauan Guraici</option> */}
             </select>
           </form>
         </div>
 
         {/* //! MAP */}
-        <div className="z-0">
+        <div className="relative z-0 min-h-[70vh]">
+          {mapLoad && (
+            <div className="absolute inset-0 z-[1000] flex flex-col justify-center items-center bg-white/80 backdrop-blur-sm">
+              <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
+              <p className="text-gray-600 text-sm mt-3">Loading map...</p>
+            </div>
+          )}
           <MapKKD_dynamic
             legend={legend}
             kkd={kkd}
-            fromChild={handleFromChild}
+            loadStatus={handleFromChild}
           />
           <div id="scrollToThis" className="flex flex-col w-full mt-6">
             <div></div>

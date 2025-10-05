@@ -60,6 +60,7 @@ export default function ChartColdChain({ pages }: Props) {
 
   const [dataColdChain, setDataColdChain] = useState<ColdChainRow[]>([]);
   const [selected, setSelected] = useState<ColdChainRow | null>(null);
+  const [mapLoad, setMapLoad] = useState(true);
 
   const [showSideMenu, setShowSideMenu] = useState(false);
 
@@ -119,6 +120,10 @@ export default function ChartColdChain({ pages }: Props) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleLoadMap = (status: boolean) => {
+    setMapLoad(status);
   };
 
   if (loading) {
@@ -368,11 +373,18 @@ export default function ChartColdChain({ pages }: Props) {
         </div>
 
         {/* //! MAP */}
+        {mapLoad && (
+          <div className="absolute inset-0 z-[1000] flex flex-col justify-center items-center bg-white/80 backdrop-blur-sm">
+            <div className="h-6 w-6 border-4 border-slate-300 border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-600 text-sm mt-3">Loading map...</p>
+          </div>
+        )}
         <div className="z-0 mb-8">
           <MapColdChain_dynamic
             legend={legend}
             data={dataColdChain}
             fromChild={handleFromChild}
+            loadStatus={handleLoadMap}
           />
           <div id="scrollToThis" className="flex flex-col w-full mt-6">
             {selected && (
