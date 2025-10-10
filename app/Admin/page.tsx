@@ -13,7 +13,7 @@ import AdminMessage from "../components/AdminMessage";
 
 export default function Page() {
   const router = useRouter();
-  const [content, setContent] = useState<string>("Dashboard");
+  const [content, setContent] = useState<string>("Inbox");
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [showSideMenu, setShowSideMenu] = useState(false);
@@ -52,12 +52,13 @@ export default function Page() {
           }`}
         >
           <div className="flex flex-col bg-sky-800 md:pt-10 pt-20 grow">
-            <h5
+            {/* //! Dashboard Disabled : Need More Content */}
+            {/* <h5
               className={`${content === "Dashboard" ? selected : unselected} 2xl:pl-6`}
               onClick={() => setContent("Dashboard")}
             >
               Dashboard
-            </h5>
+            </h5> */}
 
             <h5
               className={`${content === "Inbox" ? selected : unselected} 2xl:pl-6`}
@@ -84,12 +85,14 @@ export default function Page() {
             >
               Galeri
             </h5>
-            <h5
+
+            {/* //! Data Disabled : Need Confirmation for Data Flow */}
+            {/* <h5
               className={`${content === "Data" ? selected : unselected} 2xl:pl-6`}
               onClick={() => setContent("Data")}
             >
               Data
-            </h5>
+            </h5> */}
 
             {/* SEPARATOR */}
             <div className={"p-3 w-full"}></div>

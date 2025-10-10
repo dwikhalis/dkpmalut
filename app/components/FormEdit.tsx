@@ -599,7 +599,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
       {/* SUBMIT */}
       <button
         type="submit"
-        className="flex justify-center items-center bg-black text-white rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black md:mb-6 mb-3 p-1.5 md:p-3"
+        className="flex justify-center items-center bg-sky-800 text-white rounded-lg md:rounded-2xl hover:bg-stone-400 hover:text-black md:mb-6 mb-3 p-1.5 md:p-3"
       >
         <p
           className={`${

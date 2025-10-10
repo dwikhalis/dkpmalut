@@ -215,16 +215,16 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                     {admin && (
                       <div className="flex gap-2">
                         <div
-                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-18 2xl:h-18 bg-sky-500 rounded-lg 2xl:rounded-2xl justify-center items-center cursor-pointer"
+                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-10 2xl:h-10 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
                           onClick={() => sendToParent(e, "switch")}
                         >
-                          <Switch className="size-5 md:size-4 xl:size-6 2xl:size-10 text-white" />
+                          <Switch className="size-5 md:size-4 xl:size-6 2xl:size-6 text-white" />
                         </div>
                         <div
-                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-18 2xl:h-18 bg-rose-500 rounded-lg 2xl:rounded-2xl justify-center items-center cursor-pointer"
+                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-10 2xl:h-10 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"
                           onClick={() => setConfirmAction([false, e.id])}
                         >
-                          <Delete className="size-5 md:size-4 xl:size-6 2xl:size-10 text-white" />
+                          <Delete className="size-5 md:size-4 xl:size-6 2xl:size-6 text-white" />
                         </div>
                       </div>
                     )}

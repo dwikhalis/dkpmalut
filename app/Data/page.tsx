@@ -131,6 +131,14 @@ export default function Page() {
               link="/Data/infrastruktur-rantai-dingin"
             />
           </div>
+          <div className="w-[30%]">
+            <CardData
+              tag="Ruang Laut"
+              title="Kawasan Konervasi Perairan Daerah"
+              image="/assets/pic_data_kkd.png"
+              link="/Data/kawasan-konservasi-daerah"
+            />
+          </div>
         </div>
       </div>
     </section>

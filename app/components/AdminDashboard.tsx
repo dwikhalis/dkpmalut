@@ -42,10 +42,10 @@ export default function AdminDashboard({ select = () => {} }: Props) {
   }, []);
 
   return (
-    <div className="flex justify-center items-center h-[70vh] ml-8">
-      <div className="flex gap-6 flex-wrap w-full">
+    <div className="flex justify-center items-center min-h-[90vh] mx-8">
+      <div className="flex justify-between gap-6 flex-wrap w-full">
         <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 min-w-[30%] 2xl:h-100 cursor-pointer"
+          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
           onClick={() => {
             select("Organisasi");
           }}
@@ -56,7 +56,7 @@ export default function AdminDashboard({ select = () => {} }: Props) {
           </div>
         </div>
         <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 min-w-[30%] 2xl:h-100 cursor-pointer"
+          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
           onClick={() => {
             select("Berita");
           }}
@@ -67,7 +67,7 @@ export default function AdminDashboard({ select = () => {} }: Props) {
           </div>
         </div>
         <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 min-w-[30%] 2xl:h-100 cursor-pointer"
+          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
           onClick={() => {
             select("Galeri");
           }}
@@ -78,7 +78,7 @@ export default function AdminDashboard({ select = () => {} }: Props) {
           </div>
         </div>
         <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 min-w-[30%] 2xl:h-100 cursor-pointer"
+          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
           onClick={() => {
             select("Inbox");
           }}
