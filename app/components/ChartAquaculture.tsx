@@ -376,7 +376,7 @@ export default function ChartAquaculture({ pages }: Props) {
     <div className="flex w-full">
       {/* //! SIDE MENU (mobile) */}
       <aside
-        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-full transition-transform duration-300 md:translate-x-0 ${
           showSideMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -468,7 +468,7 @@ export default function ChartAquaculture({ pages }: Props) {
                 <button
                   className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                     showPembudi
-                      ? "bg-sky-600 text-white border-sky-600"
+                      ? "bg-teal-600 text-white border-teal-600"
                       : "border-white"
                   }`}
                   onClick={() => setShowPembudi((v) => !v)}
@@ -695,7 +695,7 @@ export default function ChartAquaculture({ pages }: Props) {
               <button
                 className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
                   showPembudi
-                    ? "bg-sky-600 text-white border-sky-600"
+                    ? "bg-teal-600 text-white border-teal-600"
                     : "bg-white"
                 }`}
                 onClick={() => setShowPembudi((v) => !v)}
