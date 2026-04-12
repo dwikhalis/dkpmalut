@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import SpinnerLoading from "../components/SpinnerLoading";
 import { getUserEmailList } from "@/lib/supabase/supabaseHelper";
+import { getBaseUrl } from "@/lib/utils/getBaseUrl";
 
 export default function Page() {
   const router = useRouter();
@@ -86,7 +87,6 @@ export default function Page() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 🚫 Block if still cooling down
     if (cooldown > 0) {
       setErrorMsg(`Tunggu ${cooldown} detik sebelum mencoba lagi`);
       return;
@@ -106,11 +106,12 @@ export default function Page() {
         return;
       }
 
+      // ✅ Use environment-based URL
+      const redirectTo = `${getBaseUrl()}/reset-password`;
+
       const { error } = await supabase.auth.resetPasswordForEmail(
         normalizedEmail,
-        {
-          redirectTo: window.location.origin + "/reset-password",
-        },
+        { redirectTo },
       );
 
       if (error) {
@@ -127,20 +128,15 @@ export default function Page() {
         }
       } else {
         setSuccessMsg("Email reset password telah dikirim. Cek email anda.");
-
-        // ✅ reset retry on success
         setRetryCount(0);
         setCooldown(60);
       }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : typeof err === "string"
-            ? err
-            : "Terjadi kesalahan";
-
-      setErrorMsg(message);
+      if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("Terjadi kesalahan");
+      }
     }
 
     setLoading(false);
