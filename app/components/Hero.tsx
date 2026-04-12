@@ -11,7 +11,6 @@ export default function Hero() {
           <h1 className="text-white">Mewujudkan</h1>
           <h1 className="text-white">Ekonomi</h1>
           <h1 className="text-white">Biru</h1>
-          <h3 className="text-white">{process.env.NEXT_PUBLIC_SITE_URL}</h3>
           <h3 className="text-white lg:w-full md:w-[50%]">
             Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi
             untuk mewujudkan Ekonomi Biru.
