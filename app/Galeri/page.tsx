@@ -19,7 +19,7 @@ export default async function Page() {
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
           {images.map((e, idx) => {
             return (
-              <div className="w-[30%]" key={idx}>
+              <div className="w-[30%] hover:cursor-pointer" key={idx}>
                 <Gallery type="regular" data={images} id={e.id} />
               </div>
             );
