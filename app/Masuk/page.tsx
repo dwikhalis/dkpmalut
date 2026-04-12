@@ -132,8 +132,15 @@ export default function Page() {
         setRetryCount(0);
         setCooldown(60);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "Terjadi kesalahan");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : "Terjadi kesalahan";
+
+      setErrorMsg(message);
     }
 
     setLoading(false);
