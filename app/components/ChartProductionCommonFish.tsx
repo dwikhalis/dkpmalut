@@ -83,7 +83,7 @@ function shortNameForChart(fullNameRaw: string | null | undefined): string {
 async function fetchAllRows<T>(
   table: string,
   columns: string,
-  pageSize = 1000
+  pageSize = 1000,
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
@@ -111,7 +111,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
   // Filters
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const [selectedSemester, setSelectedSemester] = useState<"all" | 1 | 2>(
-    "all"
+    "all",
   );
   const [selectedKab, setSelectedKab] = useState<"all" | string>("all");
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]); // multi (side menu)
@@ -152,7 +152,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
         >;
         const data = await fetchAllRows<TangkapRow>(
           "tangkap",
-          "kab, year, semester, class, common, name, landing, weight"
+          "kab, year, semester, class, common, name, landing, weight",
         );
         if (cancelled) return;
         const cleaned: Row[] = (data ?? []).map((r) => ({
@@ -225,23 +225,23 @@ export default function ChartProductionCommonFish({ pages }: Props) {
   /* ======= Filter keys ======= */
   const kabSelectedKey = useMemo(
     () => (selectedKab === "all" ? undefined : keyOf(selectedKab)),
-    [selectedKab]
+    [selectedKab],
   );
   const selectedClassKeys = useMemo(
     () =>
       selectedClasses.length > 0
         ? new Set(selectedClasses.map((d) => keyOf(d)))
         : undefined,
-    [selectedClasses]
+    [selectedClasses],
   );
   const yearSelected = selectedYear === "all" ? null : selectedYear;
   const semesterSelected = useMemo(
     () => (selectedSemester === "all" ? null : selectedSemester),
-    [selectedSemester]
+    [selectedSemester],
   );
   const landingSelectedKey = useMemo(
     () => (selectedLanding === "all" ? undefined : keyOf(selectedLanding)),
-    [selectedLanding]
+    [selectedLanding],
   );
 
   /* ======= Aggregation keyed by name ======= */
@@ -342,7 +342,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
     if (sortBy === "name") {
       arr.sort(
         (a, b) =>
-          a.tableLabel.localeCompare(b.tableLabel) * (order === "asc" ? 1 : -1)
+          a.tableLabel.localeCompare(b.tableLabel) * (order === "asc" ? 1 : -1),
       );
     } else {
       arr.sort((a, b) => (a.value - b.value) * (order === "asc" ? 1 : -1));
@@ -369,17 +369,17 @@ export default function ChartProductionCommonFish({ pages }: Props) {
 
   const tooltipLabels = useMemo(
     () => items.map((it) => it.tableLabel),
-    [items]
+    [items],
   );
 
   // Table helpers
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
-    []
+    [],
   );
   const grandTotal = useMemo(
     () => items.reduce((acc, r) => acc + r.value, 0),
-    [items]
+    [items],
   );
 
   // CSV
@@ -396,7 +396,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
   };
   const toCsv = (
     header: (string | number)[],
-    rowsData: (string | number)[][]
+    rowsData: (string | number)[][],
   ) => {
     const lines = [
       header.map(csvCell).join(","),
@@ -463,7 +463,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                       setSelectedClasses((prev) =>
                         e.target.checked
                           ? [...prev, c]
-                          : prev.filter((x) => x !== c)
+                          : prev.filter((x) => x !== c),
                       );
                     }}
                   />
@@ -528,7 +528,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                   onChange={(e) => {
                     const v = e.target.value as "all" | "1" | "2";
                     setSelectedSemester(
-                      v === "all" ? "all" : (Number(v) as 1 | 2)
+                      v === "all" ? "all" : (Number(v) as 1 | 2),
                     );
                   }}
                 >
@@ -556,7 +556,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                   value={selectedKab}
                   onChange={(e) =>
                     setSelectedKab(
-                      e.target.value === "all" ? "all" : e.target.value
+                      e.target.value === "all" ? "all" : e.target.value,
                     )
                   }
                 >
@@ -583,7 +583,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                   value={selectedLanding}
                   onChange={(e) =>
                     setSelectedLanding(
-                      e.target.value === "all" ? "all" : e.target.value
+                      e.target.value === "all" ? "all" : e.target.value,
                     )
                   }
                 >
@@ -745,7 +745,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
         <div className="flex w-full">
           {/* //! HEAD DROPDOWN */}
           <Link
-            href={"/Data"}
+            href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
@@ -776,7 +776,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
 
                 return (
                   <Link
-                    href={`/Data/${e.slug}`}
+                    href={`/data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
@@ -841,7 +841,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                 onChange={(e) => {
                   const v = e.target.value as "all" | "1" | "2";
                   setSelectedSemester(
-                    v === "all" ? "all" : (Number(v) as 1 | 2)
+                    v === "all" ? "all" : (Number(v) as 1 | 2),
                   );
                 }}
               >
@@ -878,7 +878,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                 value={selectedKab}
                 onChange={(e) =>
                   setSelectedKab(
-                    e.target.value === "all" ? "all" : e.target.value
+                    e.target.value === "all" ? "all" : e.target.value,
                   )
                 }
               >
@@ -912,7 +912,7 @@ export default function ChartProductionCommonFish({ pages }: Props) {
                 value={selectedLanding}
                 onChange={(e) =>
                   setSelectedLanding(
-                    e.target.value === "all" ? "all" : e.target.value
+                    e.target.value === "all" ? "all" : e.target.value,
                   )
                 }
               >

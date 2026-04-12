@@ -51,7 +51,7 @@ const toYear = (v: unknown): number | null => {
 async function fetchAllRows<T>(
   table: string,
   columns: string,
-  pageSize = 1000
+  pageSize = 1000,
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
@@ -75,7 +75,7 @@ function aggregateByKab(
   rows: Row[],
   pick: (r: Row) => number | string | null | undefined,
   yearSelected: number | null,
-  kabFilter?: Set<string>
+  kabFilter?: Set<string>,
 ) {
   const totals = new Map<string, number>();
   rows.forEach((r) => {
@@ -135,7 +135,7 @@ export default function ChartAquaculture({ pages }: Props) {
       try {
         const data = await fetchAllRows<Row>(
           "budidaya",
-          "kab, year, jum_rtp, jum_pembudidaya, luas_lahan, tot_produksi"
+          "kab, year, jum_rtp, jum_pembudidaya, luas_lahan, tot_produksi",
         );
         if (cancelled) return;
         setRowsBudidaya(data ?? []);
@@ -181,19 +181,19 @@ export default function ChartAquaculture({ pages }: Props) {
       rowsBudidaya,
       (r) => r.jum_pembudidaya,
       ySel,
-      kabSet
+      kabSet,
     );
     const tLahan = aggregateByKab(
       rowsBudidaya,
       (r) => r.luas_lahan,
       ySel,
-      kabSet
+      kabSet,
     );
     const tProd = aggregateByKab(
       rowsBudidaya,
       (r) => r.tot_produksi,
       ySel,
-      kabSet
+      kabSet,
     );
     return { tRTP, tPembudi, tLahan, tProd };
   }, [rowsBudidaya, selectedYear, selectedKabs]);
@@ -218,7 +218,7 @@ export default function ChartAquaculture({ pages }: Props) {
         labs.sort((a, b) => a.localeCompare(b) * (order === "asc" ? 1 : -1));
       } else {
         labs.sort(
-          (a, b) => (sumForKab(a) - sumForKab(b)) * (order === "asc" ? 1 : -1)
+          (a, b) => (sumForKab(a) - sumForKab(b)) * (order === "asc" ? 1 : -1),
         );
       }
 
@@ -282,15 +282,15 @@ export default function ChartAquaculture({ pages }: Props) {
           lahan: acc.lahan + r.lahan,
           prod: acc.prod + r.prod,
         }),
-        { rtp: 0, pembudi: 0, lahan: 0, prod: 0 }
+        { rtp: 0, pembudi: 0, lahan: 0, prod: 0 },
       ),
-    [tableRows]
+    [tableRows],
   );
 
   // Formatter
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
-    []
+    [],
   );
 
   /* ======= CSV ======= */
@@ -396,7 +396,7 @@ export default function ChartAquaculture({ pages }: Props) {
                       setSelectedKabs((prev) =>
                         e.target.checked
                           ? [...prev, kab]
-                          : prev.filter((k) => k !== kab)
+                          : prev.filter((k) => k !== kab),
                       );
                     }}
                   />
@@ -599,7 +599,7 @@ export default function ChartAquaculture({ pages }: Props) {
         <div className="flex w-full">
           {/* //! HEAD DROPDOWN */}
           <Link
-            href={"/Data"}
+            href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
@@ -632,7 +632,7 @@ export default function ChartAquaculture({ pages }: Props) {
 
                 return (
                   <Link
-                    href={`/Data/${e.slug}`}
+                    href={`/data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);

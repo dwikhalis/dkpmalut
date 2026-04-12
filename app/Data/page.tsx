@@ -89,7 +89,7 @@ export default function Page() {
                     }}
                     className="px-3 py-1.5 hover:bg-stone-100"
                   >
-                    <Link href={`Data/${e.slug}`}>
+                    <Link href={`data/${e.slug}`}>
                       <h5>{e.title}</h5>
                     </Link>
                   </div>
@@ -104,7 +104,7 @@ export default function Page() {
               tag="Tangkap, Budidaya"
               title="Produksi Perikanan Tangkap dan Budidaya per Kabupaten"
               image="/assets/pic_data_perikanan_kabupaten.png"
-              link="/Data/produksi-perikanan-kabupaten"
+              link="/data/produksi-perikanan-kabupaten"
             />
           </div>
           <div className="w-[30%]">
@@ -112,7 +112,7 @@ export default function Page() {
               tag="Tangkap"
               title="Produksi Perikanan Tangkap per Kelas Komoditas"
               image="/assets/pic_data_perikanan_kelas.png"
-              link="/Data/produksi-kelas-komoditas"
+              link="/data/produksi-kelas-komoditas"
             />
           </div>
           <div className="w-[30%]">
@@ -120,7 +120,7 @@ export default function Page() {
               tag="Budidaya"
               title="Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara"
               image="/assets/pic_data_perikanan_budidaya.png"
-              link="/Data/perikanan-budidaya-maluku-utara"
+              link="/data/perikanan-budidaya-maluku-utara"
             />
           </div>
           <div className="w-[30%]">
@@ -128,7 +128,7 @@ export default function Page() {
               tag="Infrastruktur"
               title="Infrastruktur Rantai Dingin"
               image="/assets/pic_data_rantai_dingin.png"
-              link="/Data/infrastruktur-rantai-dingin"
+              link="/data/infrastruktur-rantai-dingin"
             />
           </div>
           <div className="w-[30%]">
@@ -136,7 +136,7 @@ export default function Page() {
               tag="Ruang Laut"
               title="Kawasan Konervasi Perairan Daerah"
               image="/assets/pic_data_kkd.png"
-              link="/Data/kawasan-konservasi-daerah"
+              link="/data/kawasan-konservasi-daerah"
             />
           </div>
         </div>

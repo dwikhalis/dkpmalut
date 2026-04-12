@@ -46,7 +46,7 @@ function toYear(v: unknown): number | null {
 async function fetchAllRows<T>(
   table: string,
   columns: string,
-  pageSize = 1000
+  pageSize = 1000,
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
@@ -70,7 +70,7 @@ function aggregateByYear(
   rows: Row[],
   pick: (r: Row) => number | string | null | undefined,
   kabFilter?: Set<string>,
-  yearFilter?: Set<number>
+  yearFilter?: Set<number>,
 ) {
   const totals = new Map<number, number>();
   rows.forEach((r) => {
@@ -173,7 +173,7 @@ export default function ChartProductionYearFilter({ pages }: Props) {
       rowsBudidaya,
       (r) => r.tot_produksi,
       kabSet,
-      yearSet
+      yearSet,
     );
     const tt = aggregateByYear(rowsTangkap, (r) => r.weight, kabSet, yearSet);
     return { tb, tt };
@@ -191,7 +191,7 @@ export default function ChartProductionYearFilter({ pages }: Props) {
         (showBudidaya ? (totals.tb.get(y) ?? 0) : 0) +
         (showTangkap ? (totals.tt.get(y) ?? 0) : 0);
       arr.sort(
-        (a, b) => (sumForYear(a) - sumForYear(b)) * (order === "asc" ? 1 : -1)
+        (a, b) => (sumForYear(a) - sumForYear(b)) * (order === "asc" ? 1 : -1),
       );
     }
     return arr;
@@ -238,14 +238,14 @@ export default function ChartProductionYearFilter({ pages }: Props) {
           tang: acc.tang + r.tang,
           total: acc.total + r.total,
         }),
-        { bud: 0, tang: 0, total: 0 }
+        { bud: 0, tang: 0, total: 0 },
       ),
-    [tableRows]
+    [tableRows],
   );
 
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
-    []
+    [],
   );
 
   // ===== CSV (data-based) =====
@@ -351,7 +351,7 @@ export default function ChartProductionYearFilter({ pages }: Props) {
                         setSelectedYears((prev) =>
                           e.target.checked
                             ? [...prev, y]
-                            : prev.filter((v) => v !== y)
+                            : prev.filter((v) => v !== y),
                         );
                       }}
                     />
@@ -585,7 +585,7 @@ export default function ChartProductionYearFilter({ pages }: Props) {
         <div className="flex w-full">
           {/* //! HEAD + PAGE NAV */}
           <Link
-            href={"/Data"}
+            href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
@@ -617,7 +617,7 @@ export default function ChartProductionYearFilter({ pages }: Props) {
 
                 return (
                   <Link
-                    href={`/Data/${e.slug}`}
+                    href={`/data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
@@ -650,7 +650,7 @@ export default function ChartProductionYearFilter({ pages }: Props) {
                 value={selectedKab}
                 onChange={(e) =>
                   setSelectedKab(
-                    e.target.value === "all" ? "all" : e.target.value
+                    e.target.value === "all" ? "all" : e.target.value,
                   )
                 }
               >

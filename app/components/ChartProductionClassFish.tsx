@@ -67,7 +67,7 @@ function toSemester(v: unknown): 1 | 2 | null {
 async function fetchAllRows<T>(
   table: string,
   columns: string,
-  pageSize = 1000
+  pageSize = 1000,
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
@@ -93,7 +93,7 @@ function aggregateByClass(
   kabFilter?: Set<string>,
   yearSelected?: number | null,
   semesterSelected?: 1 | 2 | null,
-  landingSelected?: string | null
+  landingSelected?: string | null,
 ) {
   const totals = new Map<string, number>();
   rows.forEach((r) => {
@@ -132,7 +132,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
   const [selectedKabs, setSelectedKabs] = useState<string[]>([]); // multi (mobile side menu)
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all"); // single
   const [selectedSemester, setSelectedSemester] = useState<"all" | 1 | 2>(
-    "all"
+    "all",
   );
   const [selectedLanding, setSelectedLanding] = useState<"all" | string>("all");
   const [sortBy, setSortBy] = useState<"value" | "class">("class");
@@ -161,7 +161,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
         >;
         const data = await fetchAllRows<TangkapRow>(
           "tangkap",
-          "kab, year, semester, class, landing, weight"
+          "kab, year, semester, class, landing, weight",
         );
         if (cancelled) return;
         setRows((data ?? []) as Row[]);
@@ -219,7 +219,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
       kabSet,
       ySel,
       semSel,
-      landSel
+      landSel,
     );
   }, [rows, selectedKabs, selectedYear, selectedSemester, selectedLanding]);
 
@@ -234,7 +234,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
         labs.sort(
           (a, b) =>
             ((totals.get(a) ?? 0) - (totals.get(b) ?? 0)) *
-            (order === "asc" ? 1 : -1)
+            (order === "asc" ? 1 : -1),
         );
       }
 
@@ -255,17 +255,17 @@ export default function ChartProductionClassFish({ pages }: Props) {
         cls,
         val: totals.get(cls) ?? 0,
       })),
-    [labels, totals]
+    [labels, totals],
   );
 
   const grandTotal = useMemo(
     () => tableRows.reduce((acc, r) => acc + r.val, 0),
-    [tableRows]
+    [tableRows],
   );
 
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
-    []
+    [],
   );
 
   // CSV
@@ -285,7 +285,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
 
   const toCsv = (
     header: (string | number)[],
-    rowsData: (string | number)[][]
+    rowsData: (string | number)[][],
   ) => {
     const lines = [
       header.map(csvCell).join(","),
@@ -354,7 +354,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
                       setSelectedKabs((prev) =>
                         e.target.checked
                           ? [...prev, kab]
-                          : prev.filter((k) => k !== kab)
+                          : prev.filter((k) => k !== kab),
                       );
                     }}
                   />
@@ -419,7 +419,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
                   onChange={(e) => {
                     const v = e.target.value as "all" | "1" | "2";
                     setSelectedSemester(
-                      v === "all" ? "all" : (Number(v) as 1 | 2)
+                      v === "all" ? "all" : (Number(v) as 1 | 2),
                     );
                   }}
                 >
@@ -447,7 +447,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
                   value={selectedLanding}
                   onChange={(e) =>
                     setSelectedLanding(
-                      e.target.value === "all" ? "all" : e.target.value
+                      e.target.value === "all" ? "all" : e.target.value,
                     )
                   }
                 >
@@ -585,7 +585,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
         <div className="flex w-full">
           {/* //! HEAD DROPDOWN */}
           <Link
-            href={"/Data"}
+            href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
@@ -616,7 +616,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
 
                 return (
                   <Link
-                    href={`/Data/${e.slug}`}
+                    href={`/data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
@@ -681,7 +681,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
                 onChange={(e) => {
                   const v = e.target.value as "all" | "1" | "2";
                   setSelectedSemester(
-                    v === "all" ? "all" : (Number(v) as 1 | 2)
+                    v === "all" ? "all" : (Number(v) as 1 | 2),
                   );
                 }}
               >
@@ -743,7 +743,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
                 value={selectedLanding}
                 onChange={(e) =>
                   setSelectedLanding(
-                    e.target.value === "all" ? "all" : e.target.value
+                    e.target.value === "all" ? "all" : e.target.value,
                   )
                 }
               >

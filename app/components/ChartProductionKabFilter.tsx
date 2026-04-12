@@ -42,7 +42,7 @@ function toNum(v: unknown) {
 async function fetchAllRows<T>(
   table: string,
   columns: string,
-  pageSize = 1000
+  pageSize = 1000,
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
@@ -63,7 +63,7 @@ async function fetchAllRows<T>(
 
 function aggregate(
   rows: Row[],
-  pick: (r: Row) => number | string | null | undefined
+  pick: (r: Row) => number | string | null | undefined,
 ) {
   const totals = new Map<string, number>();
   rows.forEach((r) => {
@@ -137,14 +137,14 @@ export default function ChartProductionKabFilter({ pages }: Props) {
       selectedYear === "all"
         ? rowsBudidaya
         : rowsBudidaya.filter((r) => Number(r.year) === selectedYear),
-    [rowsBudidaya, selectedYear]
+    [rowsBudidaya, selectedYear],
   );
   const filteredTangkap = useMemo(
     () =>
       selectedYear === "all"
         ? rowsTangkap
         : rowsTangkap.filter((r) => Number(r.year) === selectedYear),
-    [rowsTangkap, selectedYear]
+    [rowsTangkap, selectedYear],
   );
 
   // totals by kab
@@ -191,7 +191,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
         labs.sort((a, b) => a.localeCompare(b) * (order === "asc" ? 1 : -1));
       } else {
         labs.sort(
-          (a, b) => (sumForKab(a) - sumForKab(b)) * (order === "asc" ? 1 : -1)
+          (a, b) => (sumForKab(a) - sumForKab(b)) * (order === "asc" ? 1 : -1),
         );
       }
 
@@ -236,14 +236,14 @@ export default function ChartProductionKabFilter({ pages }: Props) {
           tang: acc.tang + r.tang,
           total: acc.total + r.total,
         }),
-        { bud: 0, tang: 0, total: 0 }
+        { bud: 0, tang: 0, total: 0 },
       ),
-    [tableRows]
+    [tableRows],
   );
 
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
-    []
+    [],
   );
 
   // ===== CSV (data-based) =====
@@ -346,7 +346,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
                       setSelectedKabs((prev) =>
                         e.target.checked
                           ? [...prev, kab]
-                          : prev.filter((k) => k !== kab)
+                          : prev.filter((k) => k !== kab),
                       );
                     }}
                   />
@@ -605,7 +605,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
         <div className="flex w-full">
           {/* //! HEAD DROPDOWN */}
           <Link
-            href={"/Data"}
+            href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
@@ -638,7 +638,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
 
                 return (
                   <Link
-                    href={`/Data/${e.slug}`}
+                    href={`/data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
@@ -892,13 +892,13 @@ export default function ChartProductionKabFilter({ pages }: Props) {
                   {showTangkap && (
                     <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
                       {nf.format(
-                        unit === "ton" ? grand.tang / 1000 : grand.tang
+                        unit === "ton" ? grand.tang / 1000 : grand.tang,
                       )}
                     </td>
                   )}
                   <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
                     {nf.format(
-                      unit === "ton" ? grand.total / 1000 : grand.total
+                      unit === "ton" ? grand.total / 1000 : grand.total,
                     )}
                   </td>
                 </tr>

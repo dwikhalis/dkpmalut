@@ -98,14 +98,14 @@ export default function ChartColdChain({ pages }: Props) {
 
     // 1. Extract headers
     const headers = Object.keys(dataColdChain[0]).filter(
-      (h) => h !== "id" && h !== "created_at"
+      (h) => h !== "id" && h !== "created_at",
     );
 
     // 2. Build CSV content
     const rows = dataColdChain.map((row) =>
       headers
         .map((h) => JSON.stringify(row[h as keyof ColdChainRow] ?? ""))
-        .join(",")
+        .join(","),
     );
 
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -312,7 +312,7 @@ export default function ChartColdChain({ pages }: Props) {
         <div className="flex w-full">
           {/* //! HEAD DROPDOWN */}
           <Link
-            href={"/Data"}
+            href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
           >
             <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
@@ -345,7 +345,7 @@ export default function ChartColdChain({ pages }: Props) {
 
                 return (
                   <Link
-                    href={`/Data/${e.slug}`}
+                    href={`/data/${e.slug}`}
                     key={idx}
                     onClick={() => {
                       setShowDropDown(false);
