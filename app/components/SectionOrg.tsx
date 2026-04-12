@@ -112,7 +112,7 @@ export default function SectionOrg() {
               </div>
             </div>
             <Link
-              href="/Organisasi"
+              href="/organisasi"
               className="flex items-center gap-1 text-sky-500 hover:text-black"
             >
               <h5 className="py-3">STRUKTUR ORGANISASI</h5>
@@ -218,7 +218,7 @@ export default function SectionOrg() {
               </div>
             </div>
             <div className="flex justify-center">
-              <Link href="/Organisasi">
+              <Link href="/organisasi">
                 <h5 className="text-sky-500 hover:text-sky-300 py-3">
                   STRUKTUR ORGANISASI &rarr;
                 </h5>

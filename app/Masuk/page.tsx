@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import SpinnerLoading from "../components/SpinnerLoading";
+import { getUserEmailList } from "@/lib/supabase/supabaseHelper";
 
 export default function Page() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Mode can be: "signin", "register", or "forgot"
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
@@ -23,6 +26,33 @@ export default function Page() {
     setPassword("");
     clearMessages();
   }, [mode]);
+
+  //! Cooldown timer for forgot password (e.g., 60 seconds)
+  useEffect(() => {
+    if (cooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("resetCooldown");
+    if (saved) setCooldown(Number(saved));
+  }, []);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      localStorage.setItem("resetCooldown", cooldown.toString());
+    }
+  }, [cooldown]);
+
+  const getCooldownTime = (retryCount: number) => {
+    // exponential backoff: 60 → 120 → 180 → max 300
+    return Math.min(60 * (retryCount + 1), 300);
+  };
 
   //! RESET Messages
   const clearMessages = () => {
@@ -46,7 +76,7 @@ export default function Page() {
     } else {
       setSuccessMsg("Login berhasil!");
       setTimeout(() => {
-        router.push("/Admin");
+        router.push("/admin");
       }, 1000);
     }
     setLoading(false);
@@ -55,18 +85,57 @@ export default function Page() {
   //! FORGOT PASSWORD Handler
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 🚫 Block if still cooling down
+    if (cooldown > 0) {
+      setErrorMsg(`Tunggu ${cooldown} detik sebelum mencoba lagi`);
+      return;
+    }
+
     setLoading(true);
     clearMessages();
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password", // update if you want a custom reset page
-    });
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
 
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      setSuccessMsg("Email reset password telah dikirm. Cek email anda.");
+      const userId = await getUserEmailList(normalizedEmail);
+
+      if (!userId) {
+        setErrorMsg("Email belum terdaftar");
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        normalizedEmail,
+        {
+          redirectTo: window.location.origin + "/reset-password",
+        },
+      );
+
+      if (error) {
+        if (error.message.toLowerCase().includes("rate limit")) {
+          const newRetry = retryCount + 1;
+          const waitTime = getCooldownTime(newRetry);
+
+          setRetryCount(newRetry);
+          setCooldown(waitTime);
+
+          setErrorMsg(`Terlalu banyak permintaan. Tunggu ${waitTime} detik.`);
+        } else {
+          setErrorMsg(error.message);
+        }
+      } else {
+        setSuccessMsg("Email reset password telah dikirim. Cek email anda.");
+
+        // ✅ reset retry on success
+        setRetryCount(0);
+        setCooldown(60);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Terjadi kesalahan");
     }
+
     setLoading(false);
   };
 
@@ -154,11 +223,13 @@ export default function Page() {
                 />
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || cooldown > 0}
                   className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
                 >
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
+                  ) : cooldown > 0 ? (
+                    `Tunggu ${cooldown}s`
                   ) : (
                     "Kirim email reset password"
                   )}
@@ -181,7 +252,7 @@ export default function Page() {
           )}
           {successMsg && (
             <p className="mt-4 text-green-600 w-full text-center">
-              {successMsg} Menuju Dashboard...
+              {successMsg}
             </p>
           )}
         </div>

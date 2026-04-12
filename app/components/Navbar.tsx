@@ -94,31 +94,31 @@ export default function Navbar() {
           {/* Desktop Menu */}
           <div className="hidden md:flex 2xl:gap-12 gap-6 h-full">
             <Link
-              href="/Organisasi"
+              href="/organisasi"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
               <h6>Organisasi</h6>
             </Link>
             <Link
-              href="/Berita"
+              href="/berita"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
               <h6>Berita</h6>
             </Link>
             <Link
-              href="/Galeri"
+              href="/galeri"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
               <h6>Galeri</h6>
             </Link>
             <Link
-              href="/Data"
+              href="/data"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
               <h6>Data</h6>
             </Link>
             <Link
-              href="/Kontak"
+              href="/kontak"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
               <h6>Kontak</h6>
@@ -128,13 +128,13 @@ export default function Navbar() {
               <div className="flex justify-center items-center">
                 <button
                   className="px-[2vw] py-2.5 text-[1.2vw] bg-sky-900 text-white rounded-full hover:bg-sky-700 cursor-pointer"
-                  onClick={() => router.push("/Admin")}
+                  onClick={() => router.push("/admin")}
                 >
                   Dashboard
                 </button>
               </div>
             ) : (
-              <Link href="/Masuk" className="flex justify-center items-center">
+              <Link href="/masuk" className="flex justify-center items-center">
                 <button className="px-[2vw] py-2.5 text-[1.2vw] bg-sky-900 text-white rounded-full hover:bg-sky-700 cursor-pointer">
                   <h6>Masuk</h6>
                 </button>
@@ -193,7 +193,7 @@ export default function Navbar() {
     }`}
         >
           <Link
-            href="/Organisasi"
+            href="/organisasi"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
@@ -202,28 +202,28 @@ export default function Navbar() {
             </h4>
           </Link>
           <Link
-            href="/Berita"
+            href="/berita"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
             <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Berita</h4>
           </Link>
           <Link
-            href="/Galeri"
+            href="/galeri"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
             <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Galeri</h4>
           </Link>
           <Link
-            href="/Data"
+            href="/data"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
             <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Data</h4>
           </Link>
           <Link
-            href="/Kontak"
+            href="/kontak"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
@@ -232,7 +232,7 @@ export default function Navbar() {
           {isLoggedIn ? (
             <>
               <Link
-                href="/Admin"
+                href="/admin"
                 className="text-center"
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -264,7 +264,7 @@ export default function Navbar() {
             </>
           ) : (
             <Link
-              href="/Masuk"
+              href="/masuk"
               className="text-center"
               onClick={() => {
                 setIsMenuOpen(false);

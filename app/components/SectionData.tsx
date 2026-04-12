@@ -15,7 +15,7 @@ export default function SectionFive() {
       <div className="flex justify-center gap-6 flex-wrap mb-6">
         {/* //! BUTTON 1 */}
         <Link
-          href={"/Data"}
+          href={"/data"}
           className="flex justify-center items-center bg-white rounded-xl gap-3 p-3 hover:shadow-xl"
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
@@ -36,7 +36,7 @@ export default function SectionFive() {
 
         {/* //! BUTTON 2 */}
         <Link
-          href={"/Data"}
+          href={"/data"}
           className="flex justify-center items-center bg-white rounded-xl gap-3 p-3 hover:shadow-xl"
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >
@@ -57,7 +57,7 @@ export default function SectionFive() {
 
         {/* //! BUTTON 3 */}
         <Link
-          href={"/Data"}
+          href={"/data"}
           className="flex justify-center items-center bg-white rounded-xl gap-3 p-3 hover:shadow-xl"
           style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
         >

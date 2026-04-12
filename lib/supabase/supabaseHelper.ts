@@ -57,6 +57,26 @@ export const getStaff = async () => {
   }));
 };
 
+export const getUserEmailList = async (email: string) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  if (error) {
+    // Optional: check specific error type
+    if (error.code === "PGRST116") {
+      // No rows found
+      return false;
+    }
+
+    throw error; // real error (connection, permission, etc.)
+  }
+
+  return data.id;
+};
+
 export const deleteData = async (table: string, id: string) => {
   const { error } = await supabase.from(table).delete().eq("id", id);
 
@@ -72,7 +92,7 @@ export const deleteData = async (table: string, id: string) => {
 export const updateData = async (
   table: string,
   newData: object,
-  id: string
+  id: string,
 ) => {
   const { error } = await supabase.from(table).update(newData).eq("id", id);
 

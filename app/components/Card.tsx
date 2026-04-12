@@ -38,7 +38,7 @@ export default function Card({ type, data, id, loading }: Props) {
   if (type === "container") {
     const { tag, title, image } = select;
     return (
-      <Link href={`/Berita/${id}`}>
+      <Link href={`/berita/${id}`}>
         <div className="flex flex-col w-70 h-120 p-6 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
           <div className="w-full">
             <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
@@ -63,7 +63,7 @@ export default function Card({ type, data, id, loading }: Props) {
   } else if (type === "container-sm") {
     const { tag, title, image } = select;
     return (
-      <Link href={`/Berita/${id}`}>
+      <Link href={`/berita/${id}`}>
         <div className="flex flex-col w-45 h-70 p-3 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
           <div className="w-full">
             <div className="flex justify-center items-center h-30 mb-3 overflow-hidden">
@@ -88,7 +88,7 @@ export default function Card({ type, data, id, loading }: Props) {
   } else if (type === "container-mobile") {
     const { tag, title, image } = select;
     return (
-      <Link href={`/Berita/${id}`}>
+      <Link href={`/berita/${id}`}>
         <div className="flex flex-col w-full h-90 p-3 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
           <div className="w-full">
             <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
@@ -113,7 +113,7 @@ export default function Card({ type, data, id, loading }: Props) {
   } else if (type === "open") {
     const { tag, title, image, date } = select;
     return (
-      <Link href={`/Berita/${id}`}>
+      <Link href={`/berita/${id}`}>
         <div className="w-full">
           <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
             <Image
