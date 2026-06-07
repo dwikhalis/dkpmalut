@@ -81,7 +81,7 @@ export default function SectionNews() {
             )}
           </div>
           <div>
-            <Button size="xl" text="Lainnya" link="/Berita" />
+            <Button size="xl" text="Lainnya" link="/berita" />
           </div>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function SectionNews() {
             )}
           </div>
           <div>
-            <Button size="mobile-xl" text="Lainnya" link="/Berita" />
+            <Button size="mobile-xl" text="Lainnya" link="/berita" />
           </div>
         </div>
       </div>

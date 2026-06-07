@@ -44,7 +44,7 @@ export default function SectionGallery() {
           ) : (
             <Carousel type="desktop" pictures={pictures} />
           )}
-          <Button size="xl" text="Lainnya" link="/Galeri" />
+          <Button size="xl" text="Lainnya" link="/galeri" />
         </div>
       </section>
 
@@ -64,7 +64,7 @@ export default function SectionGallery() {
               <Carousel type="mobile" pictures={pictures} />
             )}
           </div>
-          <Button size="mobile-xl" text="Lainnya" link="/Galeri" />
+          <Button size="mobile-xl" text="Lainnya" link="/galeri" />
         </div>
       </section>
     </>
