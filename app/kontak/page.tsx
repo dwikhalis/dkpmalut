@@ -115,7 +115,6 @@ export default function Page() {
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
             }
-            required
           />
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"

@@ -119,6 +119,21 @@ export const getNumOf = async (dataset: string) => {
   return count ?? 0;
 };
 
+export const getNumNewMessage = async () => {
+  const { count, error } = await supabase
+    .from("message")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "baru");
+
+  if (error) {
+    alert("Fetching numOf New Message failed");
+    console.error(error);
+    throw error;
+  }
+
+  return count ?? 0;
+};
+
 export const getMessage = async () => {
   const { data, error } = await supabase.from("message").select("*");
 

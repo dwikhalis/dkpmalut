@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getNumOf } from "@/lib/supabase/supabaseHelper";
+import { getNumNewMessage, getNumOf } from "@/lib/supabase/supabaseHelper";
 
 interface Props {
   select?: (option: string) => void;
@@ -22,7 +22,7 @@ export default function AdminDashboard({ select = () => {} }: Props) {
           getNumOf("staff"),
           getNumOf("news"),
           getNumOf("gallery"),
-          getNumOf("message"),
+          getNumNewMessage(),
         ]);
 
         if (!mounted) return;

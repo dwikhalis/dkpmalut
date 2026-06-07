@@ -10,10 +10,11 @@ import AuthProtect from "../Auth/AuthProtect";
 import SpinnerLoading from "../components/SpinnerLoading";
 import AlertNotif from "../components/AlertNotif";
 import AdminMessage from "../components/AdminMessage";
+import AdminMitra from "../components/AdminMitra";
 
 export default function Page() {
   const router = useRouter();
-  const [content, setContent] = useState<string>("Inbox");
+  const [content, setContent] = useState<string>("Dashboard");
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [showSideMenu, setShowSideMenu] = useState(false);
@@ -52,13 +53,12 @@ export default function Page() {
           }`}
         >
           <div className="flex flex-col bg-sky-800 md:pt-10 pt-20 grow">
-            {/* //! Dashboard Disabled : Need More Content */}
-            {/* <h5
+            <h5
               className={`${content === "Dashboard" ? selected : unselected} 2xl:pl-6`}
               onClick={() => setContent("Dashboard")}
             >
               Dashboard
-            </h5> */}
+            </h5>
 
             <h5
               className={`${content === "Inbox" ? selected : unselected} 2xl:pl-6`}
@@ -85,14 +85,19 @@ export default function Page() {
             >
               Galeri
             </h5>
+            <h5
+              className={`${content === "Mitra" ? selected : unselected} 2xl:pl-6`}
+              onClick={() => setContent("Mitra")}
+            >
+              Mitra
+            </h5>
 
-            {/* //! Data Disabled : Need Confirmation for Data Flow */}
-            {/* <h5
+            <h5
               className={`${content === "Data" ? selected : unselected} 2xl:pl-6`}
               onClick={() => setContent("Data")}
             >
               Data
-            </h5> */}
+            </h5>
 
             {/* SEPARATOR */}
             <div className={"p-3 w-full"}></div>
@@ -152,11 +157,12 @@ export default function Page() {
           {content === "Dashboard" ? (
             <AdminDashboard select={handleSelect} />
           ) : null}
+          {content === "Inbox" ? <AdminMessage /> : null}
+          {content === "Organisasi" ? <AdminPages type="staff" /> : null}
           {content === "Berita" ? <AdminPages type="news" /> : null}
           {content === "Galeri" ? <AdminPages type="gallery" /> : null}
-          {content === "Organisasi" ? <AdminPages type="staff" /> : null}
+          {content === "Mitra" ? <AdminMitra /> : null}
           {content === "Data" ? <AdminData /> : null}
-          {content === "Inbox" ? <AdminMessage /> : null}
         </div>
 
         {/* //! LOGOUT POPUP CONFIRMATION  */}
