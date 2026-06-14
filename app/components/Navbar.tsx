@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "../Stores/authStores";
 import SpinnerLoading from "./SpinnerLoading";
 import AlertNotif from "./AlertNotif";
+import Button from "./Button";
 
 export default function Navbar() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function Navbar() {
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
-        <div className="flex justify-between w-full mx-8 lg:mx-12 2xl:mx-24">
+        <div className="flex justify-between w-full mx-8 lg:mx-12">
           {/* Logo Home Desktop */}
           <Link
             href="/"
@@ -125,20 +126,9 @@ export default function Navbar() {
             </Link>
 
             {isLoggedIn ? (
-              <div className="flex justify-center items-center">
-                <button
-                  className="px-[2vw] py-2.5 text-[1.2vw] bg-sky-900 text-white rounded-full hover:bg-sky-700 cursor-pointer"
-                  onClick={() => router.push("/admin")}
-                >
-                  Dashboard
-                </button>
-              </div>
+              <Button size="lg" text="Dashboard" link="/admin" />
             ) : (
-              <Link href="/masuk" className="flex justify-center items-center">
-                <button className="px-[2vw] py-2.5 text-[1.2vw] bg-sky-900 text-white rounded-full hover:bg-sky-700 cursor-pointer">
-                  <h6>Masuk</h6>
-                </button>
-              </Link>
+              <Button size="lg" text="Masuk" link="/masuk" />
             )}
           </div>
         </div>

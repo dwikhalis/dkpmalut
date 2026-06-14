@@ -57,6 +57,46 @@ export const getStaff = async () => {
   }));
 };
 
+export const getDataset = async (dataset: string) => {
+  const { data, error } = await supabase.from(dataset).select("*");
+
+  if (error) {
+    alert(`Get dataset ${dataset} Gagal!`);
+    console.error(error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+export async function updateDatasetRows<T extends { id: string }>(
+  tableName: string,
+  rows: T[],
+) {
+  if (rows.length === 0) return [];
+
+  const results = await Promise.all(
+    rows.map(async (row) => {
+      const { id, ...values } = row;
+
+      const { data, error } = await supabase
+        .from(tableName)
+        .update(values)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    }),
+  );
+
+  return results;
+}
+
 export const getUserEmailList = async (email: string) => {
   const { data, error } = await supabase
     .from("users")

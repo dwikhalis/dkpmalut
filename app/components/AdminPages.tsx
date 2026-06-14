@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { LeftChevron } from "@/public/icons/iconSets";
 import FormAdd from "./FormAdd";
 import FormEdit from "./FormEdit";
@@ -93,7 +93,7 @@ export default function AdminPages({ type }: Props) {
 
   const handleSignalUpdated = (signal: string) => {
     setConfirmUpdated(
-      signal === "No Update" ? labels.noUpdate : labels.updated(signal)
+      signal === "No Update" ? labels.noUpdate : labels.updated(signal),
     );
     setPage(labels.list);
   };
