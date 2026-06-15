@@ -12,24 +12,29 @@ export default function AdminDashboard({ select = () => {} }: Props) {
   const [numOfNews, setNumOfNews] = useState(0);
   const [numOfGallery, setNumOfGallery] = useState(0);
   const [numOfMessage, setNumOfMessage] = useState(0);
+  const [numOfDatasets, setNumOfDatasets] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
     const fetchNum = async () => {
       try {
-        const [staff, news, gallery, message] = await Promise.all([
-          getNumOf("staff"),
-          getNumOf("news"),
-          getNumOf("gallery"),
-          getNumNewMessage(),
-        ]);
+        const [staffs, news, galleries, messages, datasets] = await Promise.all(
+          [
+            getNumOf("staff"),
+            getNumOf("news"),
+            getNumOf("gallery"),
+            getNumNewMessage(),
+            getNumOf("datasets"),
+          ],
+        );
 
         if (!mounted) return;
-        setNumOfStaff(staff);
+        setNumOfStaff(staffs);
         setNumOfNews(news);
-        setNumOfGallery(gallery);
-        setNumOfMessage(message);
+        setNumOfGallery(galleries);
+        setNumOfMessage(messages);
+        setNumOfDatasets(datasets);
       } catch (err) {
         console.error("Error fetching numOf data:", err);
       }
@@ -86,6 +91,17 @@ export default function AdminDashboard({ select = () => {} }: Props) {
           <div className="flex flex-col justify-center items-center gap-2 w-full">
             <h3>Inbox</h3>
             <h1>{numOfMessage}</h1>
+          </div>
+        </div>
+        <div
+          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
+          onClick={() => {
+            select("Data");
+          }}
+        >
+          <div className="flex flex-col justify-center items-center gap-2 w-full">
+            <h3>Data</h3>
+            <h1>{numOfDatasets}</h1>
           </div>
         </div>
       </div>

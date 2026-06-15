@@ -1,5 +1,4 @@
 import { Failed, Success, Warning } from "@/public/icons/iconSets";
-import React from "react";
 import SpinnerLoading from "./SpinnerLoading";
 
 interface Props {
@@ -24,7 +23,7 @@ export default function AlertNotif({
   confirm = () => {},
 }: Props) {
   return (
-    <div className="flex fixed inset-0 z-10 justify-center items-center bg-black/50 w-[100vw] h-[100vh]">
+    <div className="flex fixed inset-0 z-50 justify-center items-center bg-black/50 w-[100vw] h-[100vh]">
       <div className="flex flex-col justify-center items-center rounded-2xl bg-stone-100 md:p-12 2xl:p-20 p-8">
         {icon === "warning" ? (
           <div className="h-20 w-20 2xl:h-35 2xl:w-35 mb-2">

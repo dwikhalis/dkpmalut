@@ -23,7 +23,7 @@ type ColdChainRow = {
   kel: string;
   type: string;
   kodkws: string;
-  tahun_ops: string;
+  year: string;
   level: string;
   name: string;
   es_pabrik: number;

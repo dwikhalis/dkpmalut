@@ -12,7 +12,6 @@ export default function page() {
           height={600}
           className="absolute w-auto h-full"
           priority
-          quality={100}
         />
         <div className="text-center relative z-10">
           <p className="text-9xl font-bold">404</p>

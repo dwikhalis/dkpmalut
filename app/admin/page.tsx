@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import AdminDashboard from "../components/AdminDashboard";
 import AdminPages from "../components/AdminPages";
 import AdminData from "../components/AdminData";

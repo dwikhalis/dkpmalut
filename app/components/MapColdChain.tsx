@@ -14,7 +14,7 @@ type ColdChainRow = {
   kel: string;
   type: string;
   kodkws: string;
-  tahun_ops: string;
+  year: string;
   level: string;
   name: string;
   es_pabrik: number;
@@ -249,7 +249,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : null
+          ) : null,
         )}
 
         {/* //! ice_factory */}
@@ -285,7 +285,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : null
+          ) : null,
         )}
 
         {/* //! ice_storage */}
@@ -318,7 +318,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : null
+          ) : null,
         )}
 
         {/* //! cs */}
@@ -346,7 +346,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : null
+          ) : null,
         )}
 
         {/* //! abf */}
@@ -374,7 +374,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : null
+          ) : null,
         )}
 
         {/* //! cpf */}
@@ -402,7 +402,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : null
+          ) : null,
         )}
       </MapContainer>
     </div>

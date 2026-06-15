@@ -57,16 +57,20 @@ export const getStaff = async () => {
   }));
 };
 
-export const getDataset = async (dataset: string) => {
-  const { data, error } = await supabase.from(dataset).select("*");
-
+export const getDatasets = async () => {
+  const { data, error } = await supabase.from("datasets").select("*");
   if (error) {
-    alert(`Get dataset ${dataset} Gagal!`);
+    alert("Get Datasets Gagal!");
     console.error(error);
     throw error;
   }
 
-  return data || [];
+  return (data || []).map((item) => ({
+    id: item.id ?? "",
+    name: item.name ?? "",
+    table: item.table ?? "",
+    source: item.source ?? "",
+  }));
 };
 
 export async function updateDatasetRows<T extends { id: string }>(
@@ -212,7 +216,7 @@ export const getColdChain = async () => {
     kel: item.kel ?? "",
     type: item.type ?? "",
     kodkws: item.kodkws ?? "",
-    tahun_ops: item.tahun_ops ?? "",
+    year: item.year ?? "",
     level: item.level ?? "",
     name: item.name ?? "",
     es_pabrik: item.es_pabrik ?? "",
@@ -239,4 +243,152 @@ export const getColdChain = async () => {
     lat: item.lat ?? "",
     desc: item.desc ?? "",
   }));
+};
+
+// ! FOR ACTUAL DATA (TANGKAP, BUDIDAYA, COLD_CHAIN, ETC.)
+
+//! GET DATASET
+export const getDataset = async (dataset: string) => {
+  const { data, error } = await supabase.from(dataset).select("*");
+
+  if (error) {
+    alert(`Get dataset ${dataset} Gagal!`);
+    console.error(error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+//! UPDATE
+export const updateDataRows = async (
+  datasetName: string,
+  rows: {
+    id: string;
+    [key: string]: string | number | null;
+  }[],
+) => {
+  const updates = rows.map(({ id, ...changes }) =>
+    supabase.from(datasetName).update(changes).eq("id", id),
+  );
+
+  const results = await Promise.all(updates);
+
+  const error = results.find((result) => result.error)?.error;
+
+  if (error) {
+    console.error("Update dataset failed:", error);
+    throw error;
+  }
+
+  return true;
+};
+
+//! ADD
+export const addDataRows = async (
+  datasetName: string,
+  rows: Record<string, string | number | null>[],
+) => {
+  const { data, error } = await supabase
+    .from(datasetName)
+    .insert(rows)
+    .select();
+
+  if (error) {
+    console.error("Insert data failed:", error);
+    throw error;
+  }
+
+  console.log(data);
+
+  return data;
+};
+
+//! DELETE
+export const deleteDataRows = async (datasetName: string, ids: string[]) => {
+  const { error } = await supabase.from(datasetName).delete().in("id", ids);
+
+  if (error) {
+    console.error("Delete data failed:", error);
+    throw error;
+  }
+
+  return true;
+};
+
+//! GET DATASET WITH SUPABASE "RPC" TO HANDLE LARGE DATA
+type DatasetValue = string | number | boolean | null;
+
+type DatasetRow = {
+  id: string;
+  [key: string]: DatasetValue;
+};
+
+type GetDatasetPageParams = {
+  datasetName: string;
+  filters: Record<string, string>;
+  sortBy: string;
+  sortDesc: boolean;
+  page: number;
+  pageSize: number;
+};
+
+//! Pagination
+export const getDatasetPage = async ({
+  datasetName,
+  filters,
+  sortBy,
+  sortDesc,
+  page,
+  pageSize,
+}: GetDatasetPageParams) => {
+  const cleanFilters = Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => {
+      return value !== "all" && value !== "";
+    }),
+  );
+
+  const { data, error } = await supabase.rpc("get_data_table_page", {
+    p_table: datasetName,
+    p_filters: cleanFilters,
+    p_sort_by: sortBy,
+    p_sort_desc: sortDesc,
+    p_page: page,
+    p_page_size: pageSize,
+  });
+
+  if (error) {
+    console.error("Fetching dataset page failed:", error);
+    throw error;
+  }
+
+  const rows = (data ?? []) as unknown as {
+    row_data: DatasetRow;
+    total_count: number;
+  }[];
+
+  return {
+    data: rows.map((row) => row.row_data),
+    count: Number(rows[0]?.total_count ?? 0),
+  };
+};
+
+//! Get Distinct Data
+export const getDistinctColumnValues = async (
+  datasetName: string,
+  columnName: string,
+) => {
+  const { data, error } = await supabase.rpc("get_distinct_filter_values", {
+    p_table: datasetName,
+    p_column: columnName,
+  });
+
+  if (error) {
+    console.error("Fetching distinct filter values failed:", error);
+    throw error;
+  }
+
+  const rows = (data ?? []) as unknown as { value: string }[];
+
+  return rows.map((row) => row.value);
 };

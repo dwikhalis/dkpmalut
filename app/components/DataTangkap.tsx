@@ -1,9 +1,5 @@
 import DataTable, { type ColumnConfig, type FilterConfig } from "./DataTable";
 
-interface Props {
-  action: "add" | "edit" | "list";
-}
-
 const tangkapColumns: ColumnConfig[] = [
   {
     key: "kab",
@@ -26,14 +22,14 @@ const tangkapColumns: ColumnConfig[] = [
     key: "landing",
     label: "Pendaratan",
     editable: true,
-    inputType: "string",
+    inputType: "text",
     align: "left",
   },
   {
     key: "name",
     label: "Nama Ikan",
     editable: true,
-    inputType: "string",
+    inputType: "text",
     align: "left",
   },
   {
@@ -66,10 +62,20 @@ const tangkapFilters: FilterConfig[] = [
   },
 ];
 
-export default function DataTangkap({ action }: Props) {
+export default function DataTangkap({
+  action,
+  saveData,
+  onSignalUpdated,
+}: {
+  action: "add" | "edit" | "list" | "delete";
+  saveData: number;
+  onSignalUpdated: (signal: string) => void;
+}) {
   return (
     <DataTable
       action={action}
+      saveData={saveData}
+      onSignalUpdated={onSignalUpdated}
       datasetName="tangkap"
       columns={tangkapColumns}
       filters={tangkapFilters}

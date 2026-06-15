@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { LeftChevron } from "@/public/icons/iconSets";
-import AlertNotif from "./AlertNotif";
+import { useEffect, useState } from "react";
+import { LeftChevron, VerticalThreeDot } from "@/public/icons/iconSets";
 import DataBudidaya from "./DataBudidaya";
 import DataTangkap from "./DataTangkap";
 import Button from "./Button";
 import DataColdChain from "./DataColdChain";
+import { getDatasets } from "@/lib/supabase/supabaseHelper";
+
+type DataPage = {
+  id: string;
+  name: string;
+  table: string;
+  source: string;
+};
 
 export default function AdminData() {
-  const [confirmUpdated, setConfirmUpdated] = useState("");
-  const [confirmAdded, setConfirmAdded] = useState("");
-
   const [dataset, setDataset] = useState<string>("");
-  const [action, setAction] = useState<"add" | "edit" | "list">("list");
+  const [action, setAction] = useState<"add" | "edit" | "list" | "delete">(
+    "list",
+  );
   const [page, setPage] = useState<string>("Data");
+  const [dataPages, setDataPages] = useState<DataPage[]>([]);
+
+  const [showMobileAction, setShowMobileAction] = useState(false);
+  const [saveData, setSaveData] = useState(0);
 
   const labels = {
     home: "Data",
@@ -27,40 +37,38 @@ export default function AdminData() {
     added: "Data telah ditambahkan",
   };
 
-  const dataPages = [
-    { name: "Perikanan Budidaya", dataset: "budidaya" },
-    { name: "Perikanan Tangkap", dataset: "tangkap" },
-    { name: "Rantai Dingin", dataset: "cold_chain" },
-  ];
+  useEffect(() => {
+    const fetchDataPages = async () => {
+      try {
+        const result = await getDatasets();
 
-  const handleSignalUpdated = (signal: string) => {
-    setConfirmUpdated(
-      signal === "No Update" ? labels.noUpdate : labels.updated,
-    );
-    setPage(labels.list);
+        setDataPages(result);
+      } catch (err) {
+        console.error("Fetching Datasets :", err);
+      }
+    };
+
+    fetchDataPages();
+  }, []);
+
+  const handleSignalUpdated = () => {
+    setAction("list");
   };
 
   const handleSignalAdded = (signal: string) => {
-    setConfirmAdded(signal === "No Add" ? labels.noAdd : labels.added);
     setPage(labels.list);
-  };
-
-  const handleAlert = (signal: boolean) => {
-    if (!signal) return;
-    setConfirmAdded("");
-    setConfirmUpdated("");
   };
 
   return (
     <>
       <div className="flex flex-col">
         {/* //! TOP TITLE AND ACTION */}
-        <div className="relative flex items-center my-8">
+        <div className="flex items-center justify-center my-6">
           {/*//! Back Button */}
           <div
             className={`${
               page === labels.home ? "hidden" : "flex"
-            } flex absolute left-0 py-6 pr-12 cursor-pointer`}
+            } flex py-6 pr-12 cursor-pointer`}
             onClick={() => {
               setPage(labels.home);
               setDataset("");
@@ -73,51 +81,106 @@ export default function AdminData() {
           {/*//! Top Title */}
           <p className="font-bold text-center mx-auto text-lg">{page}</p>
 
-          {/*//! Action Button */}
-          <div
-            className={`${page === labels.home ? "hidden" : "flex"} gap-1 absolute right-0`}
-          >
+          {/*//! DESKTOP : Action Button */}
+          <div className="hidden md:flex justify-center items-center">
             <div
-              onClick={() => setAction("edit")}
-              className={
-                action === "edit" || action === "add" ? "hidden" : "flex"
-              }
+              className={`${page === labels.home ? "hidden" : "flex"} gap-1`}
             >
-              <Button
-                color="blue"
-                size="lg"
-                text="Edit"
-                textSize="sm"
-                link="none"
-              />
+              {/* //! Edit Button */}
+              <div
+                onClick={() => setAction("edit")}
+                className={
+                  action === "edit" || action === "add" ? "hidden" : "flex"
+                }
+              >
+                <Button
+                  color="blue"
+                  size="lg"
+                  text="Edit"
+                  textSize="sm"
+                  link="none"
+                />
+              </div>
+
+              {/* //! Add Button */}
+              <div
+                onClick={() => setAction("add")}
+                className={
+                  action === "edit" || action === "add" ? "hidden" : "flex"
+                }
+              >
+                <Button
+                  color="green"
+                  size="lg"
+                  textSize="sm"
+                  text="Tambah"
+                  link="none"
+                />
+              </div>
+
+              {/* //! Cancel Button */}
+              <div
+                onClick={() => setAction("list")}
+                className={
+                  action === "edit" || action === "add" ? "flex" : "hidden"
+                }
+              >
+                <Button
+                  color="grey"
+                  size="lg"
+                  textSize="sm"
+                  text="Batal"
+                  link="none"
+                />
+              </div>
+
+              {/* //! Save Button */}
+              <div
+                onClick={() => setSaveData((prev) => prev + 1)}
+                className={
+                  action === "edit" || action === "add" ? "flex" : "hidden"
+                }
+              >
+                <Button
+                  color="green"
+                  size="lg"
+                  textSize="sm"
+                  text="Simpan"
+                  link="none"
+                />
+              </div>
+
+              {/* //! Delete Button */}
+              <div
+                onClick={() => setAction("delete")}
+                className={
+                  action === "edit" || action === "add" || action === "delete"
+                    ? "hidden"
+                    : "flex"
+                }
+              >
+                <Button
+                  color="red"
+                  size="lg"
+                  textSize="sm"
+                  text="Hapus"
+                  link="none"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* //! MOBILE Action - Setting Button */}
+          <div className="flex md:hidden justify-center items-center">
             <div
-              onClick={() => setAction("add")}
-              className={
-                action === "edit" || action === "add" ? "hidden" : "flex"
-              }
+              className={`${
+                page === labels.home ? "hidden" : "flex"
+              } flex py-6 pl-12 cursor-pointer`}
+              onClick={() => {
+                setShowMobileAction(true);
+              }}
             >
-              <Button
-                color="green"
-                size="lg"
-                textSize="sm"
-                text="Tambah"
-                link="none"
-              />
-            </div>
-            <div
-              onClick={() => setAction("list")}
-              className={
-                action === "edit" || action === "add" ? "flex" : "hidden"
-              }
-            >
-              <Button
-                color="grey"
-                size="lg"
-                textSize="sm"
-                text="cancel"
-                link="none"
-              />
+              <VerticalThreeDot className="size-6" />
             </div>
           </div>
         </div>
@@ -132,7 +195,8 @@ export default function AdminData() {
               } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
               onClick={() => {
                 setPage(e.name);
-                setDataset(e.dataset);
+                setDataset(e.table);
+                setAction("list");
               }}
             >
               {e.name}
@@ -140,41 +204,128 @@ export default function AdminData() {
           ))}
 
           {/*//! DATA BUDIDAYA */}
-          <div
-            className={`${page !== labels.home && dataset === "budidaya" ? "flex" : "hidden"}`}
-          >
-            <DataBudidaya action={action} />
-          </div>
+          {dataset === "budidaya" && page !== labels.home && (
+            <DataBudidaya
+              action={action}
+              saveData={saveData}
+              onSignalUpdated={handleSignalUpdated}
+            />
+          )}
 
           {/*//! DATA TANGKAP */}
-          <div
-            className={`${page !== labels.home && dataset === "tangkap" ? "flex" : "hidden"}`}
-          >
-            <DataTangkap action={action} />
-          </div>
+          {dataset === "tangkap" && page !== labels.home && (
+            <DataTangkap
+              action={action}
+              saveData={saveData}
+              onSignalUpdated={handleSignalUpdated}
+            />
+          )}
 
           {/*//! DATA COLDCHAIN */}
-          <div
-            className={`${page !== labels.home && dataset === "cold_chain" ? "flex" : "hidden"}`}
-          >
-            <DataColdChain action={action} />
-          </div>
+          {dataset === "cold_chain" && page !== labels.home && (
+            <DataColdChain
+              action={action}
+              saveData={saveData}
+              onSignalUpdated={handleSignalUpdated}
+            />
+          )}
         </div>
       </div>
 
-      {/* Alert */}
-      <div className={confirmUpdated || confirmAdded ? "flex" : "hidden"}>
-        <AlertNotif
-          type="single"
-          msg={confirmUpdated || confirmAdded}
-          yesText="OK"
-          confirm={handleAlert}
-          icon={
-            confirmUpdated === (labels.noUpdate || labels.noAdd)
-              ? "warning"
-              : "success"
-          }
-        />
+      {/* //! BOTTOM MOBILE ACTION MENU */}
+      <div
+        className={`fixed md:hidden inset-0 z-20 bg-gray-950/70 transition-opacity duration-300 ${
+          showMobileAction
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setShowMobileAction(false)}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`fixed bottom-0 left-0 flex w-full flex-col items-center justify-center gap-3 rounded-t-2xl bg-stone-900 p-5 transition-transform duration-300 ease-out ${
+            showMobileAction ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          <div className="flex gap-2 w-full">
+            <button
+              className="w-full bg-sky-800 rounded-xl border-2 border-white py-2 text-md text-white"
+              onClick={() => {
+                setAction("edit");
+                setShowMobileAction(false);
+              }}
+            >
+              Edit
+            </button>
+
+            <button
+              className="w-full bg-green-600 rounded-xl border-2 border-white py-2 text-md text-white"
+              onClick={() => {
+                setAction("add");
+                setShowMobileAction(false);
+              }}
+            >
+              Tambah
+            </button>
+
+            <button
+              className="w-full bg-red-600 rounded-xl border-2 border-white py-2 text-md text-white"
+              onClick={() => {
+                setAction("delete");
+                setShowMobileAction(false);
+              }}
+            >
+              Hapus
+            </button>
+          </div>
+
+          <button
+            className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
+            onClick={() => {
+              setShowMobileAction(false);
+            }}
+          >
+            Download CSV
+          </button>
+        </div>
+      </div>
+
+      {/* //! MOBILE : Cancel / Save Button */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`fixed md:hidden bottom-0 left-0 flex w-full flex-col justify-center gap-3 rounded-t-2xl bg-stone-900 p-5 transition-transform duration-300 ease-out ${
+          action === "edit" || action === "add" || action === "delete"
+            ? "translate-y-0"
+            : "translate-y-full"
+        }`}
+      >
+        {/* Cancel button */}
+        <button
+          className="w-full rounded-xl bg-gray-600 border-2 border-white py-2 text-md text-white"
+          onClick={() => setAction("list")}
+        >
+          Batal
+        </button>
+
+        {/* Save button for Add / Edit */}
+        {(action === "edit" || action === "add") && (
+          <button
+            className="w-full rounded-xl bg-green-600 border-2 border-white py-2 text-md text-white"
+            onClick={() => setSaveData((prev) => prev + 1)}
+          >
+            Simpan
+          </button>
+        )}
+
+        {/* Delete button for Delete mode */}
+        {action === "delete" && (
+          <button
+            className="w-full rounded-xl bg-rose-600 border-2 border-white py-2 text-md text-white"
+            onClick={() => setSaveData((prev) => prev + 1)}
+          >
+            Hapus
+          </button>
+        )}
       </div>
     </>
   );
