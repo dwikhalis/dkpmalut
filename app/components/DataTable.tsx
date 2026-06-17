@@ -24,6 +24,7 @@ export type ColumnConfig = {
   label: string;
   editable?: boolean;
   inputType?: HTMLInputTypeAttribute;
+  color?: string;
   align?: "left" | "center" | "right";
 };
 
@@ -55,7 +56,7 @@ const createEmptyRows = (count: number) => {
 interface Props {
   action: "add" | "edit" | "list" | "delete";
   saveData: number;
-  onSignalUpdated: (signal: string) => void;
+  onSignalAction: (signal: string) => void;
   datasetName: string;
   columns: ColumnConfig[];
   filters?: FilterConfig[];
@@ -65,7 +66,7 @@ interface Props {
 export default function DataTable({
   action,
   saveData,
-  onSignalUpdated,
+  onSignalAction,
   datasetName,
   columns,
   filters = [],
@@ -496,15 +497,15 @@ export default function DataTable({
   //! HANDLE FUNCTION FOR RESULT TO TRIGGER ALERT NOTIFICATION
   const handleResultAlert = () => {
     if (alertType === "success-update") {
-      onSignalUpdated("Updated");
+      onSignalAction("Updated");
     }
 
     if (alertType === "success-add") {
-      onSignalUpdated("Added");
+      onSignalAction("Added");
     }
 
     if (alertType === "success-delete") {
-      onSignalUpdated("Deleted");
+      onSignalAction("Deleted");
     }
 
     setAlertType("none");
@@ -559,62 +560,63 @@ export default function DataTable({
         <div className="w-full h-full flex flex-col">
           {/* //! TABLE : ADDING NEW DATA */}
           {action === "add" ? (
-            <div className="w-full overflow-x-auto">
+            <div className="w-[85vw] md:w-full overflow-x-auto">
               <div className="overflow-x-auto mb-6">
-                <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-                  <thead className="bg-sky-100">
-                    <tr>
-                      {columns.map((col) => (
-                        <th
-                          key={col.key}
-                          className="px-3 py-2 border border-gray-400 whitespace-normal break-words"
-                        >
-                          {col.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {newRows.map((row, rowIndex) => (
-                      <tr key={row.id}>
-                        {columns.map((col, colIndex) => {
-                          const alignClass =
-                            col.align === "right"
-                              ? "text-right"
-                              : col.align === "center"
-                                ? "text-center"
-                                : "text-left";
-
-                          return (
-                            <td
-                              key={col.key}
-                              className={`border border-gray-400 p-0 ${alignClass}`}
-                            >
-                              <input
-                                type={col.inputType ?? "text"}
-                                value={String(row[col.key] ?? "")}
-                                onChange={(e) =>
-                                  handleNewCellChange(
-                                    rowIndex,
-                                    col.key,
-                                    e.target.value,
-                                    col.inputType,
-                                  )
-                                }
-                                onPaste={(e) =>
-                                  handlePasteToAdd(e, rowIndex, colIndex)
-                                }
-                                placeholder="N/A"
-                                className={`w-full px-3 py-2 border-2 border-green-600 ${alignClass}`}
-                              />
-                            </td>
-                          );
-                        })}
+                <div className="border-1 border-gray-950/20 rounded-sm overflow-x-auto mb-6">
+                  <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
+                    <thead>
+                      <tr>
+                        {columns.map((col) => (
+                          <th
+                            key={col.key}
+                            className={`${col.color ? col.color : "bg-sky-100"} px-3 py-2 border border-gray-400 whitespace-normal break-words`}
+                          >
+                            {col.label}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody>
+                      {newRows.map((row, rowIndex) => (
+                        <tr key={row.id}>
+                          {columns.map((col, colIndex) => {
+                            const alignClass =
+                              col.align === "right"
+                                ? "text-right"
+                                : col.align === "center"
+                                  ? "text-center"
+                                  : "text-left";
+
+                            return (
+                              <td
+                                key={col.key}
+                                className={`border border-gray-400 p-0 ${alignClass}`}
+                              >
+                                <input
+                                  type={col.inputType ?? "text"}
+                                  value={String(row[col.key] ?? "")}
+                                  onChange={(e) =>
+                                    handleNewCellChange(
+                                      rowIndex,
+                                      col.key,
+                                      e.target.value,
+                                      col.inputType,
+                                    )
+                                  }
+                                  onPaste={(e) =>
+                                    handlePasteToAdd(e, rowIndex, colIndex)
+                                  }
+                                  className={`w-full px-3 py-2 ${alignClass}`}
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ) : (
@@ -667,7 +669,7 @@ export default function DataTable({
 
               <div className="border-1 border-gray-950/20 rounded-sm overflow-x-auto mb-6">
                 <table className="min-w-full border lg:text-sm md:text-[1.5vw] text-[2vw]">
-                  <thead className="bg-sky-100">
+                  <thead>
                     <tr>
                       {action === "delete" && (
                         <th className="px-3 py-2 border border-gray-400 text-center">
@@ -688,7 +690,7 @@ export default function DataTable({
                       {columns.map((col) => (
                         <th
                           key={col.key}
-                          className="px-3 py-2 border border-gray-400 whitespace-normal break-words"
+                          className={`${col.color ? col.color : "bg-sky-100"} px-3 py-2 border border-gray-400 whitespace-normal break-words`}
                         >
                           {col.label}
                         </th>
@@ -747,7 +749,7 @@ export default function DataTable({
                                       handlePasteToEdit(e, rowIndex, colIndex)
                                     }
                                     placeholder="N/A"
-                                    className={`w-full px-3 py-2 border-2 border-sky-600 ${alignClass}`}
+                                    className={`w-full px-3 py-2 ${alignClass}`}
                                   />
                                 ) : (
                                   displayValue(value)

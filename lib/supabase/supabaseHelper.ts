@@ -228,7 +228,7 @@ export const getColdChain = async () => {
     abf_kondisi: item.abf_kondisi ?? "",
     abf_tahun: item.abf_tahun ?? "",
     es_storage: item.es_storage ?? "",
-    es_storage_jum: item.es_storage_jum ?? "",
+    es_storage_jum_unit: item.es_storage_jum_unit ?? "",
     es_storage_kondisi: item.es_storage_kondisi ?? "",
     es_storage_tahun: item.es_storage_tahun ?? "",
     cs: item.cs ?? "",

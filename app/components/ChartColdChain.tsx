@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 import "leaflet/dist/leaflet.css";
 import MapColdChain_dynamic from "./MapColdChain_dynamic";
@@ -35,7 +35,7 @@ type ColdChainRow = {
   abf_kondisi: string;
   abf_tahun: string;
   es_storage: number;
-  es_storage_jum: number;
+  es_storage_jum_unit: number;
   es_storage_kondisi: string;
   es_storage_tahun: string;
   cs: number;
@@ -139,7 +139,7 @@ export default function ChartColdChain({ pages }: Props) {
       {/*//! ===== SIDEBAR =====  */}
       <aside
         className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
-          showSideMenu ? "translate-x-0" : "-translate-x-60"
+          showSideMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col gap-3 min-w-50 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white pb-20 w-full h-full overflow-y-scroll scrollbar-hide">
@@ -436,7 +436,7 @@ export default function ChartColdChain({ pages }: Props) {
                         Penyimpanan Es
                       </td>
                       <td className="px-3 py-2 border border-gray-400">
-                        {selected.es_storage_jum || "-"}
+                        {selected.es_storage_jum_unit || "-"}
                       </td>
                       <td className="px-3 py-2 border border-gray-400">
                         {selected.es_storage || "-"}

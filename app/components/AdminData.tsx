@@ -51,19 +51,15 @@ export default function AdminData() {
     fetchDataPages();
   }, []);
 
-  const handleSignalUpdated = () => {
+  const handleSignalAction = () => {
     setAction("list");
-  };
-
-  const handleSignalAdded = (signal: string) => {
-    setPage(labels.list);
   };
 
   return (
     <>
       <div className="flex flex-col">
         {/* //! TOP TITLE AND ACTION */}
-        <div className="flex items-center justify-center my-6">
+        <div className="flex relative items-center justify-center my-6">
           {/*//! Back Button */}
           <div
             className={`${
@@ -80,6 +76,11 @@ export default function AdminData() {
 
           {/*//! Top Title */}
           <p className="font-bold text-center mx-auto text-lg">{page}</p>
+
+          {/* //! OPTION BUTTON TO SETTING DATASETS METADATA */}
+          {/* <div className="absolute right-0">
+            <VerticalThreeDot className="size-6 cursor-pointer hover:border-1 rounded-sm" />
+          </div> */}
 
           {/*//! DESKTOP : Action Button */}
           <div className="hidden md:flex justify-center items-center">
@@ -175,12 +176,12 @@ export default function AdminData() {
             <div
               className={`${
                 page === labels.home ? "hidden" : "flex"
-              } flex py-6 pl-12 cursor-pointer`}
+              } flex py-6 pl-12`}
               onClick={() => {
                 setShowMobileAction(true);
               }}
             >
-              <VerticalThreeDot className="size-6" />
+              <VerticalThreeDot className="size-6 cursor-pointer hover:border rounded-sm" />
             </div>
           </div>
         </div>
@@ -208,7 +209,7 @@ export default function AdminData() {
             <DataBudidaya
               action={action}
               saveData={saveData}
-              onSignalUpdated={handleSignalUpdated}
+              onSignalAction={handleSignalAction}
             />
           )}
 
@@ -217,7 +218,7 @@ export default function AdminData() {
             <DataTangkap
               action={action}
               saveData={saveData}
-              onSignalUpdated={handleSignalUpdated}
+              onSignalAction={handleSignalAction}
             />
           )}
 
@@ -226,7 +227,7 @@ export default function AdminData() {
             <DataColdChain
               action={action}
               saveData={saveData}
-              onSignalUpdated={handleSignalUpdated}
+              onSignalAction={handleSignalAction}
             />
           )}
         </div>

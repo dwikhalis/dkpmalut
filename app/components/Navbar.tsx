@@ -144,7 +144,7 @@ export default function Navbar() {
         {/* Navigation Bar */}
         <div className="flex justify-between z-10 relative bg-white w-full h-[12vw]">
           {/* Logo Home Mobile */}
-          <Link href="/" className="flex items-center h-full ml-3">
+          <Link href="/" className="flex items-center h-full ml-6">
             <div className="flex relative justify-center items-center h-[6vw] w-[6vw] mr-3">
               <Image
                 src="/assets/logo_malut.png"

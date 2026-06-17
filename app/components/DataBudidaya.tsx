@@ -51,17 +51,17 @@ const budidayaFilters: FilterConfig[] = [
 export default function DataBudidaya({
   action,
   saveData,
-  onSignalUpdated,
+  onSignalAction,
 }: {
   action: "add" | "edit" | "list" | "delete";
   saveData: number;
-  onSignalUpdated: (signal: string) => void;
+  onSignalAction: (signal: string) => void;
 }) {
   return (
     <DataTable
       action={action}
       saveData={saveData}
-      onSignalUpdated={onSignalUpdated}
+      onSignalAction={onSignalAction}
       datasetName="budidaya"
       columns={budidayaColumns}
       filters={budidayaFilters}

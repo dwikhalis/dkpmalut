@@ -26,7 +26,7 @@ type ColdChainRow = {
   abf_kondisi: string;
   abf_tahun: string;
   es_storage: number;
-  es_storage_jum: number;
+  es_storage_jum_unit: number;
   es_storage_kondisi: string;
   es_storage_tahun: string;
   cs: number;
@@ -300,7 +300,10 @@ export default function MapColdChain({
                 <p className="font-bold">{e.name}</p>
                 <p className="text-sm">
                   {" "}
-                  Jumlah : {e.es_storage_jum ? e.es_storage_jum : "-"} unit{" "}
+                  Jumlah : {e.es_storage_jum_unit
+                    ? e.es_storage_jum_unit
+                    : "-"}{" "}
+                  unit{" "}
                 </p>{" "}
                 <p className="text-sm">
                   {" "}

@@ -1,47 +1,39 @@
 import DataTable, { type ColumnConfig, type FilterConfig } from "./DataTable";
 
-const tangkapColumns: ColumnConfig[] = [
+const datasetsColumns: ColumnConfig[] = [
+  { key: "year", label: "Tahun" },
+  { key: "kab", label: "Kabupaten" },
   {
-    key: "kab",
-    label: "Kabupaten",
-    align: "left",
-  },
-  {
-    key: "year",
-    label: "Tahun",
-    align: "center",
-  },
-  {
-    key: "semester",
-    label: "Semester",
+    key: "jum_rtp",
+    label: "RTP",
     editable: true,
     inputType: "number",
-    align: "center",
+    align: "right",
   },
   {
-    key: "landing",
-    label: "Pendaratan",
+    key: "jum_pembudidaya",
+    label: "Pembudidaya (org)",
     editable: true,
-    inputType: "text",
-    align: "left",
+    inputType: "number",
+    align: "right",
   },
   {
-    key: "name",
-    label: "Nama Ikan",
+    key: "luas_lahan",
+    label: "Luas Lahan (ha)",
     editable: true,
-    inputType: "text",
-    align: "left",
+    inputType: "number",
+    align: "right",
   },
   {
-    key: "weight",
-    label: "Berat (kg)",
+    key: "tot_produksi",
+    label: "Produksi (ton)",
     editable: true,
     inputType: "number",
     align: "right",
   },
 ];
 
-const tangkapFilters: FilterConfig[] = [
+const datasetsFilters: FilterConfig[] = [
   {
     key: "year",
     label: "Tahun",
@@ -54,15 +46,9 @@ const tangkapFilters: FilterConfig[] = [
     allLabel: "Semua Kabupaten",
     sort: "text-asc",
   },
-  {
-    key: "name",
-    label: "Ikan",
-    allLabel: "Semua Ikan",
-    sort: "text-asc",
-  },
 ];
 
-export default function DataTangkap({
+export default function DataDatasets({
   action,
   saveData,
   onSignalAction,
@@ -76,9 +62,9 @@ export default function DataTangkap({
       action={action}
       saveData={saveData}
       onSignalAction={onSignalAction}
-      datasetName="tangkap"
-      columns={tangkapColumns}
-      filters={tangkapFilters}
+      datasetName="budidaya"
+      columns={datasetsColumns}
+      filters={datasetsFilters}
       defaultSortKey="kab"
     />
   );
