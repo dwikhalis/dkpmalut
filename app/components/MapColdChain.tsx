@@ -205,7 +205,7 @@ export default function MapColdChain({
               icon={
                 e.type === "UPTD"
                   ? pinPort
-                  : e.type === "Swasta"
+                  : e.type === "Korporasi"
                     ? pinCompany
                     : pinDisabled
               }
@@ -234,7 +234,7 @@ export default function MapColdChain({
                 </p>
               </Popup>
             </Marker>
-          ) : e.type === "Swasta" ? (
+          ) : e.type === "Korporasi" ? (
             <Marker
               key={`companies-${idx}`}
               position={[e.lat, e.lon]}
