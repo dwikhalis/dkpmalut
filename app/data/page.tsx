@@ -57,7 +57,7 @@ export default function Page() {
         >
           <div
             onClick={() => setShowDropDown(!showDropDown)}
-            className="flex items-center justify-between w-full h-10 mx-12 px-3 my-3 border rounded-lg mt-6 mb-6 cursor-pointer"
+            className="flex items-center justify-between w-full h-10 mx-12 px-3 border rounded-lg mt-6 cursor-pointer"
           >
             <h5>{viewData === "Home" ? "Pilih Dataset" : viewData}</h5>
             <DownChevron
@@ -98,8 +98,8 @@ export default function Page() {
             })}
           </div>
         </div>
-        <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          <div className="w-[30%]">
+        <div className="flex flex-wrap justify-between md:justify-start lg:gap-10 gap-6 w-full mt-12">
+          <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Tangkap, Budidaya"
               title="Produksi Perikanan Tangkap dan Budidaya per Kabupaten"
@@ -107,7 +107,7 @@ export default function Page() {
               link="/data/produksi-perikanan-kabupaten"
             />
           </div>
-          <div className="w-[30%]">
+          <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Tangkap"
               title="Produksi Perikanan Tangkap per Kelas Komoditas"
@@ -115,7 +115,7 @@ export default function Page() {
               link="/data/produksi-kelas-komoditas"
             />
           </div>
-          <div className="w-[30%]">
+          <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Budidaya"
               title="Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara"
@@ -123,7 +123,7 @@ export default function Page() {
               link="/data/perikanan-budidaya-maluku-utara"
             />
           </div>
-          <div className="w-[30%]">
+          <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Infrastruktur"
               title="Infrastruktur Rantai Dingin"
@@ -131,7 +131,7 @@ export default function Page() {
               link="/data/infrastruktur-rantai-dingin"
             />
           </div>
-          <div className="w-[30%]">
+          <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Ruang Laut"
               title="Kawasan Konervasi Perairan Daerah"

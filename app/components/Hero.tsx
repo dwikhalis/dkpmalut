@@ -16,8 +16,7 @@ export default function Hero() {
             untuk mewujudkan Ekonomi Biru.
           </h3>
           <div className="flex gap-6">
-            <Button size="xl" text="Program" link="/Organisasi" />
-            <Button size="xl" text="Organisasi" link="/Organisasi" />
+            <Button size="xl" text="Data Perikanan" link="/data" />
           </div>
         </div>
         <div className="absolute flex w-full -z-10 h-full overflow-clip">
@@ -36,14 +35,15 @@ export default function Hero() {
       {/* Mobile Hero */}
       <div className="md:hidden bg-gradient-to-b from-sky-700 via-sky-500 to-sky-300">
         <div className="flex flex-col gap-6 justify-between items-center pt-10 pb-6 mx-10">
-          <h1 className="text-left text-white">Mewujudkan Ekonomi Biru</h1>
-          <h3 className="text-left text-white">
+          <h1 className="text-center md:text-left text-white">
+            Mewujudkan Ekonomi Biru
+          </h1>
+          <h3 className="text-center md:text-left text-white">
             Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara. Bersinergi
             untuk mewujudkan Ekonomi Biru.
           </h3>
-          <div className="flex gap-6 w-full">
-            <Button size="mobile-xl" text="Program" link="/Organisasi" />
-            <Button size="mobile-xl" text="Organisasi" link="/Organisasi" />
+          <div className="flex gap-6 justify-center md:justify-start w-full">
+            <Button size="mobile-xl" text="Data Perikanan" link="/data" />
           </div>
         </div>
         <Image

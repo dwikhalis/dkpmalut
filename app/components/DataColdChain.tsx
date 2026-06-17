@@ -273,6 +273,8 @@ export default function DataColdChain({
   saveData: number;
   onSignalAction: (signal: string) => void;
 }) {
+  // ! BUTTON SELECT VISIBLE COLUMNS
+
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() =>
     coldChainColumns.map((column) => column.key),
   );
@@ -306,64 +308,63 @@ export default function DataColdChain({
     setVisibleColumnKeys(coldChainColumns.map((column) => column.key));
   };
 
+  // ! CONFIGURE MAIN COLUMNS (KEY) TO SHOW
   const showMainColumnsOnly = () => {
     setVisibleColumnKeys(["year", "name", "kab"]);
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <details className="relative">
-          <summary className="list-none cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:bg-gray-50">
-            Kolom ({visibleColumnKeys.length}/{coldChainColumns.length})
-          </summary>
+    <div className="space-y-3 w-full">
+      <details className="group relative">
+        <summary className="cursor-pointer rounded-sm border border-gray-400 bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black">
+          Kolom ({visibleColumnKeys.length}/{coldChainColumns.length})
+        </summary>
 
-          <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-gray-200 bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b px-3 py-2">
-              <button
-                type="button"
-                onClick={showAllColumns}
-                className="text-xs font-medium text-blue-600 hover:underline"
-              >
-                Tampilkan semua
-              </button>
+        <div className="absolute left-0 z-30 mt-2 w-full rounded-lg border-1 border-gray-400 bg-white shadow-lg">
+          <div className="flex items-center justify-between border-b px-3 py-2">
+            <button
+              type="button"
+              onClick={showAllColumns}
+              className="text-xs text-sky-600 hover:underline"
+            >
+              Tampilkan semua
+            </button>
 
-              <button
-                type="button"
-                onClick={showMainColumnsOnly}
-                className="text-xs font-medium text-blue-600 hover:underline"
-              >
-                Kolom utama
-              </button>
-            </div>
-
-            <div className="max-h-80 overflow-y-auto p-2">
-              {coldChainColumns.map((column) => (
-                <label
-                  key={column.key}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-100"
-                >
-                  <input
-                    type="checkbox"
-                    checked={visibleColumnKeys.includes(column.key)}
-                    onChange={() => toggleColumn(column.key)}
-                    className="h-4 w-4"
-                  />
-
-                  <span>{column.label}</span>
-                </label>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={showMainColumnsOnly}
+              className="text-xs text-sky-600 hover:underline"
+            >
+              Kolom utama
+            </button>
           </div>
-        </details>
-      </div>
+
+          <div className="max-h-80 overflow-y-auto p-2">
+            {coldChainColumns.map((column) => (
+              <label
+                key={column.key}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-gray-100"
+              >
+                <input
+                  type="checkbox"
+                  checked={visibleColumnKeys.includes(column.key)}
+                  onChange={() => toggleColumn(column.key)}
+                  className="h-4 w-4"
+                />
+
+                <span>{column.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </details>
 
       <DataTable
         action={action}
         saveData={saveData}
         onSignalAction={onSignalAction}
         datasetName="cold_chain"
-        columns={coldChainColumns}
+        columns={visibleColumns}
         filters={coldChainFilters}
         defaultSortKey="year"
       />

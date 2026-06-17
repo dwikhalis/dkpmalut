@@ -64,7 +64,7 @@ export default function AdminData() {
           <div
             className={`${
               page === labels.home ? "hidden" : "flex"
-            } flex py-6 pr-12 cursor-pointer`}
+            } flex my-6 mr-12 cursor-pointer`}
             onClick={() => {
               setPage(labels.home);
               setDataset("");
@@ -91,7 +91,9 @@ export default function AdminData() {
               <div
                 onClick={() => setAction("edit")}
                 className={
-                  action === "edit" || action === "add" ? "hidden" : "flex"
+                  action === "edit" || action === "add" || action === "delete"
+                    ? "hidden"
+                    : "flex"
                 }
               >
                 <Button
@@ -107,7 +109,9 @@ export default function AdminData() {
               <div
                 onClick={() => setAction("add")}
                 className={
-                  action === "edit" || action === "add" ? "hidden" : "flex"
+                  action === "edit" || action === "add" || action === "delete"
+                    ? "hidden"
+                    : "flex"
                 }
               >
                 <Button
@@ -123,7 +127,9 @@ export default function AdminData() {
               <div
                 onClick={() => setAction("list")}
                 className={
-                  action === "edit" || action === "add" ? "flex" : "hidden"
+                  action === "edit" || action === "add" || action === "delete"
+                    ? "flex"
+                    : "hidden"
                 }
               >
                 <Button
@@ -135,18 +141,20 @@ export default function AdminData() {
                 />
               </div>
 
-              {/* //! Save Button */}
+              {/* //! Save / Delete Button */}
               <div
                 onClick={() => setSaveData((prev) => prev + 1)}
                 className={
-                  action === "edit" || action === "add" ? "flex" : "hidden"
+                  action === "edit" || action === "add" || action === "delete"
+                    ? "flex"
+                    : "hidden"
                 }
               >
                 <Button
-                  color="green"
+                  color={action === "delete" ? "red" : "green"}
                   size="lg"
                   textSize="sm"
-                  text="Simpan"
+                  text={action === "delete" ? "Hapus" : "Simpan"}
                   link="none"
                 />
               </div>

@@ -560,7 +560,7 @@ export default function DataTable({
         <div className="w-full h-full flex flex-col">
           {/* //! TABLE : ADDING NEW DATA */}
           {action === "add" ? (
-            <div className="w-[85vw] md:w-full overflow-x-auto">
+            <div className="w-[85vw] md:w-[80vw] xl:w-[80vw] overflow-x-auto">
               <div className="overflow-x-auto mb-6">
                 <div className="border-1 border-gray-950/20 rounded-sm overflow-x-auto mb-6">
                   <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
@@ -621,7 +621,7 @@ export default function DataTable({
             </div>
           ) : (
             //! TABLE : NORMAL, BUT CAN EDIT AND DELETE
-            <div className="w-[85vw] md:w-full">
+            <div className="w-[85vw] md:w-[80vw] xl:w-[80vw]">
               <div className="mb-4 flex flex-wrap gap-3">
                 {/* //! SORT BY */}
                 <select
