@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import React from "react";
 import Image from "next/image";
 
 interface Props {
@@ -22,6 +21,7 @@ export default function CardData({ tag, title, image, link }: Props) {
             width={800}
             height={600}
             className="object-cover w-full h-full"
+            loading="eager"
           />
         </div>
         <h6 className="text-stone-500 mb-1">{tag}</h6>

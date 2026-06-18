@@ -387,6 +387,7 @@ export default function ChartColdChain({ pages }: Props) {
             loadStatus={handleLoadMap}
           />
           <div id="scrollToThis" className="flex flex-col w-full mt-6">
+            {/* //! SHOW SELECTED COMPANY FACILITY DETAILS */}
             {selected && (
               <div className="overflow-x-auto mb-12">
                 <h4 className="mb-6">{selected.name}</h4>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
