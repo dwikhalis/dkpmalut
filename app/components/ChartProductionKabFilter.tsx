@@ -569,7 +569,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
             onClick={() => setShowSideMenu(!showSideMenu)}
           >
             <div className="flex justify-center items-center bg-sky-800 px-2 rounded-b-md">
-              <p className="text-sm w-full text-white">Filters </p>
+              <p className="w-full text-sm text-white">Filters </p>
               <UpChevron className="w-6 h-6" color="white" />
             </div>
           </div>
@@ -592,7 +592,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
         </div>
       </div>
 
-      {/* //! POP UP FOCUS */}
+      {/* //! DARK VEIL */}
       <div
         className={`${
           showSideMenu ? "flex" : "hidden"
@@ -602,8 +602,8 @@ export default function ChartProductionKabFilter({ pages }: Props) {
 
       {/* Main */}
       <div className="flex flex-col lg:mx-12 mx-8 w-full">
+        {/* //! HEAD DROPDOWN */}
         <div className="flex w-full">
-          {/* //! HEAD DROPDOWN */}
           <Link
             href={"/data"}
             className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"

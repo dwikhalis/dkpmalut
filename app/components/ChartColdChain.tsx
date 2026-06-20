@@ -142,7 +142,7 @@ export default function ChartColdChain({ pages }: Props) {
           showSideMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col gap-3 min-w-50 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white pb-20 w-full h-full overflow-y-scroll scrollbar-hide">
+        <div className="flex flex-col gap-3 md:min-w-55 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white pb-20 w-full h-full overflow-y-scroll scrollbar-hide">
           <h3 className="font-bold">Legenda</h3>
           <div className="flex flex-col mt-3 gap-3 w-full">
             <p className="text-sm">Pendaratan</p>
@@ -308,7 +308,7 @@ export default function ChartColdChain({ pages }: Props) {
 
       {/* //! Main */}
 
-      <div className="flex flex-col lg:mx-12 mx-8 w-500">
+      <div className="flex flex-col lg:mx-12 mx-8 w-full">
         <div className="flex w-full">
           {/* //! HEAD DROPDOWN */}
           <Link

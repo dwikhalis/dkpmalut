@@ -29,10 +29,6 @@ type AvailableDownloads = {
   rpz?: string;
 };
 
-function cn(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
-}
-
 function downloadFile(fileName: string) {
   const link = document.createElement("a");
   link.href = fileName;
@@ -207,19 +203,18 @@ export default function ChartKKD({ pages }: Props) {
 
   return (
     <div className="flex w-full">
+      {/* //! SIDE MENU */}
       <aside
-        className={cn(
-          "fixed top-0 z-5 flex h-[100vh] w-[65%] justify-between transition-transform duration-300",
-          "md:static md:top-auto md:z-0 md:h-auto md:w-[30vw] md:grow md:translate-x-0",
-          showSideMenu ? "translate-x-0" : "-translate-x-full",
-        )}
+        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
+          showSideMenu ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        <div className="flex h-full w-full min-w-55 flex-col gap-3 overflow-y-scroll bg-sky-800 px-5 pt-18 pb-20 text-white scrollbar-hide md:pt-8 lg:pt-12">
+        <div className="flex w-full md:min-w-55 flex-col gap-3 overflow-y-scroll bg-sky-800 px-5 pt-18 pb-20 text-white scrollbar-hide md:pt-8 lg:pt-12">
           <h3 className="font-bold">Legenda</h3>
 
           {!selectedKkd ? (
             <p className="text-sm text-white/80">
-              Pilih Kawasan Konservasi yang ingin anda lihat
+              Pilih Kawasan Konservasi terlebih dahulu
             </p>
           ) : (
             <div className="flex flex-col gap-3">
@@ -253,16 +248,10 @@ export default function ChartKKD({ pages }: Props) {
                               key={item.value}
                               type="button"
                               onClick={() => setLegend(item.value)}
-                              className={cn(
-                                "flex w-full cursor-pointer items-center justify-start gap-3 rounded-xl border border-sky-600 px-2 py-1 text-left hover:bg-sky-700",
-                                isActive && "bg-sky-700",
-                              )}
+                              className={`flex w-full cursor-pointer items-center justify-start gap-3 rounded-xl border border-sky-600 px-2 py-1 text-left hover:bg-sky-700 ${isActive && "bg-sky-700"}`}
                             >
                               <div
-                                className={cn(
-                                  "h-7.5 w-7.5 shrink-0 rounded-full",
-                                  item.legendClassName,
-                                )}
+                                className={`h-7.5 w-7.5 shrink-0 rounded-full ${item.legendClassName}`}
                               />
 
                               <p className="text-xs">{item.label}</p>
@@ -314,40 +303,47 @@ export default function ChartKKD({ pages }: Props) {
           )}
         </div>
 
+        {/* //! Close Side Menu */}
         <div
-          className="flex cursor-pointer items-center justify-center md:hidden"
-          onClick={() => setShowSideMenu(false)}
+          className="flex justify-center items-center md:hidden cursor-pointer"
+          onClick={() => setShowSideMenu(!showSideMenu)}
         >
-          <div className="-translate-x-6 -rotate-90 px-0 pb-3">
-            <div className="flex items-center justify-center rounded-b-md bg-sky-800 px-2">
-              <p className="w-full text-sm text-white">Filters</p>
-              <UpChevron className="h-6 w-6" color="white" />
+          <div
+            className="px-0 pb-3 -rotate-90 -translate-x-6"
+            onClick={() => setShowSideMenu(!showSideMenu)}
+          >
+            <div className="flex justify-center items-center bg-sky-800 px-2 rounded-b-md">
+              <p className="w-full text-sm text-white">Filters </p>
+              <UpChevron className="w-6 h-6" color="white" />
             </div>
           </div>
         </div>
       </aside>
 
-      <div className="fixed top-[50%] flex -translate-x-12 cursor-pointer items-center justify-start md:hidden">
+      {/* //! Open Side Menu */}
+      <div className="flex fixed top-[48%] items-center justify-start md:hidden cursor-pointer -translate-x-12">
         <div
-          className="-rotate-90 px-6 pb-2"
-          onClick={() => setShowSideMenu(true)}
+          className="-rotate-90 pb-2 px-6"
+          onClick={() => setShowSideMenu(!showSideMenu)}
         >
-          <div className="flex items-center justify-center rounded-b-md bg-stone-300 px-2">
-            <p className="w-full text-sm text-white">Filters</p>
-            <DownChevron className="h-6 w-6" color="white" />
+          <div className="flex justify-center items-center bg-stone-300 px-2 rounded-b-md">
+            <p className="text-sm w-full text-white">Filters </p>
+            <DownChevron className="w-6 h-6" color="white" />
           </div>
         </div>
       </div>
 
+      {/* //! DARK VEIL */}
       <div
-        className={cn(
-          showSideMenu ? "flex" : "hidden",
-          "fixed inset-0 z-3 h-[100vh] w-[100vw] bg-black/50 md:hidden",
-        )}
+        className={`
+          ${showSideMenu ? "flex" : "hidden"}
+          fixed inset-0 z-3 h-[100vh] w-[100vw] bg-black/50 md:hidden
+        `}
         onClick={() => setShowSideMenu(false)}
       />
 
-      <div className="mx-8 flex w-500 flex-col lg:mx-12">
+      <div className="mx-8 flex w-full flex-col lg:mx-12">
+        {/* //! HEAD DROPDOWN */}
         <div className="flex w-full">
           <Link
             href="/data"
@@ -356,6 +352,7 @@ export default function ChartKKD({ pages }: Props) {
             <LeftChevron className="h-5 w-5 lg:h-7 lg:w-7" />
           </Link>
 
+          {/* //! DROPDOWN */}
           <div className="relative my-0 flex w-full flex-col items-center justify-center md:my-3">
             <div
               onClick={() => setShowDropDown((prev) => !prev)}
@@ -373,10 +370,8 @@ export default function ChartKKD({ pages }: Props) {
             </div>
 
             <div
-              className={cn(
-                showDropDown ? "flex" : "hidden",
-                "absolute top-17 z-10 w-full cursor-pointer flex-col rounded-lg border bg-white py-1.5",
-              )}
+              className={`
+                ${showDropDown ? "flex" : "hidden"} absolute top-17 z-10 w-full cursor-pointer flex-col rounded-lg border bg-white py-1.5`}
             >
               {pages
                 .filter((page) => page.title !== "Home")
@@ -394,6 +389,7 @@ export default function ChartKKD({ pages }: Props) {
           </div>
         </div>
 
+        {/* //! MAIN TITLE */}
         <h2 className="mb-3">Kawasan Konservasi Daerah</h2>
 
         <div className="mb-6 flex justify-between">
@@ -422,6 +418,7 @@ export default function ChartKKD({ pages }: Props) {
           </form>
         </div>
 
+        {/* //! MAP */}
         <div className="relative z-0 min-h-[70vh]">
           {mapLoad && (
             <div className="absolute inset-0 z-[1000] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">

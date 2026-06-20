@@ -373,7 +373,7 @@ export default function MapKKD({ legend, kkd, geoData, loadStatus }: Props) {
 
   return (
     <div
-      className="relative flex h-[80vh] w-full justify-center gap-3"
+      className="flex h-[80vh] w-full justify-center gap-3"
       onMouseEnter={() => {
         hoveredRef.current = true;
 
