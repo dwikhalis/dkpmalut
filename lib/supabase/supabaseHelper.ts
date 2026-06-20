@@ -57,22 +57,6 @@ export const getStaff = async () => {
   }));
 };
 
-export const getDatasets = async () => {
-  const { data, error } = await supabase.from("datasets").select("*");
-  if (error) {
-    alert("Get Datasets Gagal!");
-    console.error(error);
-    throw error;
-  }
-
-  return (data || []).map((item) => ({
-    id: item.id ?? "",
-    name: item.name ?? "",
-    table: item.table ?? "",
-    source: item.source ?? "",
-  }));
-};
-
 export async function updateDatasetRows<T extends { id: string }>(
   tableName: string,
   rows: T[],
@@ -391,4 +375,66 @@ export const getDistinctColumnValues = async (
   const rows = (data ?? []) as unknown as { value: string }[];
 
   return rows.map((row) => row.value);
+};
+
+// ! DATA MITRA JSONB
+
+type JsonbValue = string | number | boolean | null | undefined;
+
+export type JsonbDatasetRow = {
+  id: string;
+  [key: string]: JsonbValue;
+};
+
+const createRowId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+function normalizeMitraRows(value: unknown): JsonbDatasetRow[] {
+  const rows = Array.isArray(value) ? value : [];
+
+  return rows
+    .filter((row): row is Record<string, JsonbValue> => {
+      return typeof row === "object" && row !== null && !Array.isArray(row);
+    })
+    .map((row) => ({
+      ...row,
+      id: typeof row.id === "string" && row.id ? row.id : createRowId(),
+    }));
+}
+
+export const getMitraJsonbRows = async (dataMitraId: string) => {
+  const { data, error } = await supabase
+    .from("data_mitra")
+    .select("id, data")
+    .eq("id", dataMitraId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Get mitra JSONB rows failed:", error);
+    throw error;
+  }
+
+  return normalizeMitraRows(data?.data);
+};
+
+export const saveMitraJsonbRows = async (
+  dataMitraId: string,
+  rows: JsonbDatasetRow[],
+) => {
+  const { error } = await supabase
+    .from("data_mitra")
+    .update({
+      data: rows,
+    })
+    .eq("id", dataMitraId);
+
+  if (error) {
+    console.error("Save mitra JSONB rows failed:", error);
+    throw error;
+  }
 };

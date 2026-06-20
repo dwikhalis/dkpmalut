@@ -16,7 +16,7 @@ import {
   type LegendValue,
   type SelectedKkdId,
   type ZoneFeatureCollection,
-} from "./kkdConfig";
+} from "./configKKD";
 
 type Pages = { title: string; slug: string }[];
 
@@ -27,6 +27,7 @@ interface Props {
 type AvailableDownloads = {
   map?: string;
   rpz?: string;
+  decree?: string;
 };
 
 function downloadFile(fileName: string) {
@@ -184,6 +185,7 @@ export default function ChartKKD({ pages }: Props) {
       const [mapAvailable, rpzAvailable] = await Promise.all([
         fileExists(selectedKkd.downloads.map),
         fileExists(selectedKkd.downloads.rpz),
+        fileExists(selectedKkd.downloads.decree),
       ]);
 
       if (!isMounted) return;
@@ -191,6 +193,7 @@ export default function ChartKKD({ pages }: Props) {
       setAvailableDownloads({
         map: mapAvailable ? selectedKkd.downloads.map : undefined,
         rpz: rpzAvailable ? selectedKkd.downloads.rpz : undefined,
+        decree: rpzAvailable ? selectedKkd.downloads.decree : undefined,
       });
     };
 
@@ -276,11 +279,11 @@ export default function ChartKKD({ pages }: Props) {
                 <div className="flex flex-col gap-2">
                   <h5 className="mt-6 font-bold">Download</h5>
 
-                  <div className="flex w-full items-center justify-between gap-2">
+                  <div className="flex flex-wrap w-full items-center justify-between gap-2">
                     {availableDownloads.map && (
                       <button
                         type="button"
-                        className="flex w-full cursor-pointer items-center justify-center rounded-md bg-sky-600 py-2 text-xs text-white hover:bg-sky-700"
+                        className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2  text-xs text-white hover:bg-sky-700"
                         onClick={() => downloadFile(availableDownloads.map!)}
                       >
                         Peta
@@ -290,10 +293,20 @@ export default function ChartKKD({ pages }: Props) {
                     {availableDownloads.rpz && (
                       <button
                         type="button"
-                        className="flex w-full cursor-pointer items-center justify-center rounded-md bg-sky-600 py-2 text-xs text-white hover:bg-sky-700"
+                        className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2 text-xs text-white hover:bg-sky-700"
                         onClick={() => downloadFile(availableDownloads.rpz!)}
                       >
                         RPZ
+                      </button>
+                    )}
+
+                    {availableDownloads.decree && (
+                      <button
+                        type="button"
+                        className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2 text-xs text-white hover:bg-sky-700"
+                        onClick={() => downloadFile(availableDownloads.decree!)}
+                      >
+                        KepmenKP
                       </button>
                     )}
                   </div>
@@ -393,7 +406,7 @@ export default function ChartKKD({ pages }: Props) {
         <h2 className="mb-3">Kawasan Konservasi Daerah</h2>
 
         <div className="mb-6 flex justify-between">
-          <form>
+          <form className="w-full">
             <select
               className="w-full rounded-xl border border-stone-200 p-2"
               value={kkd}

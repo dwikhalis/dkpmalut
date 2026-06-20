@@ -72,6 +72,7 @@ export type KkdOption = {
   downloads?: {
     map?: string;
     rpz?: string;
+    decree?: string;
   };
 };
 
@@ -146,8 +147,9 @@ export const KKD_OPTIONS: KkdOption[] = [
     center: [-0.454058840694179, 128.3333424947321],
     zoom: 10,
     downloads: {
-      map: "/maps/map_widi.png",
+      map: "/maps/map_widi.jpg",
       rpz: "/documents/rpz_widi.pdf",
+      decree: "/documents/kepmenkp_widi.pdf",
     },
   },
   {
@@ -157,8 +159,9 @@ export const KKD_OPTIONS: KkdOption[] = [
     center: [0.33921074759833, 127.292037053151],
     zoom: 11,
     downloads: {
-      map: "/maps/map_makian_moti.png",
+      map: "/maps/map_makian_moti.jpg",
       rpz: "/documents/rpz_makian_moti.pdf",
+      decree: "/documents/kepmenkp_makian_moti.pdf",
     },
   },
   {
@@ -168,8 +171,9 @@ export const KKD_OPTIONS: KkdOption[] = [
     center: [-0.0006369443475774182, 127.20325856570801],
     zoom: 11,
     downloads: {
-      map: "/maps/map_guraici.png",
+      map: "/maps/map_guraici.jpg",
       rpz: "/documents/rpz_guraici.pdf",
+      decree: "/documents/kepmenkp_guraici.pdf",
     },
   },
   {
@@ -179,8 +183,9 @@ export const KKD_OPTIONS: KkdOption[] = [
     center: [0.5711664225265207, 127.3981937559456],
     zoom: 12,
     downloads: {
-      map: "/maps/map_mare.png",
+      map: "/maps/map_mare.jpg",
       rpz: "/documents/rpz_mare.pdf",
+      decree: "/documents/kepmenkp_mare.pdf",
     },
   },
   {
@@ -190,8 +195,9 @@ export const KKD_OPTIONS: KkdOption[] = [
     center: [2.1874194484627885, 128.20795178555449],
     zoom: 11,
     downloads: {
-      map: "/maps/map_rao_dehegila.png",
+      map: "/maps/map_rao_dehegila.jpg",
       rpz: "/documents/rpz_rao_dehegila.pdf",
+      decree: "/documents/kepmenkp_rao_dehegila.pdf",
     },
   },
   {
@@ -201,8 +207,9 @@ export const KKD_OPTIONS: KkdOption[] = [
     center: [-2.134340277999968, 126.15313500200011],
     zoom: 9,
     downloads: {
-      map: "/maps/map_sula.png",
+      map: "/maps/map_sula.jpg",
       rpz: "/documents/rpz_sula.pdf",
+      decree: "/documents/kepmenkp_sula.pdf",
     },
   },
 ];

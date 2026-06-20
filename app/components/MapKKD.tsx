@@ -17,7 +17,7 @@ import {
   type SelectedKkdId,
   type ZoneFeatureCollection,
   type ZoneProperties,
-} from "./kkdConfig";
+} from "./configKKD";
 
 type ZoneFeature = Feature<Geometry, ZoneProperties>;
 

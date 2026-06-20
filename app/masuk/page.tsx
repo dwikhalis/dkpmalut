@@ -150,7 +150,6 @@ export default function Page() {
             src={"/assets/hero_1.png"}
             alt="picture"
             priority
-            quality={100}
             width={800}
             height={600}
             className="absolute w-[50%]object-contain z-[-1]"

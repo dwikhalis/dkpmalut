@@ -6,7 +6,8 @@ import DataBudidaya from "./DataBudidaya";
 import DataTangkap from "./DataTangkap";
 import Button from "./Button";
 import DataColdChain from "./DataColdChain";
-import { getDatasets } from "@/lib/supabase/supabaseHelper";
+import { getDataset } from "@/lib/supabase/supabaseHelper";
+import DataMitra from "./DataMitra";
 
 type DataPage = {
   id: string;
@@ -15,13 +16,24 @@ type DataPage = {
   source: string;
 };
 
+type MitraDataPage = {
+  id: string;
+  mitra_id?: string;
+  label: string;
+  dataset_name: string;
+  data?: Record<string, unknown> | string | null;
+};
+
 export default function AdminData() {
   const [dataset, setDataset] = useState<string>("");
+  const [mitraDataset, setMitraDataset] = useState<string>("");
+  const [mitraDataId, setMitraDataId] = useState<string>("");
   const [action, setAction] = useState<"add" | "edit" | "list" | "delete">(
     "list",
   );
   const [page, setPage] = useState<string>("Data");
   const [dataPages, setDataPages] = useState<DataPage[]>([]);
+  const [mitraDataPages, setMitraDataPages] = useState<MitraDataPage[]>([]);
 
   const [showMobileAction, setShowMobileAction] = useState(false);
   const [saveData, setSaveData] = useState(0);
@@ -37,10 +49,11 @@ export default function AdminData() {
     added: "Data telah ditambahkan",
   };
 
+  // ! FETCHING ONLY DKP INTERNAL DATA
   useEffect(() => {
     const fetchDataPages = async () => {
       try {
-        const result = await getDatasets();
+        const result = await getDataset("datasets");
 
         setDataPages(result);
       } catch (err) {
@@ -49,6 +62,21 @@ export default function AdminData() {
     };
 
     fetchDataPages();
+  }, []);
+
+  // ! FETCHING ONLY MITRA DATA
+  useEffect(() => {
+    const fetchMitraDataPages = async () => {
+      try {
+        const result = await getDataset("data_mitra");
+
+        setMitraDataPages(result);
+      } catch (err) {
+        console.error("Fetching Datasets :", err);
+      }
+    };
+
+    fetchMitraDataPages();
   }, []);
 
   const handleSignalAction = () => {
@@ -195,7 +223,7 @@ export default function AdminData() {
         </div>
 
         <div className="flex flex-col gap-6 mb-6 min-h-[60vh]">
-          {/*//! Dataset Select Button */}
+          {/* //! DATA DKP : MAPPING */}
           {dataPages.map((e, idx) => (
             <div
               key={idx}
@@ -209,6 +237,32 @@ export default function AdminData() {
               }}
             >
               {e.name}
+            </div>
+          ))}
+
+          {/*//! DATA MITRA : Top Title */}
+          {mitraDataPages.length > 0 && page === labels.home && (
+            <p className={`font-bold text-center mx-auto mt-6 text-lg`}>
+              {"Data Mitra"}
+            </p>
+          )}
+
+          {/* //! DATA MITRA : MAPPING */}
+          {mitraDataPages.map((e) => (
+            <div
+              key={e.id}
+              className={`${
+                page === labels.home ? "flex" : "hidden"
+              } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+              onClick={() => {
+                setPage(e.label);
+                setDataset("data_mitra");
+                setMitraDataId(e.id);
+                setMitraDataset(e.dataset_name);
+                setAction("list");
+              }}
+            >
+              {e.label}
             </div>
           ))}
 
@@ -233,6 +287,17 @@ export default function AdminData() {
           {/*//! DATA COLDCHAIN */}
           {dataset === "cold_chain" && page !== labels.home && (
             <DataColdChain
+              action={action}
+              saveData={saveData}
+              onSignalAction={handleSignalAction}
+            />
+          )}
+
+          {/*//! DATA MITRA */}
+          {dataset === "data_mitra" && page !== labels.home && (
+            <DataMitra
+              dataMitraId={mitraDataId}
+              datasetName={mitraDataset}
               action={action}
               saveData={saveData}
               onSignalAction={handleSignalAction}
