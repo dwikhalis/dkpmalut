@@ -97,7 +97,6 @@ interface Props {
   onSignalAction: (signal: string) => void;
 
   dataMitraId: string;
-  datasetName?: string;
 
   columns: ColumnConfig[];
   filters?: FilterConfig[];
@@ -109,7 +108,6 @@ export default function DataTableMitra({
   saveData,
   onSignalAction,
   dataMitraId,
-  datasetName = "data_mitra",
   columns,
   filters = [],
   defaultSortKey,
@@ -257,7 +255,7 @@ export default function DataTableMitra({
       buildFilterOptions(rows);
       applyRowsToPage(rows);
     } catch (err) {
-      console.error(`Error fetching ${datasetName}:`, err);
+      console.error("Error fetching Data Mitra:", err);
       setAllRows([]);
       setDataset([]);
       setTotalRows(0);

@@ -13,21 +13,22 @@ export default function AdminDashboard({ select = () => {} }: Props) {
   const [numOfGallery, setNumOfGallery] = useState(0);
   const [numOfMessage, setNumOfMessage] = useState(0);
   const [numOfDatasets, setNumOfDatasets] = useState(0);
+  const [numOfDataMitra, setNumOfDataMitra] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
     const fetchNum = async () => {
       try {
-        const [staffs, news, galleries, messages, datasets] = await Promise.all(
-          [
+        const [staffs, news, galleries, messages, datasets, dataMitra] =
+          await Promise.all([
             getNumOf("staff"),
             getNumOf("news"),
             getNumOf("gallery"),
             getNumNewMessage(),
             getNumOf("datasets"),
-          ],
-        );
+            getNumOf("data_mitra"),
+          ]);
 
         if (!mounted) return;
         setNumOfStaff(staffs);
@@ -35,6 +36,7 @@ export default function AdminDashboard({ select = () => {} }: Props) {
         setNumOfGallery(galleries);
         setNumOfMessage(messages);
         setNumOfDatasets(datasets);
+        setNumOfDataMitra(dataMitra);
       } catch (err) {
         console.error("Error fetching numOf data:", err);
       }
@@ -101,7 +103,7 @@ export default function AdminDashboard({ select = () => {} }: Props) {
         >
           <div className="flex flex-col justify-center items-center gap-2 w-full">
             <h3>Data</h3>
-            <h1>{numOfDatasets}</h1>
+            <h1>{numOfDatasets + numOfDataMitra}</h1>
           </div>
         </div>
       </div>

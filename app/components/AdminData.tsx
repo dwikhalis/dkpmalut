@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { LeftChevron, VerticalThreeDot } from "@/public/icons/iconSets";
-import DataBudidaya from "./DataBudidaya";
-import DataTangkap from "./DataTangkap";
 import Button from "./Button";
-import DataColdChain from "./DataColdChain";
 import { getDataset } from "@/lib/supabase/supabaseHelper";
+import DataInternal from "./DataInternal";
 import DataMitra from "./DataMitra";
+import DatasetConfig from "./DatasetConfig";
 
 type DataPage = {
   id: string;
@@ -26,12 +25,14 @@ type MitraDataPage = {
 
 export default function AdminData() {
   const [dataset, setDataset] = useState<string>("");
-  const [mitraDataset, setMitraDataset] = useState<string>("");
   const [mitraDataId, setMitraDataId] = useState<string>("");
   const [action, setAction] = useState<"add" | "edit" | "list" | "delete">(
     "list",
   );
   const [page, setPage] = useState<string>("Data");
+  const [mainPage, setMainPage] = useState<"main" | "add" | "edit" | "delete">(
+    "main",
+  );
   const [dataPages, setDataPages] = useState<DataPage[]>([]);
   const [mitraDataPages, setMitraDataPages] = useState<MitraDataPage[]>([]);
 
@@ -40,13 +41,9 @@ export default function AdminData() {
 
   const labels = {
     home: "Data",
-    add: "Tambah Data",
-    edit: "Edit Data",
-    list: "List Data",
-    noUpdate: "Data tidak ada perubahan",
-    noAdd: "Tidak ada data yang ditambahkan",
-    updated: "Data telah diupdate",
-    added: "Data telah ditambahkan",
+    add: "Tambah Dataset",
+    edit: "Atur Dataset",
+    delete: "Hapus Dataset",
   };
 
   // ! FETCHING ONLY DKP INTERNAL DATA
@@ -83,230 +80,385 @@ export default function AdminData() {
     setAction("list");
   };
 
+  const handleSignalDatasetAction = () => {
+    setMainPage("main");
+    setPage(labels.home);
+    setAction("list");
+  };
+
   return (
     <>
-      <div className="flex flex-col">
-        {/* //! TOP TITLE AND ACTION */}
-        <div className="flex relative items-center justify-center my-6">
-          {/*//! Back Button */}
-          <div
-            className={`${
-              page === labels.home ? "hidden" : "flex"
-            } flex my-6 mr-12 cursor-pointer`}
-            onClick={() => {
-              setPage(labels.home);
-              setDataset("");
-              setAction("list");
-            }}
-          >
-            <LeftChevron className="size-6" />
-          </div>
-
-          {/*//! Top Title */}
-          <p className="font-bold text-center mx-auto text-lg">{page}</p>
-
-          {/* //! OPTION BUTTON TO SETTING DATASETS METADATA */}
-          {/* <div className="absolute right-0">
-            <VerticalThreeDot className="size-6 cursor-pointer hover:border-1 rounded-sm" />
-          </div> */}
-
-          {/*//! DESKTOP : Action Button */}
-          <div className="hidden md:flex justify-center items-center">
-            <div
-              className={`${page === labels.home ? "hidden" : "flex"} gap-1`}
-            >
-              {/* //! Edit Button */}
-              <div
-                onClick={() => setAction("edit")}
-                className={
-                  action === "edit" || action === "add" || action === "delete"
-                    ? "hidden"
-                    : "flex"
-                }
-              >
-                <Button
-                  color="blue"
-                  size="lg"
-                  text="Edit"
-                  textSize="sm"
-                  link="none"
-                />
-              </div>
-
-              {/* //! Add Button */}
-              <div
-                onClick={() => setAction("add")}
-                className={
-                  action === "edit" || action === "add" || action === "delete"
-                    ? "hidden"
-                    : "flex"
-                }
-              >
-                <Button
-                  color="green"
-                  size="lg"
-                  textSize="sm"
-                  text="Tambah"
-                  link="none"
-                />
-              </div>
-
-              {/* //! Cancel Button */}
-              <div
-                onClick={() => setAction("list")}
-                className={
-                  action === "edit" || action === "add" || action === "delete"
-                    ? "flex"
-                    : "hidden"
-                }
-              >
-                <Button
-                  color="grey"
-                  size="lg"
-                  textSize="sm"
-                  text="Batal"
-                  link="none"
-                />
-              </div>
-
-              {/* //! Save / Delete Button */}
-              <div
-                onClick={() => setSaveData((prev) => prev + 1)}
-                className={
-                  action === "edit" || action === "add" || action === "delete"
-                    ? "flex"
-                    : "hidden"
-                }
-              >
-                <Button
-                  color={action === "delete" ? "red" : "green"}
-                  size="lg"
-                  textSize="sm"
-                  text={action === "delete" ? "Hapus" : "Simpan"}
-                  link="none"
-                />
-              </div>
-
-              {/* //! Delete Button */}
-              <div
-                onClick={() => setAction("delete")}
-                className={
-                  action === "edit" || action === "add" || action === "delete"
-                    ? "hidden"
-                    : "flex"
-                }
-              >
-                <Button
-                  color="red"
-                  size="lg"
-                  textSize="sm"
-                  text="Hapus"
-                  link="none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* //! MOBILE Action - Setting Button */}
-          <div className="flex md:hidden justify-center items-center">
+      {/* //! ========== HOME AND LIST DATA ========== */}
+      {mainPage === "main" && (
+        <div className="flex flex-col min-h-[80vh]">
+          {/* //! TOP TITLE AND ACTION */}
+          <div className="flex relative items-center justify-center my-8">
+            {/*//! Back Button */}
             <div
               className={`${
                 page === labels.home ? "hidden" : "flex"
-              } flex py-6 pl-12`}
+              } flex items-center justify-start py-3 pr-3 cursor-pointer`}
               onClick={() => {
-                setShowMobileAction(true);
+                setPage(labels.home);
+                setDataset("");
+                setAction("list");
               }}
             >
-              <VerticalThreeDot className="size-6 cursor-pointer hover:border rounded-sm" />
+              <LeftChevron className="size-6" />
+            </div>
+
+            {/*//! Top Title */}
+            <h3 className="font-bold text-center mx-auto">{page}</h3>
+
+            {/* //! OPTION BUTTON TO ADD NEW CUSTOM DATASET OR SETTING DATASETS METADATA */}
+            {page === labels.home && (
+              <details className="absolute right-0 group">
+                <summary className="list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black">
+                  <VerticalThreeDot className="size-6" />
+                </summary>
+                <div className="flex flex-col absolute right-0 z-30 mt-2 rounded-lg border border-gray-400 bg-white shadow-lg p-2">
+                  <button
+                    className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                    onClick={() => (
+                      setMainPage("add"),
+                      setPage(labels.add),
+                      setAction("add")
+                    )}
+                  >
+                    Tambah Dataset
+                  </button>
+                  <button
+                    className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                    onClick={() => (
+                      setMainPage("edit"),
+                      setPage(labels.edit),
+                      setAction("edit")
+                    )}
+                  >
+                    Atur Dataset
+                  </button>
+                  <button
+                    className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                    onClick={() => (
+                      setMainPage("delete"),
+                      setPage(labels.delete),
+                      setAction("delete")
+                    )}
+                  >
+                    Hapus Dataset
+                  </button>
+                </div>
+              </details>
+            )}
+
+            {/*//! DESKTOP : Action Button */}
+            <div className="hidden md:flex justify-center items-center">
+              <div
+                className={`${page === labels.home ? "hidden" : "flex"} gap-1`}
+              >
+                {/* //! Edit Button */}
+                <div
+                  onClick={() => setAction("edit")}
+                  className={
+                    action === "edit" || action === "add" || action === "delete"
+                      ? "hidden"
+                      : "flex"
+                  }
+                >
+                  <Button
+                    color="blue"
+                    size="lg"
+                    text="Edit"
+                    textSize="sm"
+                    link="none"
+                  />
+                </div>
+
+                {/* //! Add Button */}
+                <div
+                  onClick={() => setAction("add")}
+                  className={
+                    action === "edit" || action === "add" || action === "delete"
+                      ? "hidden"
+                      : "flex"
+                  }
+                >
+                  <Button
+                    color="green"
+                    size="lg"
+                    textSize="sm"
+                    text="Tambah"
+                    link="none"
+                  />
+                </div>
+
+                {/* //! Cancel Button */}
+                <div
+                  onClick={() => setAction("list")}
+                  className={
+                    action === "edit" || action === "add" || action === "delete"
+                      ? "flex"
+                      : "hidden"
+                  }
+                >
+                  <Button
+                    color="grey"
+                    size="lg"
+                    textSize="sm"
+                    text="Batal"
+                    link="none"
+                  />
+                </div>
+
+                {/* //! Save / Delete Button */}
+                <div
+                  onClick={() => setSaveData((prev) => prev + 1)}
+                  className={
+                    action === "edit" || action === "add" || action === "delete"
+                      ? "flex"
+                      : "hidden"
+                  }
+                >
+                  <Button
+                    color={action === "delete" ? "red" : "green"}
+                    size="lg"
+                    textSize="sm"
+                    text={action === "delete" ? "Hapus" : "Simpan"}
+                    link="none"
+                  />
+                </div>
+
+                {/* //! Delete Button */}
+                <div
+                  onClick={() => setAction("delete")}
+                  className={
+                    action === "edit" || action === "add" || action === "delete"
+                      ? "hidden"
+                      : "flex"
+                  }
+                >
+                  <Button
+                    color="red"
+                    size="lg"
+                    textSize="sm"
+                    text="Hapus"
+                    link="none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* //! MOBILE Action - Setting Button */}
+            <div className="flex md:hidden justify-center items-center">
+              <div
+                className={`${
+                  page === labels.home ? "hidden" : "flex"
+                } flex py-3 pl-3`}
+                onClick={() => {
+                  setShowMobileAction(true);
+                }}
+              >
+                <VerticalThreeDot className="size-6 cursor-pointer hover:border rounded-sm" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-6 mb-6 min-h-[60vh]">
-          {/* //! DATA DKP : MAPPING */}
-          {dataPages.map((e, idx) => (
+          {/* //! ========== DATA DKP ========== */}
+          <div className="flex flex-col gap-6 mb-6">
+            {/* //! DATA DKP : MAPPING */}
+            {dataPages.map((e, idx) => (
+              <div
+                key={idx}
+                className={`${
+                  page === labels.home ? "flex" : "hidden"
+                } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+                onClick={() => {
+                  setPage(e.name);
+                  setDataset(e.table);
+                  setAction("list");
+                }}
+              >
+                {e.name}
+              </div>
+            ))}
+
+            {/*//! DATA INTERNAL DKP */}
+            {dataset !== "data_mitra" && page !== labels.home && (
+              <DataInternal
+                dataset={dataset}
+                action={action}
+                saveData={saveData}
+                onSignalAction={handleSignalAction}
+              />
+            )}
+          </div>
+
+          {/* //! ========== DATA MITRA ========== */}
+          <div className="flex flex-col gap-6 mb-6">
+            {/*//! DATA MITRA : Top Title */}
+            {mitraDataPages.length > 0 && page === labels.home && (
+              <div className="relative flex w-full justify-center items-center mx-auto mt-6">
+                <h3 className="font-bold text-center">Data Mitra</h3>
+
+                {/* //! OPTION BUTTON TO SETTING DATASETS METADATA */}
+                <details className="absolute right-0 group">
+                  <summary className="list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black">
+                    <VerticalThreeDot className="size-6" />
+                  </summary>
+                  <div className="flex flex-col absolute right-0 z-30 mt-2 rounded-lg border border-gray-400 bg-white shadow-lg p-2">
+                    <button
+                      className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                      onClick={() => (
+                        setMainPage("add"),
+                        setPage(labels.add),
+                        setAction("add")
+                      )}
+                    >
+                      Tambah Dataset
+                    </button>
+                    <button
+                      className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                      onClick={() => (
+                        setMainPage("edit"),
+                        setPage(labels.edit),
+                        setAction("edit")
+                      )}
+                    >
+                      Atur Dataset
+                    </button>
+                    <button
+                      className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                      onClick={() => (
+                        setMainPage("delete"),
+                        setPage(labels.delete),
+                        setAction("delete")
+                      )}
+                    >
+                      Hapus Dataset
+                    </button>
+                  </div>
+                </details>
+              </div>
+            )}
+
+            {/* //! DATA MITRA : MAPPING */}
+            {mitraDataPages.map((e) => (
+              <div
+                key={e.id}
+                className={`${
+                  page === labels.home ? "flex" : "hidden"
+                } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+                onClick={() => {
+                  setPage(e.label);
+                  setDataset("data_mitra");
+                  setMitraDataId(e.id);
+                  setAction("list");
+                }}
+              >
+                {e.label}
+              </div>
+            ))}
+
+            {/*//! DATA MITRA */}
+            {dataset === "data_mitra" && page !== labels.home && (
+              <DataMitra
+                dataMitraId={mitraDataId}
+                action={action}
+                saveData={saveData}
+                onSignalAction={handleSignalAction}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* //! ========== ADD NEW DATA ========== */}
+      {mainPage !== "main" && (
+        <div className="flex flex-col min-h-[80vh]">
+          {/* //! TOP TITLE AND ACTION */}
+          <div className="flex relative items-center justify-center my-8">
+            {/*//! Back Button */}
             <div
-              key={idx}
-              className={`${
-                page === labels.home ? "flex" : "hidden"
-              } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+              className="flex justify-center items-center py-3 pr-3 cursor-pointer"
               onClick={() => {
-                setPage(e.name);
-                setDataset(e.table);
+                setPage(labels.home);
+                setMainPage("main");
+                setDataset("");
                 setAction("list");
               }}
             >
-              {e.name}
+              <LeftChevron className="size-6" />
             </div>
-          ))}
 
-          {/*//! DATA MITRA : Top Title */}
-          {mitraDataPages.length > 0 && page === labels.home && (
-            <p className={`font-bold text-center mx-auto mt-6 text-lg`}>
-              {"Data Mitra"}
-            </p>
-          )}
+            {/*//! Top Title */}
+            <h3 className="font-bold text-center mx-auto">{page}</h3>
 
-          {/* //! DATA MITRA : MAPPING */}
-          {mitraDataPages.map((e) => (
-            <div
-              key={e.id}
-              className={`${
-                page === labels.home ? "flex" : "hidden"
-              } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
-              onClick={() => {
-                setPage(e.label);
-                setDataset("data_mitra");
-                setMitraDataId(e.id);
-                setMitraDataset(e.dataset_name);
-                setAction("list");
-              }}
-            >
-              {e.label}
+            {/*//! DESKTOP : Action Button */}
+            <div className="hidden md:flex justify-center items-center">
+              <div className="flex flex-row gap-1">
+                {/* //! Cancel Button */}
+                <div
+                  onClick={() => (
+                    setPage(labels.home),
+                    setMainPage("main"),
+                    setAction("list")
+                  )}
+                  className={
+                    action === "edit" || action === "add" || action === "delete"
+                      ? "flex"
+                      : "hidden"
+                  }
+                >
+                  <Button
+                    color="grey"
+                    size="lg"
+                    textSize="sm"
+                    text="Batal"
+                    link="none"
+                  />
+                </div>
+                {/* //! Confirmation Button : Save / Delete (when action === "delete") Button */}
+                <div onClick={() => setSaveData((prev) => prev + 1)}>
+                  <Button
+                    color={action === "delete" ? "red" : "green"}
+                    size="lg"
+                    textSize="sm"
+                    text={action === "delete" ? "Hapus" : "Simpan"}
+                    link="none"
+                  />
+                </div>
+              </div>
             </div>
-          ))}
 
-          {/*//! DATA BUDIDAYA */}
-          {dataset === "budidaya" && page !== labels.home && (
-            <DataBudidaya
-              action={action}
-              saveData={saveData}
-              onSignalAction={handleSignalAction}
-            />
-          )}
+            {/* //! MOBILE Action - Setting Button */}
+            <div className="flex md:hidden justify-center items-center">
+              <div
+                className={`${
+                  page === labels.home ? "hidden" : "flex"
+                } flex py-3 pl-3`}
+                onClick={() => {
+                  setShowMobileAction(true);
+                }}
+              >
+                <VerticalThreeDot className="size-6 cursor-pointer hover:border rounded-sm" />
+              </div>
+            </div>
+          </div>
 
-          {/*//! DATA TANGKAP */}
-          {dataset === "tangkap" && page !== labels.home && (
-            <DataTangkap
-              action={action}
-              saveData={saveData}
-              onSignalAction={handleSignalAction}
-            />
-          )}
-
-          {/*//! DATA COLDCHAIN */}
-          {dataset === "cold_chain" && page !== labels.home && (
-            <DataColdChain
-              action={action}
-              saveData={saveData}
-              onSignalAction={handleSignalAction}
-            />
-          )}
-
-          {/*//! DATA MITRA */}
-          {dataset === "data_mitra" && page !== labels.home && (
-            <DataMitra
-              dataMitraId={mitraDataId}
-              datasetName={mitraDataset}
-              action={action}
-              saveData={saveData}
-              onSignalAction={handleSignalAction}
-            />
-          )}
+          <div className="flex flex-col gap-6 mb-6 min-h-[60vh]">
+            {/*//! DATA MITRA */}
+            {page !== labels.home && (
+              <DatasetConfig
+                action={action}
+                saveData={saveData}
+                onSignalAction={handleSignalDatasetAction}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* //! BOTTOM MOBILE ACTION MENU */}
+      {/* //! ========== BOTTOM MOBILE ACTION MENU ========== */}
       <div
         className={`fixed md:hidden inset-0 z-20 bg-gray-950/70 transition-opacity duration-300 ${
           showMobileAction
@@ -373,15 +525,19 @@ export default function AdminData() {
             : "translate-y-full"
         }`}
       >
-        {/* Cancel button */}
+        {/* //! Cancel button */}
         <button
           className="w-full rounded-xl bg-gray-600 border-2 border-white py-2 text-md text-white"
-          onClick={() => setAction("list")}
+          onClick={() => (
+            mainPage !== "main" && setPage(labels.home),
+            setMainPage("main"),
+            setAction("list")
+          )}
         >
           Batal
         </button>
 
-        {/* Save button for Add / Edit */}
+        {/* //! Save button for Add / Edit */}
         {(action === "edit" || action === "add") && (
           <button
             className="w-full rounded-xl bg-green-600 border-2 border-white py-2 text-md text-white"
@@ -391,7 +547,7 @@ export default function AdminData() {
           </button>
         )}
 
-        {/* Delete button for Delete mode */}
+        {/* //! Delete button for Delete mode */}
         {action === "delete" && (
           <button
             className="w-full rounded-xl bg-rose-600 border-2 border-white py-2 text-md text-white"

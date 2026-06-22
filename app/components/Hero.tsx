@@ -50,7 +50,7 @@ export default function Hero() {
           src="/assets/hero_3.svg"
           width={800}
           height={600}
-          className="w-full"
+          className="w-full h-auto"
           priority
         />
       </div>

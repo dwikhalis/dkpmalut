@@ -123,7 +123,7 @@ export default function AdminPages({ type }: Props) {
             <LeftChevron className="size-6" />
           </div>
 
-          <h3 className="font-bold text-center mx-auto">{page}</h3>
+          <p className="font-bold text-center mx-auto text-lg">{page}</p>
         </div>
 
         <div className="flex flex-col gap-6 mb-12 min-h-[60vh]">
