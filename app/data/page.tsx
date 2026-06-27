@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { DownChevron, UpChevron } from "@/public/icons/iconSets";
 import Link from "next/link";
 import CardData from "../components/CardData";

@@ -44,7 +44,7 @@ export default function Button(props: Props) {
     return (
       <div className="flex justify-center items-center">
         <button
-          className={`flex items-center h-[3vw] px-[${width ? width : 2}vw] py-3 text-${textSize ? textSize : "[1.2vw]"} ${color === "red" ? red : color === "green" ? green : color === "blue" ? blue : color === "grey" ? grey : blue} text-white rounded-full hover:text-black cursor-pointer`}
+          className={`flex items-center px-5 py-2 text-xs ${color === "red" ? red : color === "green" ? green : color === "blue" ? blue : color === "grey" ? grey : blue} text-white rounded-full hover:text-black cursor-pointer`}
         >
           <Link href={link}>{text}</Link>
         </button>
@@ -54,36 +54,14 @@ export default function Button(props: Props) {
     return (
       <div className="flex justify-center items-center">
         <button
-          className={`flex items-center h-[3vw] px-[${width ? width : 2}vw] py-3 text-${textSize ? textSize : "[1.2vw]"} ${color === "red" ? red : color === "green" ? green : color === "blue" ? blue : color === "grey" ? grey : blue} text-white rounded-full hover:text-black cursor-pointer`}
+          className={`flex items-center px-5 py-2 text-xs ${color === "red" ? red : color === "green" ? green : color === "blue" ? blue : color === "grey" ? grey : blue} text-white rounded-full hover:text-black cursor-pointer`}
         >
           <p>{text}</p>
         </button>
       </div>
     );
 
-    //! SM Size
-  } else if (size === "sm" && link !== "none") {
-    return (
-      <div className="flex justify-center items-center">
-        <button
-          className={`flex items-center h-[2vw] px-[${width ? width : 1}vw] py-2 text-${textSize ? textSize : "[1vw]"} ${color === "red" ? red : color === "green" ? green : color === "blue" ? blue : color === "grey" ? grey : blue} text-white rounded-full hover:text-black cursor-pointer`}
-        >
-          <Link href={link}>{text}</Link>
-        </button>
-      </div>
-    );
-  } else if (size === "sm" && link === "none") {
-    return (
-      <div className="flex justify-center items-center">
-        <button
-          className={`flex items-center h-[2vw] px-[${width ? width : 1}vw] py-2 text-${textSize ? textSize : "[1vw]"} ${color === "red" ? red : color === "green" ? green : color === "blue" ? blue : color === "grey" ? grey : blue} text-white rounded-full hover:text-black cursor-pointer`}
-        >
-          <p>{text}</p>
-        </button>
-      </div>
-    );
-
-    //! MOBILE-XL Size
+    //! MOBILE XL
   } else if (size === "mobile-xl") {
     return (
       <button

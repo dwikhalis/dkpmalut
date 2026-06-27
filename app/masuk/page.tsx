@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import SpinnerLoading from "../components/SpinnerLoading";
 import { getUserEmailList } from "@/lib/supabase/supabaseHelper";
 import { getBaseUrl } from "@/lib/utils/getBaseUrl";
@@ -143,122 +142,105 @@ export default function Page() {
   };
 
   return (
-    <>
-      <div className="flex lg:flex-row flex-col">
-        <div className="flex lg:h-[80vh] lg:w-[50%] flex-col justify-center items-center lg:items-start mx-12 lg:ml-24 my-8 md:my-12 gap-3">
-          <Image
-            src={"/assets/hero_1.png"}
-            alt="picture"
-            priority
-            width={800}
-            height={600}
-            className="absolute w-[50%]object-contain z-[-1]"
-          />
-        </div>
-        <div className="flex flex-col md:p-10 p-6 border-1 bg-white border-stone-100 gap-3 mx-8 mb-12 lg:mb-20 lg:my-12 lg:mr-24 rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%] min-h-[70vh]">
-          {mode === "signin" && (
-            <>
-              {/* //! LOGIN */}
-              <h2 className="text-center md:text-left">Masuk</h2>
-              <h5 className="text-center md:text-left mb-3">
-                Untuk keperluan pembuatan akun, harap menghubungi Admin.
-              </h5>
-              <form
-                onSubmit={handleEmailSignIn}
-                className="flex flex-col gap-4"
-              >
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-stone-100 p-2 rounded-xl"
-                />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="bg-stone-100 p-2 rounded-xl"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <SpinnerLoading size={"sm"} color="white" />
-                  ) : (
-                    "Masuk"
-                  )}
-                </button>
-              </form>
+    <div className="flex justify-center items-center w-full">
+      <div className="flex flex-col md:p-10 p-6 border-1 bg-white border-stone-100 gap-3 mx-8 my-12 mb-12 md:my-12 md:w-[50vw] rounded-lg md:rounded-2xl shadow-2xl lg:w-[50%] min-h-[70vh]">
+        {mode === "signin" && (
+          <>
+            {/* //! LOGIN */}
+            <h2 className="text-center md:text-left">Masuk</h2>
+            <h5 className="text-center md:text-left mb-3">
+              Untuk keperluan pembuatan akun, harap menghubungi Admin.
+            </h5>
+            <form onSubmit={handleEmailSignIn} className="flex flex-col gap-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-stone-100 p-2 rounded-xl"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-stone-100 p-2 rounded-xl"
+              />
               <button
-                onClick={() => {
-                  clearMessages();
-                  setMode("forgot");
-                }}
-                className="text-sm mt-2 underline text-stone-600 hover:text-stone-800"
+                type="submit"
+                disabled={loading}
+                className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
               >
-                Lupa password?
+                {loading ? (
+                  <SpinnerLoading size={"sm"} color="white" />
+                ) : (
+                  "Masuk"
+                )}
               </button>
-            </>
-          )}
+            </form>
+            <button
+              onClick={() => {
+                clearMessages();
+                setMode("forgot");
+              }}
+              className="text-sm mt-2 underline text-stone-600 hover:text-stone-800"
+            >
+              Lupa password?
+            </button>
+          </>
+        )}
 
-          {/* //! FORGOT PASSWORD */}
-          {mode === "forgot" && (
-            <>
-              <h2 className="text-2xl font-semibold mb-4">Reset Password</h2>
-              <form
-                onSubmit={handleForgotPassword}
-                className="flex flex-col gap-4"
-              >
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-stone-100 p-2 rounded-xl"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || cooldown > 0}
-                  className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <SpinnerLoading size={"sm"} color="white" />
-                  ) : cooldown > 0 ? (
-                    `Tunggu ${cooldown}s`
-                  ) : (
-                    "Kirim email reset password"
-                  )}
-                </button>
-              </form>
+        {/* //! FORGOT PASSWORD */}
+        {mode === "forgot" && (
+          <>
+            <h2 className="text-2xl font-semibold mb-4">Reset Password</h2>
+            <form
+              onSubmit={handleForgotPassword}
+              className="flex flex-col gap-4"
+            >
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-stone-100 p-2 rounded-xl"
+              />
               <button
-                onClick={() => {
-                  clearMessages();
-                  setMode("signin");
-                }}
-                className="text-sm mt-2 underline text-stone-600 hover:text-stone-800"
+                type="submit"
+                disabled={loading || cooldown > 0}
+                className="bg-sky-800 text-white p-2 rounded-xl hover:bg-stone-700 disabled:opacity-50"
               >
-                Kembali ke Login
+                {loading ? (
+                  <SpinnerLoading size={"sm"} color="white" />
+                ) : cooldown > 0 ? (
+                  `Tunggu ${cooldown}s`
+                ) : (
+                  "Kirim email reset password"
+                )}
               </button>
-            </>
-          )}
+            </form>
+            <button
+              onClick={() => {
+                clearMessages();
+                setMode("signin");
+              }}
+              className="text-sm mt-2 underline text-stone-600 hover:text-stone-800"
+            >
+              Kembali ke Login
+            </button>
+          </>
+        )}
 
-          {errorMsg && (
-            <p className="mt-4 text-red-600 w-full text-center">{errorMsg}</p>
-          )}
-          {successMsg && (
-            <p className="mt-4 text-green-600 w-full text-center">
-              {successMsg}
-            </p>
-          )}
-        </div>
+        {errorMsg && (
+          <p className="mt-4 text-red-600 w-full text-center">{errorMsg}</p>
+        )}
+        {successMsg && (
+          <p className="mt-4 text-green-600 w-full text-center">{successMsg}</p>
+        )}
       </div>
-    </>
+    </div>
   );
 }
