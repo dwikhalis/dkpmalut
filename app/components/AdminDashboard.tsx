@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getNumNewMessage, getNumOf } from "@/lib/supabase/supabaseHelper";
+import Link from "next/link";
 
-interface Props {
-  select?: (option: string) => void;
-}
-
-export default function AdminDashboard({ select = () => {} }: Props) {
+export default function AdminDashboard() {
   const [numOfStaff, setNumOfStaff] = useState(0);
   const [numOfNews, setNumOfNews] = useState(0);
   const [numOfGallery, setNumOfGallery] = useState(0);
@@ -48,64 +46,54 @@ export default function AdminDashboard({ select = () => {} }: Props) {
     };
   }, []);
 
+  const blocks = [
+    {
+      label: "Staff",
+      select: "Organisasi",
+      numof: numOfStaff,
+      route: "/admin/organisasi",
+    },
+    {
+      label: "Berita",
+      select: "Berita",
+      numof: numOfNews,
+      route: "/admin/berita",
+    },
+    {
+      label: "Galeri",
+      select: "Galeri",
+      numof: numOfGallery,
+      route: "/admin/galeri",
+    },
+    {
+      label: "Inbox",
+      select: "Inbox",
+      numof: numOfMessage,
+      route: "/admin/inbox",
+    },
+    {
+      label: "Data",
+      select: "Data",
+      numof: numOfDatasets + numOfDataMitra,
+      route: "/admin/data",
+    },
+  ];
+
   return (
-    <div className="flex justify-center items-center min-h-[90vh] mx-8">
-      <div className="flex justify-between gap-6 flex-wrap w-full">
-        <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
-          onClick={() => {
-            select("Organisasi");
-          }}
-        >
-          <div className="flex flex-col justify-center items-center gap-2 w-full">
-            <h3>Staff</h3>
-            <h1>{numOfStaff}</h1>
-          </div>
-        </div>
-        <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
-          onClick={() => {
-            select("Berita");
-          }}
-        >
-          <div className="flex flex-col justify-center items-center gap-2 w-full">
-            <h3>Berita</h3>
-            <h1>{numOfNews}</h1>
-          </div>
-        </div>
-        <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
-          onClick={() => {
-            select("Galeri");
-          }}
-        >
-          <div className="flex flex-col justify-center items-center gap-2 w-full">
-            <h3>Galeri</h3>
-            <h1>{numOfGallery}</h1>
-          </div>
-        </div>
-        <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
-          onClick={() => {
-            select("Inbox");
-          }}
-        >
-          <div className="flex flex-col justify-center items-center gap-2 w-full">
-            <h3>Inbox</h3>
-            <h1>{numOfMessage}</h1>
-          </div>
-        </div>
-        <div
-          className="flex p-6 shadow-2xl rounded-2xl border-3 border-stone-100 w-[20%] cursor-pointer"
-          onClick={() => {
-            select("Data");
-          }}
-        >
-          <div className="flex flex-col justify-center items-center gap-2 w-full">
-            <h3>Data</h3>
-            <h1>{numOfDatasets + numOfDataMitra}</h1>
-          </div>
-        </div>
+    <div className="flex justify-center items-start min-h-[90vh] my-10">
+      <div className="flex justify-start md:justify-between flex-wrap w-full">
+        {blocks.map((e, idx) => (
+          <Link
+            key={idx}
+            href={e.route}
+            className="flex grow p-6 m-3 shadow-xl rounded-2xl border-3 border-stone-100 min-w-30 min-h-30 md:min-w-[20vw] md:min-h-[15vw] cursor-pointer"
+          >
+            <div className="flex flex-col justify-center items-center gap-2 w-full">
+              <h3>{e.label}</h3>
+              <h1>{e.numof}</h1>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
