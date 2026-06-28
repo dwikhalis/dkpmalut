@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { LeftChevron, VerticalThreeDot } from "@/public/icons/iconSets";
 import Button from "./Button";
-import { getDataset } from "@/lib/supabase/supabaseHelper";
+import {
+  getDataset,
+  getInternalDatasetPages,
+  getMitraDatasetPages,
+} from "@/lib/supabase/supabaseHelper";
 import DataInternal from "./DataInternal";
 import DataMitra from "./DataMitra";
 import DatasetConfig from "./DatasetConfig";
@@ -12,15 +16,11 @@ type DataPage = {
   id: string;
   name: string;
   table: string;
-  source: string;
 };
 
 type MitraDataPage = {
   id: string;
-  mitra_id?: string;
   label: string;
-  dataset_name: string;
-  data?: Record<string, unknown> | string | null;
 };
 
 export default function AdminData() {
@@ -33,7 +33,7 @@ export default function AdminData() {
   const [mainPage, setMainPage] = useState<"main" | "add" | "edit" | "delete">(
     "main",
   );
-  const [dataPages, setDataPages] = useState<DataPage[]>([]);
+  const [internalDataPages, setInternalDataPages] = useState<DataPage[]>([]);
   const [mitraDataPages, setMitraDataPages] = useState<MitraDataPage[]>([]);
 
   const [showMobileAction, setShowMobileAction] = useState(false);
@@ -50,9 +50,9 @@ export default function AdminData() {
   useEffect(() => {
     const fetchDataPages = async () => {
       try {
-        const result = await getDataset("datasets");
+        const result = await getInternalDatasetPages();
 
-        setDataPages(result);
+        setInternalDataPages(result);
       } catch (err) {
         console.error("Fetching Datasets :", err);
       }
@@ -65,7 +65,7 @@ export default function AdminData() {
   useEffect(() => {
     const fetchMitraDataPages = async () => {
       try {
-        const result = await getDataset("data_mitra");
+        const result = await getMitraDatasetPages();
 
         setMitraDataPages(result);
       } catch (err) {
@@ -266,7 +266,7 @@ export default function AdminData() {
           {/* //! ========== DATA DKP ========== */}
           <div className="flex flex-col gap-6 mb-6">
             {/* //! DATA DKP : MAPPING */}
-            {dataPages.map((e, idx) => (
+            {internalDataPages.map((e, idx) => (
               <div
                 key={idx}
                 className={`${

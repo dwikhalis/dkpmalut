@@ -15,7 +15,7 @@ export default function page() {
   return (
     <div className="flex">
       <AdminSideMenu slug={slug} />
-      <div className="h-full w-full lg:mx-12 mx-8 min-h-[70vh]">
+      <div className="h-full w-full lg:mx-12 mx-8 min-h-[60vh]">
         {slug === "organisasi" ? <AdminPages type="staff" /> : null}
         {slug === "berita" ? <AdminPages type="news" /> : null}
         {slug === "galeri" ? <AdminPages type="gallery" /> : null}

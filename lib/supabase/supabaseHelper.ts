@@ -231,12 +231,44 @@ export const getColdChain = async () => {
 
 // ! FOR ACTUAL DATA (TANGKAP, BUDIDAYA, COLD_CHAIN, ETC.)
 
-//! GET DATASET
+//! GET DATASET (ALL DATA)
 export const getDataset = async (dataset: string) => {
   const { data, error } = await supabase.from(dataset).select("*");
 
   if (error) {
     alert(`Get dataset ${dataset} Gagal!`);
+    console.error(error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+//! GET INTERNAL DATASET PAGES
+export const getInternalDatasetPages = async () => {
+  const { data, error } = await supabase
+    .from("datasets")
+    .select("id, name, table")
+    .order("name", { ascending: true });
+
+  if (error) {
+    alert(`Get dataset Internal Gagal!`);
+    console.error(error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+//! GET INTERNAL DATASET PAGES
+export const getMitraDatasetPages = async () => {
+  const { data, error } = await supabase
+    .from("data_mitra")
+    .select("id, label")
+    .order("label", { ascending: true });
+
+  if (error) {
+    alert(`Get dataset Mitra Gagal!`);
     console.error(error);
     throw error;
   }
