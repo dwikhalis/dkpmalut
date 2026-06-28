@@ -87,10 +87,10 @@ export default function AdminData() {
   };
 
   return (
-    <>
+    <div className="flex w-full min-w-0 max-w-full min-h-[90vh] overflow-hidden">
       {/* //! ========== HOME AND LIST DATA ========== */}
       {mainPage === "main" && (
-        <div className="flex flex-col min-h-[80vh]">
+        <div className="flex w-full min-w-0 max-w-full flex-col overflow-hidden">
           {/* //! TOP TITLE AND ACTION */}
           <div className="flex relative items-center justify-center my-8">
             {/*//! Back Button */}
@@ -264,39 +264,42 @@ export default function AdminData() {
           </div>
 
           {/* //! ========== DATA DKP ========== */}
-          <div className="flex flex-col gap-6 mb-6">
-            {/* //! DATA DKP : MAPPING */}
-            {internalDataPages.map((e, idx) => (
-              <div
-                key={idx}
-                className={`${
-                  page === labels.home ? "flex" : "hidden"
-                } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
-                onClick={() => {
-                  setPage(e.name);
-                  setDataset(e.table);
-                  setAction("list");
-                }}
-              >
-                {e.name}
-              </div>
-            ))}
+          {page === labels.home && (
+            <div className="flex w-full min-w-0 max-w-full flex-col gap-6 mb-6 px-1 py-2">
+              {/* //! DATA DKP : MAPPING */}
+              {internalDataPages.map((e, idx) => (
+                <div
+                  key={idx}
+                  className={`${
+                    page === labels.home ? "flex" : "hidden"
+                  } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+                  onClick={() => {
+                    setPage(e.name);
+                    setDataset(e.table);
+                    setAction("list");
+                  }}
+                >
+                  {e.name}
+                </div>
+              ))}
+            </div>
+          )}
 
-            {/*//! DATA INTERNAL DKP */}
-            {dataset !== "data_mitra" && page !== labels.home && (
-              <DataInternal
-                dataset={dataset}
-                action={action}
-                saveData={saveData}
-                onSignalAction={handleSignalAction}
-              />
-            )}
-          </div>
+          {/*//! DATA INTERNAL DKP */}
+          {dataset !== "data_mitra" && page !== labels.home && (
+            <DataInternal
+              dataset={dataset}
+              action={action}
+              saveData={saveData}
+              onSignalAction={handleSignalAction}
+            />
+          )}
 
           {/* //! ========== DATA MITRA ========== */}
-          <div className="flex flex-col gap-6 mb-6">
-            {/*//! DATA MITRA : Top Title */}
-            {mitraDataPages.length > 0 && page === labels.home && (
+
+          {/*//! DATA MITRA : Top Title */}
+          {mitraDataPages.length > 0 && page === labels.home && (
+            <div className="flex w-full min-w-0 max-w-full flex-col gap-6 mb-6 px-1 py-2">
               <div className="relative flex w-full justify-center items-center mx-auto mt-6">
                 <h3 className="font-bold text-center">Data Mitra</h3>
 
@@ -339,42 +342,43 @@ export default function AdminData() {
                   </div>
                 </details>
               </div>
-            )}
 
-            {/* //! DATA MITRA : MAPPING */}
-            {mitraDataPages.map((e) => (
-              <div
-                key={e.id}
-                className={`${
-                  page === labels.home ? "flex" : "hidden"
-                } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
-                onClick={() => {
-                  setPage(e.label);
-                  setDataset("data_mitra");
-                  setMitraDataId(e.id);
-                  setAction("list");
-                }}
-              >
-                {e.label}
-              </div>
-            ))}
+              {/* //! DATA MITRA : MAPPING */}
 
-            {/*//! DATA MITRA */}
-            {dataset === "data_mitra" && page !== labels.home && (
-              <DataMitra
-                dataMitraId={mitraDataId}
-                action={action}
-                saveData={saveData}
-                onSignalAction={handleSignalAction}
-              />
-            )}
-          </div>
+              {mitraDataPages.map((e) => (
+                <div
+                  key={e.id}
+                  className={`${
+                    page === labels.home ? "flex" : "hidden"
+                  } flex-col p-3 border-1 border-stone-200 bg-white hover:bg-sky-800 hover:text-white rounded-2xl shadow-xl text-center cursor-pointer`}
+                  onClick={() => {
+                    setPage(e.label);
+                    setDataset("data_mitra");
+                    setMitraDataId(e.id);
+                    setAction("list");
+                  }}
+                >
+                  {e.label}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/*//! DATA MITRA */}
+          {dataset === "data_mitra" && page !== labels.home && (
+            <DataMitra
+              dataMitraId={mitraDataId}
+              action={action}
+              saveData={saveData}
+              onSignalAction={handleSignalAction}
+            />
+          )}
         </div>
       )}
 
       {/* //! ========== ADD NEW DATA ========== */}
       {mainPage !== "main" && (
-        <div className="flex flex-col min-h-[80vh]">
+        <div className="flex min-h-[80vh] w-full min-w-0 max-w-full flex-col overflow-hidden">
           {/* //! TOP TITLE AND ACTION */}
           <div className="flex relative items-center justify-center my-8">
             {/*//! Back Button */}
@@ -557,6 +561,6 @@ export default function AdminData() {
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }

@@ -450,8 +450,6 @@ export default function DataTable({
     setSaving(true);
 
     try {
-      const insertedRows = await addDataRows(datasetName, rowsToAdd);
-
       await addDataRows(datasetName, rowsToAdd);
 
       await refreshDataset();
@@ -556,72 +554,70 @@ export default function DataTable({
 
   return (
     <>
-      <div className="flex flex-col w-full">
-        <div className="w-full h-full flex flex-col">
+      <div className="flex w-full min-w-0 max-w-full flex-col overflow-hidden">
+        <div className="flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden">
           {/* //! TABLE : ADDING NEW DATA */}
           {action === "add" ? (
-            <div className="w-[85vw] md:w-[80vw] xl:w-[80vw] overflow-x-auto">
-              <div className="overflow-x-auto mb-6">
-                <div className="border-1 border-gray-950/20 rounded-sm overflow-x-auto mb-6">
-                  <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-                    <thead>
-                      <tr>
-                        {columns.map((col) => (
-                          <th
-                            key={col.key}
-                            className={`${col.color ? col.color : "bg-sky-100"} px-3 py-2 border border-gray-400 whitespace-normal break-words`}
-                          >
-                            {col.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {newRows.map((row, rowIndex) => (
-                        <tr key={row.id}>
-                          {columns.map((col, colIndex) => {
-                            const alignClass =
-                              col.align === "right"
-                                ? "text-right"
-                                : col.align === "center"
-                                  ? "text-center"
-                                  : "text-left";
-
-                            return (
-                              <td
-                                key={col.key}
-                                className={`border border-gray-400 p-0 ${alignClass}`}
-                              >
-                                <input
-                                  type={col.inputType ?? "text"}
-                                  value={String(row[col.key] ?? "")}
-                                  onChange={(e) =>
-                                    handleNewCellChange(
-                                      rowIndex,
-                                      col.key,
-                                      e.target.value,
-                                      col.inputType,
-                                    )
-                                  }
-                                  onPaste={(e) =>
-                                    handlePasteToAdd(e, rowIndex, colIndex)
-                                  }
-                                  className={`w-full px-3 py-2 ${alignClass}`}
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
+            <div className="w-full min-w-0 max-w-full overflow-hidden">
+              <div className="mb-6 w-full min-w-0 max-w-full overflow-x-auto rounded-sm border border-gray-950/20">
+                <table className="w-max min-w-full border-collapse lg:text-sm md:text-[1.5vw] text-[2vw]">
+                  <thead>
+                    <tr>
+                      {columns.map((col) => (
+                        <th
+                          key={col.key}
+                          className={`${col.color ? col.color : "bg-sky-100"} px-3 py-2 border border-gray-400 whitespace-normal break-words`}
+                        >
+                          {col.label}
+                        </th>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {newRows.map((row, rowIndex) => (
+                      <tr key={row.id}>
+                        {columns.map((col, colIndex) => {
+                          const alignClass =
+                            col.align === "right"
+                              ? "text-right"
+                              : col.align === "center"
+                                ? "text-center"
+                                : "text-left";
+
+                          return (
+                            <td
+                              key={col.key}
+                              className={`border border-gray-400 p-0 ${alignClass}`}
+                            >
+                              <input
+                                type={col.inputType ?? "text"}
+                                value={String(row[col.key] ?? "")}
+                                onChange={(e) =>
+                                  handleNewCellChange(
+                                    rowIndex,
+                                    col.key,
+                                    e.target.value,
+                                    col.inputType,
+                                  )
+                                }
+                                onPaste={(e) =>
+                                  handlePasteToAdd(e, rowIndex, colIndex)
+                                }
+                                className={`w-full px-3 py-2 ${alignClass}`}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           ) : (
             //! TABLE : NORMAL, BUT CAN EDIT AND DELETE
-            <div className="w-[85vw] md:w-[80vw] xl:w-[80vw]">
+            <div className="w-full min-w-0 max-w-full overflow-hidden">
               <div className="mb-4 flex flex-wrap gap-3">
                 {/* //! SORT BY */}
                 <select
@@ -667,8 +663,8 @@ export default function DataTable({
                 ))}
               </div>
 
-              <div className="border-1 border-gray-950/20 rounded-sm overflow-x-auto mb-6">
-                <table className="min-w-full border lg:text-sm md:text-[1.5vw] text-[2vw]">
+              <div className="mb-6 w-full min-w-0 max-w-full overflow-x-auto rounded-sm border border-gray-950/20">
+                <table className="w-max min-w-full border-collapse lg:text-sm md:text-[1.5vw] text-[2vw]">
                   <thead>
                     <tr>
                       {action === "delete" && (
@@ -690,7 +686,7 @@ export default function DataTable({
                       {columns.map((col) => (
                         <th
                           key={col.key}
-                          className={`${col.color ? col.color : "bg-sky-100"} px-3 py-2 border border-gray-400 whitespace-normal break-words`}
+                          className={`${col.color ? col.color : "bg-sky-100"} min-w-32 px-3 py-2 border border-gray-400 whitespace-normal break-words`}
                         >
                           {col.label}
                         </th>
@@ -749,7 +745,7 @@ export default function DataTable({
                                       handlePasteToEdit(e, rowIndex, colIndex)
                                     }
                                     placeholder="N/A"
-                                    className={`w-full px-3 py-2 ${alignClass}`}
+                                    className={`block w-full min-w-32 px-3 py-2 ${alignClass}`}
                                   />
                                 ) : (
                                   displayValue(value)

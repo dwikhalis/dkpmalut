@@ -27,7 +27,7 @@ export default function AdminMessage() {
 
   const handleDataFromChild = async (
     childData: DataTypes,
-    action: "read" | "unread" | "switch"
+    action: "read" | "unread" | "switch",
   ) => {
     if (action === "read") {
       setSelectedItem(childData);
@@ -38,7 +38,7 @@ export default function AdminMessage() {
         await updateStatus(childData.id, "lama");
         // optional: keep local state in sync while waiting for Supabase realtime
         setSelectedItem((prev) =>
-          prev && prev.id === childData.id ? { ...prev, status: "lama" } : prev
+          prev && prev.id === childData.id ? { ...prev, status: "lama" } : prev,
         );
       }
       return;
@@ -49,7 +49,7 @@ export default function AdminMessage() {
       await updateStatus(childData.id, "baru");
       // optional local sync if this item is currently open
       setSelectedItem((prev) =>
-        prev && prev.id === childData.id ? { ...prev, status: "baru" } : prev
+        prev && prev.id === childData.id ? { ...prev, status: "baru" } : prev,
       );
     }
 
@@ -61,13 +61,13 @@ export default function AdminMessage() {
         await updateStatus(childData.id, "lama");
         // optional: keep local state in sync while waiting for Supabase realtime
         setSelectedItem((prev) =>
-          prev && prev.id === childData.id ? { ...prev, status: "lama" } : prev
+          prev && prev.id === childData.id ? { ...prev, status: "lama" } : prev,
         );
       } else if (childData.status === "lama") {
         await updateStatus(childData.id, "baru");
         // optional: keep local state in sync while waiting for Supabase realtime
         setSelectedItem((prev) =>
-          prev && prev.id === childData.id ? { ...prev, status: "lama" } : prev
+          prev && prev.id === childData.id ? { ...prev, status: "lama" } : prev,
         );
       }
       return;
@@ -75,7 +75,7 @@ export default function AdminMessage() {
   };
 
   return (
-    <div className="mt-12">
+    <div className="w-full mt-12 min-h-[90vh]">
       {/* //! LIST MESSAGE */}
       <div className={`${showMessage ? "hidden" : "flex"}`}>
         <ListMassage admin={true} sendToParent={handleDataFromChild} />
@@ -117,7 +117,7 @@ export default function AdminMessage() {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
-                        }
+                        },
                       )
                     : null}
                 </h5>

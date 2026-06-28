@@ -111,7 +111,7 @@ export default function AdminPages({ type }: Props) {
 
   return (
     <>
-      <div className="flex flex-col">
+      <div className="flex flex-col w-full min-h-[90vh]">
         <div className="relative flex items-center my-8">
           {/* Back Button */}
           <div

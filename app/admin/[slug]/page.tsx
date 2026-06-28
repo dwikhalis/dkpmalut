@@ -13,9 +13,9 @@ export default function page() {
   console.log(slug);
 
   return (
-    <div className="flex">
+    <div className="flex min-w-0">
       <AdminSideMenu slug={slug} />
-      <div className="h-full w-full lg:mx-12 mx-8 min-h-[60vh]">
+      <div className="flex h-full min-h-[70vh] min-w-0 flex-1 overflow-hidden px-8 lg:px-12">
         {slug === "organisasi" ? <AdminPages type="staff" /> : null}
         {slug === "berita" ? <AdminPages type="news" /> : null}
         {slug === "galeri" ? <AdminPages type="gallery" /> : null}

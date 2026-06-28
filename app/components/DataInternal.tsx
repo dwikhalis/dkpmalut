@@ -142,8 +142,8 @@ export default function DataInternal({
   }
 
   return (
-    <div className="w-full space-y-3">
-      <details className="group relative">
+    <div className="w-full min-w-0 max-w-full space-y-3 overflow-hidden">
+      <details className="group relative w-full">
         <summary className="cursor-pointer rounded-sm border border-gray-400 bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black">
           Kolom ({visibleColumnKeys.length}/{columns.length})
         </summary>

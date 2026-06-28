@@ -20,7 +20,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ChartDataLabels
+  ChartDataLabels,
 );
 
 interface Dataset {
@@ -94,24 +94,15 @@ export default function BarCharts({
             const v = ctx.parsed?.y ?? ctx.parsed ?? 0;
             const ds = ctx.dataset?.label ? `${ctx.dataset.label}: ` : "";
 
-            if (ctx.dataset.label === "Budidaya" || "Tangkap") {
-              if (unit === "ton") {
-                return `${ds}${nf.format(v / 1000)} ton`;
-              } else if (unit === "kg") {
-                return `${ds}${nf.format(v)} kg`;
-              }
+            if (unit === "ton") {
+              return `${ds}${nf.format(Number(v) / 1000)} ton`;
             }
 
-            if (ctx.dataset.label === "Produksi")
-              return `${ds}${nf.format(v / 1000)} ton`;
+            if (unit === "kg") {
+              return `${ds}${nf.format(Number(v))} kg`;
+            }
 
-            if (ctx.dataset.label === "Pembudidaya")
-              return `${ds}${nf.format(v)} org`;
-
-            if (ctx.dataset.label === "Luas Lahan")
-              return `${ds}${nf.format(v)} ha`;
-
-            if (ctx.dataset.label === "RTP") return `${ds}${nf.format(v)}`;
+            return `${ds}${nf.format(Number(v))}`;
           },
         },
       },
