@@ -1,21 +1,65 @@
 import { create } from "zustand";
+import type { User, Session } from "@supabase/supabase-js";
+
+type UserRole = "admin" | "user" | "partner";
+
+type UserProfile = {
+  id: string;
+  username: string;
+  email: string;
+  organization: string;
+  role: UserRole;
+};
 
 interface AuthState {
-  user: unknown;
-  setUser: (user: unknown) => void;
-  clearUser: () => void;
+  session: Session | null;
+  user: User | null;
+  userId: string | null;
+  profile: UserProfile | null;
+  role: UserRole | null;
+
   isLoggedIn: boolean;
   loading: boolean;
-  setIsLoggedIn: (loggedIn: boolean) => void;
+
+  setAuth: (session: Session | null) => void;
+  setProfile: (profile: UserProfile | null) => void;
+  clearAuth: () => void;
   setLoading: (loading: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
+  session: null,
   user: null,
-  setUser: (user) => set({ user }),
-  clearUser: () => set({ user: null }),
-  loading: true, // start as true until we check auth
+  userId: null,
+  profile: null,
+  role: null,
+
   isLoggedIn: false,
-  setIsLoggedIn: (loggedIn) => set({ isLoggedIn: loggedIn }),
+  loading: true,
+
+  setAuth: (session) =>
+    set({
+      session,
+      user: session?.user ?? null,
+      userId: session?.user?.id ?? null,
+      isLoggedIn: !!session,
+    }),
+
+  setProfile: (profile) =>
+    set({
+      profile,
+      role: profile?.role ?? null,
+    }),
+
+  clearAuth: () =>
+    set({
+      session: null,
+      user: null,
+      userId: null,
+      profile: null,
+      role: null,
+      isLoggedIn: false,
+    }),
+
   setLoading: (loading) => set({ loading }),
 }));

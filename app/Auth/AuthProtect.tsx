@@ -11,12 +11,12 @@ export default function AuthProtect({
 }) {
   const router = useRouter();
 
-  // ✅ FIX: Destructure directly to avoid re-creating selector objects
-  const { isLoggedIn, loading } = useAuthStore();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const loading = useAuthStore((state) => state.loading);
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
-      router.replace("/404"); // prevent back navigation flicker
+      router.replace("/404");
     }
   }, [loading, isLoggedIn, router]);
 

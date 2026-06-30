@@ -126,7 +126,7 @@ export default function Navbar() {
             </Link>
 
             {isLoggedIn ? (
-              <Button size="lg" text="Dashboard" link="/admin" />
+              <Button size="lg" text="Akun" link="/profile" />
             ) : (
               <Button size="lg" text="Masuk" link="/masuk" />
             )}
@@ -222,7 +222,7 @@ export default function Navbar() {
           {isLoggedIn ? (
             <>
               <Link
-                href="/admin"
+                href="/profile"
                 className="text-center"
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -232,7 +232,7 @@ export default function Navbar() {
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
                   ) : (
-                    <h4>Dashboard</h4>
+                    <h4>Akun</h4>
                   )}
                 </div>
               </Link>
@@ -243,7 +243,7 @@ export default function Navbar() {
                   setIsMenuOpen(false);
                 }}
               >
-                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
+                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white cursor-pointer">
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
                   ) : (

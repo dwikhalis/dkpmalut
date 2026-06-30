@@ -9,9 +9,10 @@ import Link from "next/link";
 
 interface Props {
   slug: string;
+  userRole: string | null;
 }
 
-export default function AdminSideMenu({ slug }: Props) {
+export default function AdminSideMenu({ slug, userRole }: Props) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,21 @@ export default function AdminSideMenu({ slug }: Props) {
     }
   };
 
-  const menus = [
+  //! ========== USER ACCESS NOTES ========== //
+  //! 1. Public visitor cannot access Admin function
+  //! 2. Public visitor can see data defined as "public" at the Data Page
+  //! 3. Data page still show "user" data in the list, but to access it Public visitor needs to Sign Up
+  //! 4. After Signed Up, Public visitor becomes "user"
+  //! 5. User can see and download "public" and "user" data, IF user email has been verified
+  //! 6. Inside Dashboard, "Data" can only be accessed by "partner", "user" needs to apply to be "partner" first
+
+  //! ========== DASHBOARD FEATURE NOTES ========== //
+  //! 1. User Info, CRUD Function (username, join date, organization, email (verified / not))
+  //! 2. Additional Organization menu only for "partner", with CRU function
+  //! 3. Partner Data menu can only see their own data.
+  //! 4. Admin can update contact number to be used as main WA number for communication
+
+  const adminMenus = [
     {
       label: "Staff",
       slug: "organisasi",
@@ -52,9 +67,23 @@ export default function AdminSideMenu({ slug }: Props) {
       slug: "galeri",
     },
     {
-      label: "Inbox",
-      slug: "inbox",
+      label: "Pesan",
+      slug: "pesan",
     },
+    {
+      label: "Data",
+      slug: "data",
+    },
+  ];
+
+  const partnerMenus = [
+    {
+      label: "Data",
+      slug: "data",
+    },
+  ];
+
+  const userMenus = [
     {
       label: "Data",
       slug: "data",
@@ -71,22 +100,68 @@ export default function AdminSideMenu({ slug }: Props) {
       >
         <div className="flex flex-col gap-5 bg-sky-800 md:pt-10 pt-20 grow">
           <div className="flex flex-col">
-            <Link href={`/admin`}>
-              <h5
-                className={`${slug === "home" ? selected : unselected} 2xl:pl-6`}
-              >
-                {"Dashboard"}
-              </h5>
-            </Link>
-            {menus.map((e, idx) => (
-              <Link key={idx} href={`/admin/${e.slug}`}>
-                <h5
-                  className={`${slug === e.slug ? selected : unselected} 2xl:pl-6`}
-                >
-                  {e.label}
-                </h5>
-              </Link>
-            ))}
+            {userRole === "admin" && (
+              <>
+                <Link href={`/profile`}>
+                  <h5
+                    className={`${slug === "home" ? selected : unselected} 2xl:pl-6`}
+                  >
+                    {"Dashboard"}
+                  </h5>
+                </Link>
+                {adminMenus.map((e, idx) => (
+                  <Link key={idx} href={`/profile/${e.slug}`}>
+                    <h5
+                      className={`${slug === e.slug ? selected : unselected} 2xl:pl-6`}
+                    >
+                      {e.label}
+                    </h5>
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {userRole === "partner" && (
+              <>
+                <Link href={`/profile`}>
+                  <h5
+                    className={`${slug === "home" ? selected : unselected} 2xl:pl-6`}
+                  >
+                    {"Profil Akun"}
+                  </h5>
+                </Link>
+                {partnerMenus.map((e, idx) => (
+                  <Link key={idx} href={`/profile/${e.slug}`}>
+                    <h5
+                      className={`${slug === e.slug ? selected : unselected} 2xl:pl-6`}
+                    >
+                      {e.label}
+                    </h5>
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {userRole === "user" && (
+              <>
+                <Link href={`/profile`}>
+                  <h5
+                    className={`${slug === "home" ? selected : unselected} 2xl:pl-6`}
+                  >
+                    {"Profil Akun"}
+                  </h5>
+                </Link>
+                {userMenus.map((e, idx) => (
+                  <Link key={idx} href={`/profile/${e.slug}`}>
+                    <h5
+                      className={`${slug === e.slug ? selected : unselected} 2xl:pl-6`}
+                    >
+                      {e.label}
+                    </h5>
+                  </Link>
+                ))}
+              </>
+            )}
           </div>
 
           {/* //! LOGOUT */}

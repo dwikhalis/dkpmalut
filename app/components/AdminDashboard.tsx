@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getNumNewMessage, getNumOf } from "@/lib/supabase/supabaseHelper";
 import Link from "next/link";
 
@@ -51,31 +50,31 @@ export default function AdminDashboard() {
       label: "Staff",
       select: "Organisasi",
       numof: numOfStaff,
-      route: "/admin/organisasi",
+      route: "/profile/organisasi",
     },
     {
       label: "Berita",
       select: "Berita",
       numof: numOfNews,
-      route: "/admin/berita",
+      route: "/profile/berita",
     },
     {
       label: "Galeri",
       select: "Galeri",
       numof: numOfGallery,
-      route: "/admin/galeri",
+      route: "/profile/galeri",
     },
     {
       label: "Inbox",
       select: "Inbox",
       numof: numOfMessage,
-      route: "/admin/inbox",
+      route: "/profile/inbox",
     },
     {
       label: "Data",
       select: "Data",
       numof: numOfDatasets + numOfDataMitra,
-      route: "/admin/data",
+      route: "/profile/data",
     },
   ];
 

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 import SpinnerLoading from "../components/SpinnerLoading";
 import { getUserEmailList } from "@/lib/supabase/supabaseHelper";
 import { getBaseUrl } from "@/lib/utils/getBaseUrl";
+import Link from "next/link";
 
 export default function Page() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function Page() {
   const [cooldown, setCooldown] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
 
-  // Mode can be: "signin", "register", or "forgot"
+  // Mode can be: "signin" or "forgot"
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
 
   //! RESET ALL FIELD when "mode" is changed
@@ -72,11 +73,11 @@ export default function Page() {
     });
 
     if (error) {
-      setErrorMsg("Akun belum terdaftar! Hubungi Admin.");
+      setErrorMsg("Email atau password salah.");
     } else {
       setSuccessMsg("Login berhasil!");
       setTimeout(() => {
-        router.push("/admin");
+        router.push("/");
       }, 1000);
     }
     setLoading(false);
@@ -148,9 +149,17 @@ export default function Page() {
           <>
             {/* //! LOGIN */}
             <h2 className="text-center md:text-left">Masuk</h2>
-            <h5 className="text-center md:text-left mb-3">
-              Untuk keperluan pembuatan akun, harap menghubungi Admin.
-            </h5>
+            <div className="flex">
+              <p className="text-sm mt-2">
+                Belum punya akun ?{" "}
+                <Link
+                  href={"/daftar"}
+                  className="text-sm mt-2 underline cursor-pointer"
+                >
+                  Daftar
+                </Link>
+              </p>
+            </div>
             <form onSubmit={handleEmailSignIn} className="flex flex-col gap-4">
               <input
                 type="email"
@@ -185,7 +194,7 @@ export default function Page() {
                 clearMessages();
                 setMode("forgot");
               }}
-              className="text-sm mt-2 underline text-stone-600 hover:text-stone-800"
+              className="text-sm mt-2 underline cursor-pointer"
             >
               Lupa password?
             </button>
