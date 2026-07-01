@@ -9,13 +9,14 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import Papa from "papaparse";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import type { ColumnConfig, FilterConfig } from "./DataTableMitra";
 import AlertNotif from "./AlertNotif";
 
+const Papa = (await import("papaparse")).default;
+
 type Action = "add" | "edit" | "list" | "delete";
-type EditSource = "data_mitra" | "datasets";
+export type EditSource = "data_mitra" | "datasets";
 
 type AlertType =
   | "none"
@@ -68,10 +69,20 @@ type DatasetConfigProps = {
   saveData: number;
   onSignalAction: () => void;
   userRole: string | null;
-  mitraId: string | null;
+  userId: string | null;
+  editDataset: EditSource;
 };
 
 type CsvRawRow = Record<string, unknown>;
+
+type ImportColumnConfig = {
+  originalHeader: string;
+  key: string;
+  label: string;
+  selected: boolean;
+  inputType: "text" | "number";
+  align: "left" | "right";
+};
 
 function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
   if (!value) return [];
@@ -117,17 +128,6 @@ function makeUniqueKeys(headers: string[]): string[] {
 
     return `${baseKey}_${used[baseKey]}`;
   });
-}
-
-function makeLabel(value: string): string {
-  const cleaned = value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
-
-  if (!cleaned) return "Kolom";
-
-  return cleaned
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 function isNumericValue(value: unknown): boolean {
@@ -179,36 +179,51 @@ function normalizeMainKeys(keys: string[], columns: ColumnConfig[]): string[] {
   return keys.filter((key) => availableKeys.includes(key));
 }
 
-function inferConfigFromCsv(rows: CsvRawRow[]) {
+function getValidCsvRows(rows: CsvRawRow[]) {
+  return rows.filter((row) =>
+    Object.values(row).some((value) => cleanText(value) !== ""),
+  );
+}
+
+function createImportColumnsFromCsv(rows: CsvRawRow[]): ImportColumnConfig[] {
   const firstRow = rows[0];
 
-  if (!firstRow) {
-    return {
-      dataRows: [] as DataJsonRow[],
-      columns: [] as ColumnConfig[],
-      filters: [] as FilterConfig[],
-      mainKeys: [] as string[],
-    };
-  }
+  if (!firstRow) return [];
 
   const originalHeaders = Object.keys(firstRow).filter(
     (key) => cleanText(key) !== "",
   );
 
-  const keys = makeUniqueKeys(originalHeaders);
+  const uniqueKeys = makeUniqueKeys(originalHeaders);
 
-  const columns: ColumnConfig[] = originalHeaders.map((header, index) => {
+  return originalHeaders.map((header, index) => {
     const values = rows.map((row) => row[header]);
     const inputType = getColumnType(values);
 
     return {
-      key: keys[index],
-      label: makeLabel(header),
-      editable: true,
+      originalHeader: header,
+      key: uniqueKeys[index],
+      label: header,
+      selected: true,
       inputType,
       align: inputType === "number" ? "right" : "left",
     };
   });
+}
+
+function buildConfigFromSelectedImportColumns(
+  rows: CsvRawRow[],
+  importColumns: ImportColumnConfig[],
+) {
+  const selectedColumns = importColumns.filter((column) => column.selected);
+
+  const columns: ColumnConfig[] = selectedColumns.map((column) => ({
+    key: column.key,
+    label: cleanText(column.label) || column.originalHeader,
+    editable: true,
+    inputType: column.inputType,
+    align: column.align,
+  }));
 
   const dataRows: DataJsonRow[] = rows
     .map((row) => {
@@ -216,12 +231,10 @@ function inferConfigFromCsv(rows: CsvRawRow[]) {
         id: crypto.randomUUID(),
       };
 
-      originalHeaders.forEach((header, index) => {
-        const column = columns[index];
-
+      selectedColumns.forEach((column) => {
         parsedRow[column.key] = toDataValue(
-          row[header],
-          column.inputType === "number" ? "number" : "text",
+          row[column.originalHeader],
+          column.inputType,
         );
       });
 
@@ -254,14 +267,14 @@ export default function DatasetConfig({
   saveData,
   onSignalAction,
   userRole,
-  mitraId,
+  userId,
+  editDataset,
 }: DatasetConfigProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHandledSave = useRef(saveData);
 
   const isPartner = userRole === "partner";
   const isAdmin = userRole === "admin";
-  const activeMitraId = isPartner ? mitraId || "" : "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -273,14 +286,14 @@ export default function DatasetConfig({
   const [dataMitraRows, setDataMitraRows] = useState<DataMitraRow[]>([]);
   const [datasetRows, setDatasetRows] = useState<DatasetRow[]>([]);
 
-  const [selectedMitraId, setSelectedMitraId] = useState("");
   const [newLabel, setNewLabel] = useState("");
+  const [csvRawRows, setCsvRawRows] = useState<CsvRawRow[]>([]);
+  const [importColumns, setImportColumns] = useState<ImportColumnConfig[]>([]);
   const [newDataRows, setNewDataRows] = useState<DataJsonRow[]>([]);
   const [newColumns, setNewColumns] = useState<ColumnConfig[]>([]);
   const [newFilters, setNewFilters] = useState<FilterConfig[]>([]);
   const [newMainKeys, setNewMainKeys] = useState<string[]>([]);
 
-  const [editSource, setEditSource] = useState<EditSource>("data_mitra");
   const [selectedEditId, setSelectedEditId] = useState("");
   const [editName, setEditName] = useState("");
   const [editColumns, setEditColumns] = useState<ColumnConfig[]>([]);
@@ -289,7 +302,11 @@ export default function DatasetConfig({
 
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
 
-  const selectedAddMitraId = isPartner ? activeMitraId : selectedMitraId;
+  const hasImportedCsv = csvRawRows.length > 0 && importColumns.length > 0;
+
+  const selectedImportCount = useMemo(() => {
+    return importColumns.filter((column) => column.selected).length;
+  }, [importColumns]);
 
   const mitraNameMap = useMemo(() => {
     return mitraRows.reduce<Record<string, string>>((acc, row) => {
@@ -300,32 +317,89 @@ export default function DatasetConfig({
   }, [mitraRows]);
 
   const selectedEditRow = useMemo(() => {
-    if (editSource === "data_mitra") {
+    if (editDataset === "data_mitra") {
       return dataMitraRows.find((row) => row.id === selectedEditId) ?? null;
     }
 
     return datasetRows.find((row) => row.id === selectedEditId) ?? null;
-  }, [dataMitraRows, datasetRows, editSource, selectedEditId]);
+  }, [dataMitraRows, datasetRows, editDataset, selectedEditId]);
 
-  //! ====== FORCE PARTNER TO DATA MITRA ONLY ====== //
-  useEffect(() => {
-    if (!isPartner) return;
+  const syncImportedColumnsToState = useCallback(
+    (
+      rows: CsvRawRow[],
+      columnsToImport: ImportColumnConfig[],
+      preserveCurrentConfig: boolean,
+    ) => {
+      const parsed = buildConfigFromSelectedImportColumns(
+        rows,
+        columnsToImport,
+      );
 
-    setEditSource("data_mitra");
-    setSelectedMitraId(activeMitraId);
-  }, [activeMitraId, isPartner]);
+      setNewDataRows(parsed.dataRows);
+      setNewColumns(parsed.columns);
+
+      if (!preserveCurrentConfig) {
+        setNewFilters(parsed.filters);
+        setNewMainKeys(parsed.mainKeys);
+        return;
+      }
+
+      const columnMap = new Map(
+        parsed.columns.map((column) => [column.key, column]),
+      );
+
+      setNewFilters((prev) =>
+        prev
+          .filter((filter) => columnMap.has(filter.key))
+          .map((filter) => {
+            const column = columnMap.get(filter.key);
+
+            if (!column) return filter;
+
+            const updatedFilter = createFilterFromColumn(column);
+
+            return {
+              ...filter,
+              label: updatedFilter.label,
+              allLabel: updatedFilter.allLabel,
+              sort: updatedFilter.sort,
+            };
+          }),
+      );
+
+      setNewMainKeys((prev) =>
+        prev.filter((key) =>
+          parsed.columns.some((column) => column.key === key),
+        ),
+      );
+    },
+    [],
+  );
+
+  const resetImportedCsv = useCallback(() => {
+    setCsvRawRows([]);
+    setImportColumns([]);
+    setNewDataRows([]);
+    setNewColumns([]);
+    setNewFilters([]);
+    setNewMainKeys([]);
+    setMessage("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
 
   //! ====== FETCH CONFIG DATA ====== //
   const refreshData = useCallback(async () => {
     setLoading(true);
     setMessage("");
 
-    if (isPartner && !activeMitraId) {
+    if (isPartner && !userId) {
       setMitraRows([]);
       setDataMitraRows([]);
       setDatasetRows([]);
-      setSelectedMitraId("");
-      setMessage("Mitra ID tidak ditemukan.");
+      setMessage("User ID tidak ditemukan.");
       setLoading(false);
       return;
     }
@@ -344,8 +418,8 @@ export default function DatasetConfig({
         .order("created_at", { ascending: false });
 
       if (isPartner) {
-        mitraQuery = mitraQuery.eq("id", activeMitraId);
-        dataMitraQuery = dataMitraQuery.eq("mitra_id", activeMitraId);
+        mitraQuery = mitraQuery.eq("id", userId);
+        dataMitraQuery = dataMitraQuery.eq("mitra_id", userId);
       }
 
       const [mitraResult, dataMitraResult, datasetsResult] = await Promise.all([
@@ -372,19 +446,13 @@ export default function DatasetConfig({
       setMitraRows(mitraData);
       setDataMitraRows(dataMitraData);
       setDatasetRows(datasetsData);
-
-      if (isPartner) {
-        setSelectedMitraId(activeMitraId);
-      } else {
-        setSelectedMitraId((prev) => prev || mitraData[0]?.id || "");
-      }
     } catch (error) {
       console.error("Failed to fetch dataset config:", error);
       setMessage("Gagal memuat data konfigurasi.");
     } finally {
       setLoading(false);
     }
-  }, [activeMitraId, isAdmin, isPartner]);
+  }, [userId, isAdmin, isPartner]);
 
   useEffect(() => {
     refreshData();
@@ -393,7 +461,7 @@ export default function DatasetConfig({
   //! ====== SYNC SELECTED EDIT DATASET ====== //
   useEffect(() => {
     const availableRows =
-      editSource === "data_mitra" ? dataMitraRows : datasetRows;
+      editDataset === "data_mitra" ? dataMitraRows : datasetRows;
 
     if (availableRows.length === 0) {
       setSelectedEditId("");
@@ -405,7 +473,7 @@ export default function DatasetConfig({
     if (!stillExists) {
       setSelectedEditId(availableRows[0].id);
     }
-  }, [dataMitraRows, datasetRows, editSource, selectedEditId]);
+  }, [dataMitraRows, datasetRows, editDataset, selectedEditId]);
 
   //! ====== LOAD SELECTED EDIT CONFIG ====== //
   useEffect(() => {
@@ -431,7 +499,7 @@ export default function DatasetConfig({
     );
 
     setEditName(
-      editSource === "data_mitra"
+      editDataset === "data_mitra"
         ? ((selectedEditRow as DataMitraRow).label ?? "")
         : ((selectedEditRow as DatasetRow).name ?? ""),
     );
@@ -439,14 +507,14 @@ export default function DatasetConfig({
     setEditColumns(parsedColumns);
     setEditFilters(parsedFilters);
     setEditMainKeys(parsedMainKeys);
-  }, [editSource, selectedEditRow]);
+  }, [editDataset, selectedEditRow]);
 
   //! ====== CHECK EDIT CHANGES ====== //
   const isEditChanged = useMemo(() => {
     if (!selectedEditRow) return false;
 
     const originalName =
-      editSource === "data_mitra"
+      editDataset === "data_mitra"
         ? ((selectedEditRow as DataMitraRow).label ?? "")
         : ((selectedEditRow as DatasetRow).name ?? "");
 
@@ -479,10 +547,10 @@ export default function DatasetConfig({
     );
   }, [
     editColumns,
+    editDataset,
     editFilters,
     editMainKeys,
     editName,
-    editSource,
     selectedEditRow,
   ]);
 
@@ -499,25 +567,68 @@ export default function DatasetConfig({
       header: true,
       skipEmptyLines: true,
       complete: (result) => {
-        const parsed = inferConfigFromCsv(result.data);
+        const validRows = getValidCsvRows(result.data);
+        const parsedImportColumns = createImportColumnsFromCsv(validRows);
 
-        if (parsed.dataRows.length === 0 || parsed.columns.length === 0) {
+        if (validRows.length === 0 || parsedImportColumns.length === 0) {
+          resetImportedCsv();
           setMessage("CSV tidak memiliki data yang valid.");
           return;
         }
 
-        setNewDataRows(parsed.dataRows);
-        setNewColumns(parsed.columns);
-        setNewFilters(parsed.filters);
-        setNewMainKeys(parsed.mainKeys);
+        setCsvRawRows(validRows);
+        setImportColumns(parsedImportColumns);
+        syncImportedColumnsToState(validRows, parsedImportColumns, false);
 
-        setMessage(`CSV berhasil dibaca: ${parsed.dataRows.length} baris.`);
+        setMessage(`CSV berhasil dibaca: ${validRows.length} baris.`);
       },
       error: (error) => {
         console.error(error);
+        resetImportedCsv();
         setMessage("Gagal membaca file CSV.");
       },
     });
+  };
+
+  //! ====== IMPORT COLUMN HANDLERS ====== //
+  const updateImportColumnLabel = (key: string, label: string) => {
+    const nextColumns = importColumns.map((column) =>
+      column.key === key
+        ? {
+            ...column,
+            label,
+          }
+        : column,
+    );
+
+    setImportColumns(nextColumns);
+    syncImportedColumnsToState(csvRawRows, nextColumns, true);
+  };
+
+  const toggleImportColumn = (key: string) => {
+    const nextColumns = importColumns.map((column) =>
+      column.key === key
+        ? {
+            ...column,
+            selected: !column.selected,
+          }
+        : column,
+    );
+
+    setImportColumns(nextColumns);
+    syncImportedColumnsToState(csvRawRows, nextColumns, false);
+  };
+
+  const toggleAllImportColumns = () => {
+    const shouldSelectAll = selectedImportCount !== importColumns.length;
+
+    const nextColumns = importColumns.map((column) => ({
+      ...column,
+      selected: shouldSelectAll,
+    }));
+
+    setImportColumns(nextColumns);
+    syncImportedColumnsToState(csvRawRows, nextColumns, false);
   };
 
   //! ====== CONFIG TOGGLE HANDLERS ====== //
@@ -631,7 +742,7 @@ export default function DatasetConfig({
   //! ====== REQUEST ADD ====== //
   const handleRequestAdd = useCallback(() => {
     if (
-      !selectedAddMitraId ||
+      !userId ||
       !newLabel.trim() ||
       newDataRows.length === 0 ||
       newColumns.length === 0 ||
@@ -647,12 +758,12 @@ export default function DatasetConfig({
     newDataRows.length,
     newLabel,
     newMainKeys.length,
-    selectedAddMitraId,
+    userId,
   ]);
 
   //! ====== REQUEST UPDATE ====== //
   const handleRequestUpdate = useCallback(() => {
-    if (isPartner && editSource !== "data_mitra") {
+    if (isPartner && editDataset !== "data_mitra") {
       setAlertType("failed");
       return;
     }
@@ -676,7 +787,7 @@ export default function DatasetConfig({
     editColumns.length,
     editMainKeys.length,
     editName,
-    editSource,
+    editDataset,
     isEditChanged,
     isPartner,
     selectedEditId,
@@ -692,10 +803,10 @@ export default function DatasetConfig({
     setAlertType("confirm-delete");
   }, [selectedDeleteIds.length]);
 
-  //! ====== CONFIRM ADD - PARTNER FORCED TO OWN MITRA ID ====== //
+  //! ====== CONFIRM ADD ====== //
   const handleConfirmAdd = useCallback(async () => {
     if (
-      !selectedAddMitraId ||
+      !userId ||
       !newLabel.trim() ||
       newDataRows.length === 0 ||
       newColumns.length === 0 ||
@@ -709,7 +820,7 @@ export default function DatasetConfig({
 
     try {
       const { error } = await supabase.from("data_mitra").insert({
-        mitra_id: selectedAddMitraId,
+        mitra_id: userId,
         label: newLabel.trim(),
         data: newDataRows,
         column_config: newColumns,
@@ -720,10 +831,7 @@ export default function DatasetConfig({
       if (error) throw error;
 
       setNewLabel("");
-      setNewDataRows([]);
-      setNewColumns([]);
-      setNewFilters([]);
-      setNewMainKeys([]);
+      resetImportedCsv();
 
       await refreshData();
 
@@ -741,12 +849,13 @@ export default function DatasetConfig({
     newLabel,
     newMainKeys,
     refreshData,
-    selectedAddMitraId,
+    resetImportedCsv,
+    userId,
   ]);
 
-  //! ====== CONFIRM UPDATE - PARTNER ONLY OWN DATA MITRA ====== //
+  //! ====== CONFIRM UPDATE ====== //
   const handleConfirmUpdate = useCallback(async () => {
-    if (isPartner && editSource !== "data_mitra") {
+    if (isPartner && editDataset !== "data_mitra") {
       setAlertType("failed");
       return;
     }
@@ -775,7 +884,7 @@ export default function DatasetConfig({
       };
 
       if (isPartner) {
-        if (!activeMitraId) {
+        if (!userId) {
           setAlertType("failed");
           return;
         }
@@ -787,7 +896,7 @@ export default function DatasetConfig({
             ...configPayload,
           })
           .eq("id", selectedEditId)
-          .eq("mitra_id", activeMitraId)
+          .eq("mitra_id", userId)
           .select("id");
 
         if (error) throw error;
@@ -798,7 +907,7 @@ export default function DatasetConfig({
         }
       } else {
         const payload =
-          editSource === "data_mitra"
+          editDataset === "data_mitra"
             ? {
                 label: editName.trim(),
                 ...configPayload,
@@ -808,12 +917,18 @@ export default function DatasetConfig({
                 ...configPayload,
               };
 
-        const { error } = await supabase
-          .from(editSource)
+        const { data, error } = await supabase
+          .from(editDataset)
           .update(payload)
-          .eq("id", selectedEditId);
+          .eq("id", selectedEditId)
+          .select("id");
 
         if (error) throw error;
+
+        if (!data || data.length === 0) {
+          setAlertType("failed");
+          return;
+        }
       }
 
       await refreshData();
@@ -826,19 +941,19 @@ export default function DatasetConfig({
       setSaving(false);
     }
   }, [
-    activeMitraId,
+    userId,
     editColumns,
+    editDataset,
     editFilters,
     editMainKeys,
     editName,
-    editSource,
     isEditChanged,
     isPartner,
     refreshData,
     selectedEditId,
   ]);
 
-  //! ====== CONFIRM DELETE - PARTNER ONLY OWN DATA MITRA ====== //
+  //! ====== CONFIRM DELETE ====== //
   const handleConfirmDelete = useCallback(async () => {
     if (selectedDeleteIds.length === 0) {
       setAlertType("no-delete");
@@ -849,7 +964,7 @@ export default function DatasetConfig({
 
     try {
       if (isPartner) {
-        if (!activeMitraId) {
+        if (!userId) {
           setAlertType("failed");
           return;
         }
@@ -858,7 +973,7 @@ export default function DatasetConfig({
           .from("data_mitra")
           .delete()
           .in("id", selectedDeleteIds)
-          .eq("mitra_id", activeMitraId)
+          .eq("mitra_id", userId)
           .select("id");
 
         if (error) throw error;
@@ -887,7 +1002,7 @@ export default function DatasetConfig({
     } finally {
       setSaving(false);
     }
-  }, [activeMitraId, isPartner, refreshData, selectedDeleteIds]);
+  }, [userId, isPartner, refreshData, selectedDeleteIds]);
 
   //! ====== RESULT ALERT HANDLER ====== //
   const handleResultAlert = () => {
@@ -959,232 +1074,286 @@ export default function DatasetConfig({
         {/* //! ====== ADD DATASET ====== // */}
         {action === "add" && (
           <div className="space-y-5">
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="space-y-1 text-sm">
-                <span className="font-medium">Mitra</span>
-
-                <select
-                  value={selectedAddMitraId}
-                  disabled={isPartner}
-                  onChange={(event) => setSelectedMitraId(event.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                >
-                  <option value="">Pilih mitra</option>
-
-                  {mitraRows.map((mitra) => (
-                    <option key={mitra.id} value={mitra.id}>
-                      {mitra.name_mitra_short || mitra.name_mitra || mitra.id}
-                    </option>
-                  ))}
-                </select>
-
-                {isPartner && (
-                  <p className="text-xs text-gray-500">
-                    Mitra otomatis menggunakan akun Anda.
-                  </p>
-                )}
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="font-medium">Label Dataset</span>
+            <div className="flex w-full">
+              <label className="flex w-full flex-col text-sm">
+                <span className="font-medium">Judul Dataset</span>
 
                 <input
                   value={newLabel}
                   onChange={(event) => setNewLabel(event.target.value)}
-                  placeholder="Contoh: Data Ikan WCS"
+                  placeholder="Contoh: Data Perikanan Tangkap Per Kabupaten"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </label>
             </div>
 
-            <div
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(event) => {
-                event.preventDefault();
-                setIsDragging(false);
+            {!hasImportedCsv ? (
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
 
-                const file = event.dataTransfer.files?.[0];
-
-                if (file) {
-                  handleCsvFile(file);
-                }
-              }}
-              onClick={() => fileInputRef.current?.click()}
-              className={`flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center text-sm transition ${
-                isDragging
-                  ? "border-sky-500 bg-sky-50"
-                  : "border-gray-300 bg-white hover:bg-gray-50"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
+                  const file = event.dataTransfer.files?.[0];
 
                   if (file) {
                     handleCsvFile(file);
                   }
-
-                  event.target.value = "";
                 }}
-              />
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex min-h-[50vh] cursor-pointer flex-col items-center justify-center rounded-lg border-5 border-dashed p-6 text-center text-sm transition ${
+                  isDragging
+                    ? "border-sky-500 bg-sky-50"
+                    : "border-gray-300 bg-white hover:bg-gray-50"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
 
-              <p className="font-medium text-gray-700">
-                Drag CSV ke sini atau klik untuk pilih file
-              </p>
+                    if (file) {
+                      handleCsvFile(file);
+                    }
 
-              <p className="mt-1 text-xs text-gray-500">
-                Header CSV akan otomatis menjadi column_config.
-              </p>
-            </div>
+                    event.target.value = "";
+                  }}
+                />
 
-            {newColumns.length > 0 && (
-              <div className="space-y-4">
-                <div className="rounded-md border border-gray-300 bg-white p-3">
-                  <h3 className="mb-2 text-sm font-semibold">Filter Config</h3>
+                <p className="font-medium text-gray-700 text-2xl">
+                  Drag CSV ke sini atau klik untuk pilih file
+                </p>
 
-                  <div className="grid gap-2 md:grid-cols-3">
-                    {newColumns.map((column) => (
-                      <label
-                        key={column.key}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={newFilters.some(
-                            (filter) => filter.key === column.key,
-                          )}
-                          onChange={() =>
-                            toggleFilter(column, newFilters, setNewFilters)
-                          }
-                        />
-
-                        <span>{column.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-md border border-gray-300 bg-white p-3">
-                  <h3 className="mb-2 text-sm font-semibold">
-                    Main Column Config
-                  </h3>
-
-                  <div className="grid gap-2 md:grid-cols-3">
-                    {newColumns.map((column) => (
-                      <label
-                        key={column.key}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={newMainKeys.includes(column.key)}
-                          onChange={() =>
-                            toggleMainKey(
-                              column.key,
-                              newMainKeys,
-                              setNewMainKeys,
-                            )
-                          }
-                        />
-
-                        <span>{column.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto rounded-md border border-gray-300">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr>
-                        {newColumns.map((column) => (
-                          <th
-                            key={column.key}
-                            className="border border-gray-300 bg-sky-100 px-3 py-2"
-                          >
-                            <div>{column.label}</div>
-                            <div className="text-[10px] font-normal text-gray-500">
-                              {column.key} · {column.inputType}
-                            </div>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {newDataRows.slice(0, 10).map((row) => (
-                        <tr key={row.id}>
-                          {newColumns.map((column) => (
-                            <td
-                              key={column.key}
-                              className={`border border-gray-300 px-3 py-2 ${
-                                column.align === "right"
-                                  ? "text-right"
-                                  : column.align === "center"
-                                    ? "text-center"
-                                    : "text-left"
-                              }`}
-                            >
-                              {String(row[column.key] ?? "")}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <p className="text-xs text-gray-500">
-                  Preview menampilkan maksimal 10 baris pertama. Total data:{" "}
-                  {newDataRows.length} baris.
+                <p className="mt-1 text-gray-500 text-lg">
+                  Setelah file dipilih, Anda dapat memilih kolom yang akan
+                  diimpor dan mengganti nama kolom.
                 </p>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={resetImportedCsv}
+                className="w-full rounded-lg border border-gray-300 bg-sky-700 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-800"
+              >
+                Pilih Data Lain
+              </button>
             )}
 
-            <button
-              type="button"
-              onClick={handleRequestAdd}
-              disabled={saving}
-              className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
-            >
-              {saving ? "Menyimpan..." : "Tambah Dataset"}
-            </button>
+            {hasImportedCsv && (
+              <div className="space-y-4">
+                <div className="rounded-md border border-gray-300 bg-white p-3">
+                  <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">
+                        Pilih Kolom yang Diimpor
+                      </h3>
+
+                      <p className="text-xs text-gray-500">
+                        Dipilih: {selectedImportCount} dari{" "}
+                        {importColumns.length} kolom.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={toggleAllImportColumns}
+                      className="rounded-md border border-gray-300 px-3 py-2 text-xs font-medium hover:bg-gray-100"
+                    >
+                      {selectedImportCount === importColumns.length
+                        ? "Hapus Semua Pilihan"
+                        : "Pilih Semua Kolom"}
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-md border border-gray-300">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="border border-gray-300 bg-sky-100 px-3 py-2 text-center">
+                            Import
+                          </th>
+                          <th className="border border-gray-300 bg-sky-100 px-3 py-2">
+                            Kolom Asli
+                          </th>
+                          <th className="border border-gray-300 bg-sky-100 px-3 py-2">
+                            Nama Kolom
+                          </th>
+                          <th className="border border-gray-300 bg-sky-100 px-3 py-2">
+                            Tipe
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {importColumns.map((column) => (
+                          <tr key={column.key}>
+                            <td className="border border-gray-300 px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={column.selected}
+                                onChange={() => toggleImportColumn(column.key)}
+                              />
+                            </td>
+
+                            <td className="border border-gray-300 px-3 py-2">
+                              <div>{column.originalHeader}</div>
+                              <div className="text-[10px] text-gray-500">
+                                {column.key}
+                              </div>
+                            </td>
+
+                            <td className="border border-gray-300 p-0">
+                              <input
+                                value={column.label}
+                                disabled={!column.selected}
+                                onChange={(event) =>
+                                  updateImportColumnLabel(
+                                    column.key,
+                                    event.target.value,
+                                  )
+                                }
+                                className="w-full px-3 py-2 disabled:bg-gray-100 disabled:text-gray-400"
+                              />
+                            </td>
+
+                            <td className="border border-gray-300 px-3 py-2 text-center">
+                              {column.inputType}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {newColumns.length === 0 && (
+                  <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-700">
+                    Pilih minimal satu kolom untuk diimpor.
+                  </div>
+                )}
+
+                {newColumns.length > 0 && (
+                  <>
+                    <div className="rounded-md border border-gray-300 bg-white p-3">
+                      <h3 className="mb-2 text-sm font-semibold">
+                        Filter Config
+                      </h3>
+
+                      <div className="grid gap-2 md:grid-cols-3">
+                        {newColumns.map((column) => (
+                          <label
+                            key={column.key}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={newFilters.some(
+                                (filter) => filter.key === column.key,
+                              )}
+                              onChange={() =>
+                                toggleFilter(column, newFilters, setNewFilters)
+                              }
+                            />
+
+                            <span>{column.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-gray-300 bg-white p-3">
+                      <h3 className="mb-2 text-sm font-semibold">
+                        Main Column Config
+                      </h3>
+
+                      <div className="grid gap-2 md:grid-cols-3">
+                        {newColumns.map((column) => (
+                          <label
+                            key={column.key}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={newMainKeys.includes(column.key)}
+                              onChange={() =>
+                                toggleMainKey(
+                                  column.key,
+                                  newMainKeys,
+                                  setNewMainKeys,
+                                )
+                              }
+                            />
+
+                            <span>{column.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-md border border-gray-300">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr>
+                            {newColumns.map((column) => (
+                              <th
+                                key={column.key}
+                                className="border border-gray-300 bg-sky-100 px-3 py-2"
+                              >
+                                <div>{column.label}</div>
+                                <div className="text-[10px] font-normal text-gray-500">
+                                  {column.key} · {column.inputType}
+                                </div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {newDataRows.slice(0, 10).map((row) => (
+                            <tr key={row.id}>
+                              {newColumns.map((column) => (
+                                <td
+                                  key={column.key}
+                                  className={`border border-gray-300 px-3 py-2 ${
+                                    column.align === "right"
+                                      ? "text-right"
+                                      : column.align === "center"
+                                        ? "text-center"
+                                        : "text-left"
+                                  }`}
+                                >
+                                  {String(row[column.key] ?? "")}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <p className="text-xs text-gray-500">
+                      Preview menampilkan maksimal 10 baris pertama. Total data
+                      yang akan diimpor: {newDataRows.length} baris.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* //! ====== EDIT DATASET ====== // */}
         {action === "edit" && (
           <div className="space-y-5">
-            <div className="grid gap-3 md:grid-cols-3">
-              <label className="space-y-1 text-sm">
-                <span className="font-medium">Sumber Dataset</span>
-
-                <select
-                  value={editSource}
-                  disabled={isPartner}
-                  onChange={(event) => {
-                    setEditSource(event.target.value as EditSource);
-                    setSelectedEditId("");
-                  }}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                >
-                  <option value="data_mitra">Data Mitra</option>
-
-                  {isAdmin && (
-                    <option value="datasets">Dataset Internal</option>
-                  )}
-                </select>
-              </label>
-
-              <label className="space-y-1 text-sm md:col-span-2">
+            <div className="flex w-full">
+              <label className="flex w-full flex-col text-sm">
                 <span className="font-medium">Dataset</span>
 
                 <select
@@ -1192,12 +1361,12 @@ export default function DatasetConfig({
                   onChange={(event) => setSelectedEditId(event.target.value)}
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                 >
-                  {(editSource === "data_mitra"
+                  {(editDataset === "data_mitra"
                     ? dataMitraRows
                     : datasetRows
                   ).map((row) => (
                     <option key={row.id} value={row.id}>
-                      {editSource === "data_mitra"
+                      {editDataset === "data_mitra"
                         ? `${(row as DataMitraRow).label ?? "Tanpa Label"} - ${
                             mitraNameMap[
                               (row as DataMitraRow).mitra_id ?? ""
@@ -1212,10 +1381,8 @@ export default function DatasetConfig({
               </label>
             </div>
 
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium">
-                {editSource === "data_mitra" ? "Label" : "Nama Dataset"}
-              </span>
+            <label className="flex w-full flex-col text-sm">
+              <span className="text-sm font-medium">Judul Dataset</span>
 
               <input
                 value={editName}
@@ -1235,13 +1402,10 @@ export default function DatasetConfig({
                       Label
                     </th>
                     <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                      Input Type
+                      Type
                     </th>
                     <th className="border border-gray-300 bg-sky-100 px-3 py-2">
                       Align
-                    </th>
-                    <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                      Editable
                     </th>
                     <th className="border border-gray-300 bg-sky-100 px-3 py-2">
                       Filter
@@ -1271,7 +1435,7 @@ export default function DatasetConfig({
 
                       <td className="border border-gray-300 p-0">
                         <select
-                          value={column.inputType ?? "text"}
+                          value={column.inputType}
                           onChange={(event) =>
                             updateColumn(index, "inputType", event.target.value)
                           }
@@ -1294,20 +1458,6 @@ export default function DatasetConfig({
                           <option value="center">center</option>
                           <option value="right">right</option>
                         </select>
-                      </td>
-
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(column.editable)}
-                          onChange={(event) =>
-                            updateColumn(
-                              index,
-                              "editable",
-                              event.target.checked,
-                            )
-                          }
-                        />
                       </td>
 
                       <td className="border border-gray-300 px-3 py-2 text-center">
@@ -1340,15 +1490,6 @@ export default function DatasetConfig({
                 </tbody>
               </table>
             </div>
-
-            <button
-              type="button"
-              onClick={handleRequestUpdate}
-              disabled={saving}
-              className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
-            >
-              {saving ? "Menyimpan..." : "Update Config"}
-            </button>
           </div>
         )}
 
@@ -1412,17 +1553,6 @@ export default function DatasetConfig({
                 </tbody>
               </table>
             </div>
-
-            <button
-              type="button"
-              onClick={handleRequestDelete}
-              disabled={saving}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
-            >
-              {saving
-                ? "Menghapus..."
-                : `Hapus Dataset (${selectedDeleteIds.length})`}
-            </button>
           </div>
         )}
 

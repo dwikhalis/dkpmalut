@@ -10,6 +10,7 @@ import {
 import DataInternal from "./DataInternal";
 import DataMitra from "./DataMitra";
 import { useAuthStore } from "../Stores/authStores";
+import type { EditSource } from "./DatasetConfig";
 
 import dynamic from "next/dynamic";
 
@@ -40,7 +41,7 @@ export default function AdminData() {
   const [action, setAction] = useState<"add" | "edit" | "list" | "delete">(
     "list",
   );
-  const [page, setPage] = useState<string>("Data");
+  const [page, setPage] = useState<string>("Data Utama");
   const [mainPage, setMainPage] = useState<"main" | "add" | "edit" | "delete">(
     "main",
   );
@@ -50,8 +51,10 @@ export default function AdminData() {
   const [showMobileAction, setShowMobileAction] = useState(false);
   const [saveData, setSaveData] = useState(0);
 
+  const [editDataset, setEditDataset] = useState<EditSource>("data_mitra");
+
   const labels = {
-    home: "Data",
+    home: "Data Utama",
     mitra: "Data Mitra" + (userName ? ` : ${userName}` : ""),
     add: "Tambah Dataset",
     edit: "Atur Dataset",
@@ -94,6 +97,30 @@ export default function AdminData() {
     fetchMitraDataPages();
   }, [loading, userId, role]);
 
+  //! CLOSE VERTICAL THREE DOT MENUS IF CLICKED OUTSIDE OR OPTION CLICKED
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      document
+        .querySelectorAll<HTMLDetailsElement>("[three-dot-menu='true']")
+        .forEach((details) => {
+          const clickedInside = details.contains(target);
+          const clickedOption = clickedInside && target.closest("button");
+
+          if (!clickedInside || clickedOption) {
+            details.open = false;
+          }
+        });
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+    };
+  }, []);
+
   //! ====== LOADING AND AUTH GUARD ====== //
   if (loading) {
     return <div className="p-10 text-center">Loading...</div>;
@@ -124,7 +151,7 @@ export default function AdminData() {
           {/* //! ====== TOP TITLE AND ACTION ====== // */}
           <div
             className={`flex relative items-center justify-center ${
-              role === "admin" ? "mt-10 mb-6" : ""
+              role === "admin" ? "mt-3 mb-6" : ""
             }`}
           >
             {/* //! ====== BACK BUTTON ====== // */}
@@ -137,6 +164,7 @@ export default function AdminData() {
                 setDataset("");
                 setMitraDataId("");
                 setAction("list");
+                setEditDataset("data_mitra");
               }}
             >
               <LeftChevron className="size-6" />
@@ -148,10 +176,10 @@ export default function AdminData() {
               <h3 className="font-bold text-center mx-auto">{page}</h3>
             )}
 
-            {/* //! ====== ADMIN OPTION MENU - HOME ONLY ====== // */}
+            {/* //! ====== DATA UTAMA : THREE DOT MENU ====== // */}
             {role === "admin" && page === labels.home && (
-              <details className="absolute right-0 group">
-                <summary className="list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black">
+              <details three-dot-menu="true" className="absolute right-0 group">
+                <summary className="list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-1 py-1 text-xs group-open:border-2 group-open:border-black">
                   <VerticalThreeDot className="size-6" />
                 </summary>
 
@@ -159,135 +187,103 @@ export default function AdminData() {
                   <button
                     className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
                     onClick={() => {
-                      setMainPage("add");
-                      setPage(labels.add);
-                      setAction("add");
-                    }}
-                  >
-                    Tambah Dataset
-                  </button>
-
-                  <button
-                    className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                    onClick={() => {
                       setMainPage("edit");
                       setPage(labels.edit);
                       setAction("edit");
+                      setEditDataset("datasets");
                     }}
                   >
                     Atur Dataset
-                  </button>
-
-                  <button
-                    className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                    onClick={() => {
-                      setMainPage("delete");
-                      setPage(labels.delete);
-                      setAction("delete");
-                    }}
-                  >
-                    Hapus Dataset
                   </button>
                 </div>
               </details>
             )}
 
-            {/* //! ====== DESKTOP ACTION BUTTON - DATA DETAIL ONLY ====== // */}
-            <div className="hidden md:flex justify-center items-center">
-              <div
-                className={`${page === labels.home ? "hidden" : "flex"} gap-1`}
-              >
-                {/* //! ====== EDIT BUTTON ====== // */}
-                <div
-                  onClick={() => setAction("edit")}
-                  className={
-                    action === "edit" || action === "add" || action === "delete"
-                      ? "hidden"
-                      : "flex"
-                  }
+            {/* //! ====== DESKTOP ACTION BUTTON - SELECTED DATASET ====== // */}
+            {page !== labels.home && (
+              <div className="hidden md:flex justify-center items-center">
+                {/* //! VERTICAL THREE DOT MENU */}
+                <details
+                  three-dot-menu="true"
+                  className="absolute right-0 group"
                 >
-                  <Button
-                    color="blue"
-                    size="lg"
-                    text="Edit"
-                    textSize="sm"
-                    link="none"
-                  />
-                </div>
+                  <summary
+                    className={`list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-1 py-1 text-xs group-open:border-2 group-open:border-black
+                ${action === "edit" || action === "add" || action === "delete" ? "hidden" : "flex"}`}
+                  >
+                    <VerticalThreeDot className="size-6" />
+                  </summary>
 
-                {/* //! ====== ADD BUTTON ====== // */}
-                <div
-                  onClick={() => setAction("add")}
-                  className={
-                    action === "edit" || action === "add" || action === "delete"
-                      ? "hidden"
-                      : "flex"
-                  }
-                >
-                  <Button
-                    color="green"
-                    size="lg"
-                    textSize="sm"
-                    text="Tambah"
-                    link="none"
-                  />
-                </div>
+                  <div className="flex flex-col absolute right-0 z-30 mt-2 rounded-lg border border-gray-400 bg-white shadow-lg p-2">
+                    <button
+                      className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                      onClick={() => setAction("edit")}
+                    >
+                      Edit Data
+                    </button>
 
-                {/* //! ====== CANCEL BUTTON ====== // */}
-                <div
-                  onClick={() => setAction("list")}
-                  className={
-                    action === "edit" || action === "add" || action === "delete"
-                      ? "flex"
-                      : "hidden"
-                  }
-                >
-                  <Button
-                    color="grey"
-                    size="lg"
-                    textSize="sm"
-                    text="Batal"
-                    link="none"
-                  />
-                </div>
+                    <button
+                      className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                      onClick={() => setAction("add")}
+                    >
+                      Tambah Data
+                    </button>
 
-                {/* //! ====== SAVE / DELETE BUTTON ====== // */}
-                <div
-                  onClick={() => setSaveData((prev) => prev + 1)}
-                  className={
-                    action === "edit" || action === "add" || action === "delete"
-                      ? "flex"
-                      : "hidden"
-                  }
-                >
-                  <Button
-                    color={action === "delete" ? "red" : "green"}
-                    size="lg"
-                    textSize="sm"
-                    text={action === "delete" ? "Hapus" : "Simpan"}
-                    link="none"
-                  />
-                </div>
+                    <button
+                      className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                      onClick={() => setAction("delete")}
+                    >
+                      Hapus Data
+                    </button>
+                  </div>
+                </details>
 
-                {/* //! ====== DELETE BUTTON ====== // */}
+                {/* //! ACTION BUTTON */}
                 <div
-                  onClick={() => setAction("delete")}
-                  className={
-                    action === "edit" || action === "add" || action === "delete"
-                      ? "hidden"
-                      : "flex"
-                  }
+                  className={`${page === labels.home ? "hidden" : "flex"} gap-1`}
                 >
-                  <Button
-                    color="red"
-                    size="lg"
-                    textSize="sm"
-                    text="Hapus"
-                    link="none"
-                  />
+                  {/* //! ====== CANCEL BUTTON ====== // */}
+                  <div
+                    onClick={() => setAction("list")}
+                    className={
+                      action === "edit" ||
+                      action === "add" ||
+                      action === "delete"
+                        ? "flex"
+                        : "hidden"
+                    }
+                  >
+                    <Button
+                      color="grey"
+                      size="lg"
+                      textSize="sm"
+                      text="Batal"
+                      link="none"
+                    />
+                  </div>
+
+                  {/* //! ====== SAVE / DELETE BUTTON ====== // */}
+                  <div
+                    onClick={() => setSaveData((prev) => prev + 1)}
+                    className={
+                      action === "edit" ||
+                      action === "add" ||
+                      action === "delete"
+                        ? "flex"
+                        : "hidden"
+                    }
+                  >
+                    <Button
+                      color={action === "delete" ? "red" : "green"}
+                      size="lg"
+                      textSize="sm"
+                      text={action === "delete" ? "Hapus" : "Simpan"}
+                      link="none"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* //! ====== MOBILE ACTION BUTTON - DATA DETAIL ONLY ====== // */}
             <div className="flex md:hidden justify-center items-center">
@@ -352,8 +348,11 @@ export default function AdminData() {
                   </h3>
 
                   {/* //! ====== DATA MITRA OPTION MENU - ADMIN AND PARTNER ====== // */}
-                  <details className="absolute right-0 group">
-                    <summary className="list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black">
+                  <details
+                    three-dot-menu="true"
+                    className="absolute right-0 group"
+                  >
+                    <summary className="list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-1 py-1 text-xs group-open:border-2 group-open:border-black">
                       <VerticalThreeDot className="size-6" />
                     </summary>
 
@@ -375,6 +374,7 @@ export default function AdminData() {
                           setMainPage("edit");
                           setPage(labels.edit);
                           setAction("edit");
+                          setEditDataset("data_mitra");
                         }}
                       >
                         Atur Dataset
@@ -430,7 +430,7 @@ export default function AdminData() {
       {(role === "admin" || role === "partner") && mainPage !== "main" && (
         <div className="flex min-h-[80vh] w-full min-w-0 max-w-full flex-col overflow-hidden">
           {/* //! ====== DATASET CONFIG TOP TITLE AND ACTION ====== // */}
-          <div className="flex relative items-center justify-center my-8">
+          <div className="flex relative items-center justify-center mb-6">
             {/* //! ====== DATASET CONFIG BACK BUTTON ====== // */}
             <div
               className="flex justify-center items-center py-3 pr-3 cursor-pointer"
@@ -440,6 +440,7 @@ export default function AdminData() {
                 setDataset("");
                 setMitraDataId("");
                 setAction("list");
+                setEditDataset("data_mitra");
               }}
             >
               <LeftChevron className="size-6" />
@@ -509,7 +510,8 @@ export default function AdminData() {
                 saveData={saveData}
                 onSignalAction={handleSignalDatasetAction}
                 userRole={role}
-                mitraId={role === "partner" ? userId : null}
+                userId={userId}
+                editDataset={editDataset}
               />
             )}
           </div>

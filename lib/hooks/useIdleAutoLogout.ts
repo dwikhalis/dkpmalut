@@ -13,7 +13,7 @@ interface Props {
 export function useIdleAutoLogout({ timeout, onAutoLogout }: Props) {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const clearUser = useAuthStore((state) => state.clearUser);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -23,7 +23,7 @@ export function useIdleAutoLogout({ timeout, onAutoLogout }: Props) {
 
     const logout = async () => {
       await supabase.auth.signOut();
-      clearUser();
+      clearAuth();
       router.push("/");
       onAutoLogout?.(true);
     };
@@ -54,5 +54,5 @@ export function useIdleAutoLogout({ timeout, onAutoLogout }: Props) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (timer) clearTimeout(timer);
     };
-  }, [timeout, clearUser, isLoggedIn, router, onAutoLogout]);
+  }, [timeout, clearAuth, isLoggedIn, router, onAutoLogout]);
 }

@@ -215,11 +215,11 @@ export default function DataMitraChart({
 
   return (
     <div className="w-full min-w-0 space-y-3">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="flex gap-3 md:grid-cols-3">
         <select
           value={labelKey}
           onChange={(e) => setLabelKey(e.target.value)}
-          className="w-full rounded border border-gray-400 px-3 py-2 text-xs"
+          className="w-[50%] rounded border border-gray-400 px-3 py-2 text-xs"
         >
           {categoryColumns.map((column) => (
             <option key={column.key} value={column.key}>
@@ -231,24 +231,13 @@ export default function DataMitraChart({
         <select
           value={valueKey}
           onChange={(e) => setValueKey(e.target.value)}
-          className="w-full rounded border border-gray-400 px-3 py-2 text-xs"
+          className="w-[50%] rounded border border-gray-400 px-3 py-2 text-xs"
         >
           {numericColumns.map((column) => (
             <option key={column.key} value={column.key}>
               Nilai: {column.label}
             </option>
           ))}
-        </select>
-
-        <select
-          value={limit}
-          onChange={(e) => setLimit(e.target.value)}
-          className="w-full rounded border border-gray-400 px-3 py-2 text-xs"
-        >
-          <option value="10">Top 10</option>
-          <option value="20">Top 20</option>
-          <option value="50">Top 50</option>
-          <option value="0">Semua</option>
         </select>
       </div>
 
