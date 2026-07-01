@@ -26,7 +26,7 @@ export default function page() {
   return (
     <div className="flex min-w-0">
       <AdminSideMenu slug={slug} userRole={role} />
-      <div className="flex h-full min-h-[70vh] min-w-0 flex-1 overflow-hidden px-8 lg:px-12">
+      <div className="flex h-full min-h-[70vh] min-w-0 flex-1 overflow-hidden p-8 lg:px-12">
         {slug === "organisasi" && <AdminPages type="staff" />}
         {slug === "berita" && <AdminPages type="news" />}
         {slug === "galeri" && <AdminPages type="gallery" />}

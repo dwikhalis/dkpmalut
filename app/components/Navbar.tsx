@@ -3,8 +3,8 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../Stores/authStores";
 import SpinnerLoading from "./SpinnerLoading";
 import AlertNotif from "./AlertNotif";
@@ -12,12 +12,21 @@ import Button from "./Button";
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [show, setShow] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  const role = useAuthStore((state) => state.role);
+
+  //! Loading if new page hasn't load
+  useEffect(() => {
+    setDashboardLoading(false);
+  }, [pathname]);
 
   //! Retractable Navbar
   useEffect(() => {
@@ -43,15 +52,13 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  //! LOGOUT Handle
+  //! LOGOUT Handler
   const handleLogout = async () => {
     setLoading(true);
     if (logoutConfirm) {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error signing out:", error.message);
-        alert("Gagal melakukan Logout. Masalah pada server!");
-        router.push("/");
       } else {
         router.push("/");
       }
@@ -59,6 +66,27 @@ export default function Navbar() {
       setLogoutConfirm([false, "hidden"]);
     }
   };
+
+  //! Handle close dropdown menu when click outside
+
+  const accountMenuRef = useRef<HTMLDetailsElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target as Node)
+      ) {
+        accountMenuRef.current.open = false;
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <>
@@ -126,7 +154,49 @@ export default function Navbar() {
             </Link>
 
             {isLoggedIn ? (
-              <Button size="lg" text="Akun" link="/profile" />
+              <details
+                ref={accountMenuRef}
+                className="relative flex items-center group"
+              >
+                <summary className="flex items-center cursor-pointer list-none">
+                  <span className="flex items-center px-5 py-2 text-xs bg-sky-800 hover:bg-sky-200 text-white rounded-full hover:text-black cursor-pointer">
+                    Akun
+                  </span>
+                </summary>
+
+                <div className="absolute top-full right-0 z-50 mt-2 flex min-w-[160px] flex-col rounded-lg border border-gray-300 bg-white shadow-lg p-2">
+                  {role !== "user" && (
+                    <button
+                      className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
+                      disabled={dashboardLoading}
+                      onClick={() => {
+                        setDashboardLoading(true);
+                        accountMenuRef.current!.open = false;
+                        router.push("/profile");
+                      }}
+                    >
+                      {dashboardLoading ? (
+                        <SpinnerLoading size="sm" color="black" />
+                      ) : (
+                        "Dashboard"
+                      )}
+                    </button>
+                  )}
+
+                  <button
+                    className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
+                    onClick={() => {
+                      setLogoutConfirm([false, "flex"]);
+                    }}
+                  >
+                    {loading ? (
+                      <SpinnerLoading size="sm" color="white" />
+                    ) : (
+                      "Keluar"
+                    )}
+                  </button>
+                </div>
+              </details>
             ) : (
               <Button size="lg" text="Masuk" link="/masuk" />
             )}

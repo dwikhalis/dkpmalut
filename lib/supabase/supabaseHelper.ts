@@ -261,14 +261,20 @@ export const getInternalDatasetPages = async () => {
 };
 
 //! GET INTERNAL DATASET PAGES
-export const getMitraDatasetPages = async () => {
-  const { data, error } = await supabase
+export const getMitraDatasetPages = async (mitraId: string | "all") => {
+  let query = supabase
     .from("data_mitra")
-    .select("id, label")
+    .select("id, label, mitra_id")
     .order("label", { ascending: true });
 
+  if (mitraId !== "all") {
+    query = query.eq("mitra_id", mitraId);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    alert(`Get dataset Mitra Gagal!`);
+    alert("Get dataset Mitra Gagal!");
     console.error(error);
     throw error;
   }

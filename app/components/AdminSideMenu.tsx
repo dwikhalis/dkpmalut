@@ -141,27 +141,6 @@ export default function AdminSideMenu({ slug, userRole }: Props) {
                 ))}
               </>
             )}
-
-            {userRole === "user" && (
-              <>
-                <Link href={`/profile`}>
-                  <h5
-                    className={`${slug === "home" ? selected : unselected} 2xl:pl-6`}
-                  >
-                    {"Profil Akun"}
-                  </h5>
-                </Link>
-                {userMenus.map((e, idx) => (
-                  <Link key={idx} href={`/profile/${e.slug}`}>
-                    <h5
-                      className={`${slug === e.slug ? selected : unselected} 2xl:pl-6`}
-                    >
-                      {e.label}
-                    </h5>
-                  </Link>
-                ))}
-              </>
-            )}
           </div>
 
           {/* //! LOGOUT */}

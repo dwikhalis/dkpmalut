@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import Papa from "papaparse";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import type { ColumnConfig, FilterConfig } from "./DataTableMitra";
@@ -53,6 +61,14 @@ type DatasetRow = {
   column_config: ColumnConfig[] | string | null;
   filter_config: FilterConfig[] | string | null;
   main_column_config: string[] | string | null;
+};
+
+type DatasetConfigProps = {
+  action: Action;
+  saveData: number;
+  onSignalAction: () => void;
+  userRole: string | null;
+  mitraId: string | null;
 };
 
 type CsvRawRow = Record<string, unknown>;
@@ -237,13 +253,15 @@ export default function DatasetConfig({
   action,
   saveData,
   onSignalAction,
-}: {
-  action: Action;
-  saveData: number;
-  onSignalAction: (signal: string) => void;
-}) {
+  userRole,
+  mitraId,
+}: DatasetConfigProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHandledSave = useRef(saveData);
+
+  const isPartner = userRole === "partner";
+  const isAdmin = userRole === "admin";
+  const activeMitraId = isPartner ? mitraId || "" : "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -271,6 +289,8 @@ export default function DatasetConfig({
 
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
 
+  const selectedAddMitraId = isPartner ? activeMitraId : selectedMitraId;
+
   const mitraNameMap = useMemo(() => {
     return mitraRows.reduce<Record<string, string>>((acc, row) => {
       acc[row.id] =
@@ -287,57 +307,90 @@ export default function DatasetConfig({
     return datasetRows.find((row) => row.id === selectedEditId) ?? null;
   }, [dataMitraRows, datasetRows, editSource, selectedEditId]);
 
+  //! ====== FORCE PARTNER TO DATA MITRA ONLY ====== //
+  useEffect(() => {
+    if (!isPartner) return;
+
+    setEditSource("data_mitra");
+    setSelectedMitraId(activeMitraId);
+  }, [activeMitraId, isPartner]);
+
+  //! ====== FETCH CONFIG DATA ====== //
   const refreshData = useCallback(async () => {
     setLoading(true);
     setMessage("");
 
+    if (isPartner && !activeMitraId) {
+      setMitraRows([]);
+      setDataMitraRows([]);
+      setDatasetRows([]);
+      setSelectedMitraId("");
+      setMessage("Mitra ID tidak ditemukan.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const [
-        { data: mitraData, error: mitraError },
-        { data: dataMitraData, error: dataMitraError },
-        { data: datasetsData, error: datasetsError },
-      ] = await Promise.all([
-        supabase
-          .from("mitra")
-          .select("id, name_mitra, name_mitra_short, type")
-          .order("name_mitra", { ascending: true }),
+      let mitraQuery = supabase
+        .from("mitra")
+        .select("id, name_mitra, name_mitra_short, type")
+        .order("name_mitra", { ascending: true });
 
-        supabase
-          .from("data_mitra")
-          .select(
-            "id, mitra_id, label, data, column_config, filter_config, main_column_config",
-          )
-          .order("created_at", { ascending: false }),
+      let dataMitraQuery = supabase
+        .from("data_mitra")
+        .select(
+          "id, mitra_id, label, data, column_config, filter_config, main_column_config",
+        )
+        .order("created_at", { ascending: false });
 
-        supabase
-          .from("datasets")
-          .select(
-            "id, name, table, column_config, filter_config, main_column_config",
-          )
-          .order("name", { ascending: true }),
+      if (isPartner) {
+        mitraQuery = mitraQuery.eq("id", activeMitraId);
+        dataMitraQuery = dataMitraQuery.eq("mitra_id", activeMitraId);
+      }
+
+      const [mitraResult, dataMitraResult, datasetsResult] = await Promise.all([
+        mitraQuery,
+        dataMitraQuery,
+        isAdmin
+          ? supabase
+              .from("datasets")
+              .select(
+                "id, name, table, column_config, filter_config, main_column_config",
+              )
+              .order("name", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
-      if (mitraError) throw mitraError;
-      if (dataMitraError) throw dataMitraError;
-      if (datasetsError) throw datasetsError;
+      if (mitraResult.error) throw mitraResult.error;
+      if (dataMitraResult.error) throw dataMitraResult.error;
+      if (datasetsResult.error) throw datasetsResult.error;
 
-      setMitraRows((mitraData ?? []) as MitraRow[]);
-      setDataMitraRows((dataMitraData ?? []) as DataMitraRow[]);
-      setDatasetRows((datasetsData ?? []) as DatasetRow[]);
+      const mitraData = (mitraResult.data ?? []) as MitraRow[];
+      const dataMitraData = (dataMitraResult.data ?? []) as DataMitraRow[];
+      const datasetsData = (datasetsResult.data ?? []) as DatasetRow[];
 
-      setSelectedMitraId((prev) => prev || mitraData?.[0]?.id || "");
+      setMitraRows(mitraData);
+      setDataMitraRows(dataMitraData);
+      setDatasetRows(datasetsData);
+
+      if (isPartner) {
+        setSelectedMitraId(activeMitraId);
+      } else {
+        setSelectedMitraId((prev) => prev || mitraData[0]?.id || "");
+      }
     } catch (error) {
       console.error("Failed to fetch dataset config:", error);
       setMessage("Gagal memuat data konfigurasi.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeMitraId, isAdmin, isPartner]);
 
   useEffect(() => {
     refreshData();
   }, [refreshData]);
 
+  //! ====== SYNC SELECTED EDIT DATASET ====== //
   useEffect(() => {
     const availableRows =
       editSource === "data_mitra" ? dataMitraRows : datasetRows;
@@ -354,6 +407,7 @@ export default function DatasetConfig({
     }
   }, [dataMitraRows, datasetRows, editSource, selectedEditId]);
 
+  //! ====== LOAD SELECTED EDIT CONFIG ====== //
   useEffect(() => {
     if (!selectedEditRow) {
       setEditName("");
@@ -387,6 +441,7 @@ export default function DatasetConfig({
     setEditMainKeys(parsedMainKeys);
   }, [editSource, selectedEditRow]);
 
+  //! ====== CHECK EDIT CHANGES ====== //
   const isEditChanged = useMemo(() => {
     if (!selectedEditRow) return false;
 
@@ -431,6 +486,7 @@ export default function DatasetConfig({
     selectedEditRow,
   ]);
 
+  //! ====== CSV HANDLER ====== //
   const handleCsvFile = (file: File) => {
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setMessage("File harus berformat CSV.");
@@ -464,10 +520,11 @@ export default function DatasetConfig({
     });
   };
 
+  //! ====== CONFIG TOGGLE HANDLERS ====== //
   const toggleFilter = (
     column: ColumnConfig,
     currentFilters: FilterConfig[],
-    setCurrentFilters: React.Dispatch<React.SetStateAction<FilterConfig[]>>,
+    setCurrentFilters: Dispatch<SetStateAction<FilterConfig[]>>,
   ) => {
     const exists = currentFilters.some((filter) => filter.key === column.key);
 
@@ -484,7 +541,7 @@ export default function DatasetConfig({
   const toggleMainKey = (
     key: string,
     currentKeys: string[],
-    setCurrentKeys: React.Dispatch<React.SetStateAction<string[]>>,
+    setCurrentKeys: Dispatch<SetStateAction<string[]>>,
   ) => {
     if (currentKeys.includes(key)) {
       setCurrentKeys((prev) => prev.filter((item) => item !== key));
@@ -571,9 +628,10 @@ export default function DatasetConfig({
     );
   };
 
+  //! ====== REQUEST ADD ====== //
   const handleRequestAdd = useCallback(() => {
     if (
-      !selectedMitraId ||
+      !selectedAddMitraId ||
       !newLabel.trim() ||
       newDataRows.length === 0 ||
       newColumns.length === 0 ||
@@ -589,10 +647,16 @@ export default function DatasetConfig({
     newDataRows.length,
     newLabel,
     newMainKeys.length,
-    selectedMitraId,
+    selectedAddMitraId,
   ]);
 
+  //! ====== REQUEST UPDATE ====== //
   const handleRequestUpdate = useCallback(() => {
+    if (isPartner && editSource !== "data_mitra") {
+      setAlertType("failed");
+      return;
+    }
+
     if (!selectedEditId || !isEditChanged) {
       setAlertType("no-update");
       return;
@@ -612,10 +676,13 @@ export default function DatasetConfig({
     editColumns.length,
     editMainKeys.length,
     editName,
+    editSource,
     isEditChanged,
+    isPartner,
     selectedEditId,
   ]);
 
+  //! ====== REQUEST DELETE ====== //
   const handleRequestDelete = useCallback(() => {
     if (selectedDeleteIds.length === 0) {
       setAlertType("no-delete");
@@ -625,9 +692,10 @@ export default function DatasetConfig({
     setAlertType("confirm-delete");
   }, [selectedDeleteIds.length]);
 
+  //! ====== CONFIRM ADD - PARTNER FORCED TO OWN MITRA ID ====== //
   const handleConfirmAdd = useCallback(async () => {
     if (
-      !selectedMitraId ||
+      !selectedAddMitraId ||
       !newLabel.trim() ||
       newDataRows.length === 0 ||
       newColumns.length === 0 ||
@@ -641,7 +709,7 @@ export default function DatasetConfig({
 
     try {
       const { error } = await supabase.from("data_mitra").insert({
-        mitra_id: selectedMitraId,
+        mitra_id: selectedAddMitraId,
         label: newLabel.trim(),
         data: newDataRows,
         column_config: newColumns,
@@ -673,10 +741,16 @@ export default function DatasetConfig({
     newLabel,
     newMainKeys,
     refreshData,
-    selectedMitraId,
+    selectedAddMitraId,
   ]);
 
+  //! ====== CONFIRM UPDATE - PARTNER ONLY OWN DATA MITRA ====== //
   const handleConfirmUpdate = useCallback(async () => {
+    if (isPartner && editSource !== "data_mitra") {
+      setAlertType("failed");
+      return;
+    }
+
     if (!selectedEditId || !isEditChanged) {
       setAlertType("no-update");
       return;
@@ -700,23 +774,47 @@ export default function DatasetConfig({
         main_column_config: normalizeMainKeys(editMainKeys, editColumns),
       };
 
-      const payload =
-        editSource === "data_mitra"
-          ? {
-              label: editName.trim(),
-              ...configPayload,
-            }
-          : {
-              name: editName.trim(),
-              ...configPayload,
-            };
+      if (isPartner) {
+        if (!activeMitraId) {
+          setAlertType("failed");
+          return;
+        }
 
-      const { error } = await supabase
-        .from(editSource)
-        .update(payload)
-        .eq("id", selectedEditId);
+        const { data, error } = await supabase
+          .from("data_mitra")
+          .update({
+            label: editName.trim(),
+            ...configPayload,
+          })
+          .eq("id", selectedEditId)
+          .eq("mitra_id", activeMitraId)
+          .select("id");
 
-      if (error) throw error;
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          setAlertType("failed");
+          return;
+        }
+      } else {
+        const payload =
+          editSource === "data_mitra"
+            ? {
+                label: editName.trim(),
+                ...configPayload,
+              }
+            : {
+                name: editName.trim(),
+                ...configPayload,
+              };
+
+        const { error } = await supabase
+          .from(editSource)
+          .update(payload)
+          .eq("id", selectedEditId);
+
+        if (error) throw error;
+      }
 
       await refreshData();
 
@@ -728,16 +826,19 @@ export default function DatasetConfig({
       setSaving(false);
     }
   }, [
+    activeMitraId,
     editColumns,
     editFilters,
     editMainKeys,
     editName,
     editSource,
     isEditChanged,
+    isPartner,
     refreshData,
     selectedEditId,
   ]);
 
+  //! ====== CONFIRM DELETE - PARTNER ONLY OWN DATA MITRA ====== //
   const handleConfirmDelete = useCallback(async () => {
     if (selectedDeleteIds.length === 0) {
       setAlertType("no-delete");
@@ -747,12 +848,33 @@ export default function DatasetConfig({
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from("data_mitra")
-        .delete()
-        .in("id", selectedDeleteIds);
+      if (isPartner) {
+        if (!activeMitraId) {
+          setAlertType("failed");
+          return;
+        }
 
-      if (error) throw error;
+        const { data, error } = await supabase
+          .from("data_mitra")
+          .delete()
+          .in("id", selectedDeleteIds)
+          .eq("mitra_id", activeMitraId)
+          .select("id");
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          setAlertType("failed");
+          return;
+        }
+      } else {
+        const { error } = await supabase
+          .from("data_mitra")
+          .delete()
+          .in("id", selectedDeleteIds);
+
+        if (error) throw error;
+      }
 
       setSelectedDeleteIds([]);
 
@@ -765,13 +887,15 @@ export default function DatasetConfig({
     } finally {
       setSaving(false);
     }
-  }, [refreshData, selectedDeleteIds]);
+  }, [activeMitraId, isPartner, refreshData, selectedDeleteIds]);
 
+  //! ====== RESULT ALERT HANDLER ====== //
   const handleResultAlert = () => {
     setAlertType("none");
-    onSignalAction("refresh");
+    onSignalAction();
   };
 
+  //! ====== SAVE BY ACTION ====== //
   const handleSaveByAction = useCallback(() => {
     if (action === "add") {
       handleRequestAdd();
@@ -798,6 +922,7 @@ export default function DatasetConfig({
     handleSaveByAction();
   }, [handleSaveByAction, saveData]);
 
+  //! ====== DELETE SELECTION HANDLERS ====== //
   const toggleDeleteId = (id: string) => {
     setSelectedDeleteIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
@@ -813,6 +938,7 @@ export default function DatasetConfig({
     setSelectedDeleteIds(dataMitraRows.map((row) => row.id));
   };
 
+  //! ====== LOADING ====== //
   if (loading) {
     return (
       <div className="flex min-h-40 w-full items-center justify-center">
@@ -830,6 +956,7 @@ export default function DatasetConfig({
           </div>
         )}
 
+        {/* //! ====== ADD DATASET ====== // */}
         {action === "add" && (
           <div className="space-y-5">
             <div className="grid gap-3 md:grid-cols-2">
@@ -837,9 +964,10 @@ export default function DatasetConfig({
                 <span className="font-medium">Mitra</span>
 
                 <select
-                  value={selectedMitraId}
+                  value={selectedAddMitraId}
+                  disabled={isPartner}
                   onChange={(event) => setSelectedMitraId(event.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
                 >
                   <option value="">Pilih mitra</option>
 
@@ -849,6 +977,12 @@ export default function DatasetConfig({
                     </option>
                   ))}
                 </select>
+
+                {isPartner && (
+                  <p className="text-xs text-gray-500">
+                    Mitra otomatis menggunakan akun Anda.
+                  </p>
+                )}
               </label>
 
               <label className="space-y-1 text-sm">
@@ -1026,6 +1160,7 @@ export default function DatasetConfig({
           </div>
         )}
 
+        {/* //! ====== EDIT DATASET ====== // */}
         {action === "edit" && (
           <div className="space-y-5">
             <div className="grid gap-3 md:grid-cols-3">
@@ -1034,14 +1169,18 @@ export default function DatasetConfig({
 
                 <select
                   value={editSource}
+                  disabled={isPartner}
                   onChange={(event) => {
                     setEditSource(event.target.value as EditSource);
                     setSelectedEditId("");
                   }}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
                 >
                   <option value="data_mitra">Data Mitra</option>
-                  <option value="datasets">Dataset Internal</option>
+
+                  {isAdmin && (
+                    <option value="datasets">Dataset Internal</option>
+                  )}
                 </select>
               </label>
 
@@ -1213,6 +1352,7 @@ export default function DatasetConfig({
           </div>
         )}
 
+        {/* //! ====== DELETE DATASET ====== // */}
         {action === "delete" && (
           <div className="space-y-4">
             <div className="overflow-x-auto rounded-md border border-gray-300">
@@ -1286,8 +1426,9 @@ export default function DatasetConfig({
           </div>
         )}
 
+        {/* //! ====== LIST DATASET CONFIG ====== // */}
         {action === "list" && (
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className={`grid gap-5 ${isAdmin ? "xl:grid-cols-2" : ""}`}>
             <div className="space-y-2">
               <h3 className="font-semibold">Data Mitra</h3>
 
@@ -1331,52 +1472,55 @@ export default function DatasetConfig({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <h3 className="font-semibold">Dataset Internal</h3>
+            {isAdmin && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">Dataset Internal</h3>
 
-              <div className="overflow-x-auto rounded-md border border-gray-300">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                        Nama
-                      </th>
-                      <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                        Table
-                      </th>
-                      <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                        Kolom
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {datasetRows.map((row) => (
-                      <tr key={row.id}>
-                        <td className="border border-gray-300 px-3 py-2">
-                          {row.name}
-                        </td>
-
-                        <td className="border border-gray-300 px-3 py-2">
-                          {row.table}
-                        </td>
-
-                        <td className="border border-gray-300 px-3 py-2 text-right">
-                          {
-                            parseJsonArray<ColumnConfig>(row.column_config)
-                              .length
-                          }
-                        </td>
+                <div className="overflow-x-auto rounded-md border border-gray-300">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="border border-gray-300 bg-sky-100 px-3 py-2">
+                          Nama
+                        </th>
+                        <th className="border border-gray-300 bg-sky-100 px-3 py-2">
+                          Table
+                        </th>
+                        <th className="border border-gray-300 bg-sky-100 px-3 py-2">
+                          Kolom
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody>
+                      {datasetRows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {row.name}
+                          </td>
+
+                          <td className="border border-gray-300 px-3 py-2">
+                            {row.table}
+                          </td>
+
+                          <td className="border border-gray-300 px-3 py-2 text-right">
+                            {
+                              parseJsonArray<ColumnConfig>(row.column_config)
+                                .length
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
 
+      {/* //! ====== ALERTS ====== // */}
       {alertType === "confirm-update" && (
         <AlertNotif
           type="double"
@@ -1476,7 +1620,7 @@ export default function DatasetConfig({
       {alertType === "failed" && (
         <AlertNotif
           type="single"
-          msg="Penyimpanan data gagal"
+          msg="Penyimpanan data gagal atau Anda tidak memiliki akses ke data ini."
           yesText="OK"
           icon="failed"
           confirm={() => setAlertType("none")}

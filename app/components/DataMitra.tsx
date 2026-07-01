@@ -177,7 +177,7 @@ export default function DataMitra({
 
   return (
     <div className="w-full min-w-0 space-y-3">
-      <div className="flex w-full justify-between gap-2">
+      <div className="flex w-full justify-between gap-2 mt-6">
         <button
           type="button"
           onClick={() => setActiveView("table")}
