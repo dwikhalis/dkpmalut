@@ -19,6 +19,9 @@ import {
 import DataPageDropdown from "./DataPageDropdown";
 import Image from "next/image";
 import Link from "next/link";
+import AlertNotif from "./AlertNotif";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "../Stores/authStores";
 
 type Pages = { title: string; slug: string }[];
 
@@ -85,6 +88,11 @@ function getZonaLabel(zona: string) {
 }
 
 export default function ChartKKD({ pages }: Props) {
+  const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  const [alertType, setAlertType] = useState<null | "login-required">(null);
+
   const [legend, setLegend] = useState<LegendValue>("All");
   const [kkd, setKkd] = useState<SelectedKkdId>("");
   const [showSideMenu, setShowSideMenu] = useState(false);
@@ -119,7 +127,9 @@ export default function ChartKKD({ pages }: Props) {
   }, [dynamicLegendGroups]);
 
   const hasDownloads = Boolean(
-    availableDownloads.map || availableDownloads.rpz,
+    availableDownloads.map ||
+      availableDownloads.rpz ||
+      availableDownloads.decree,
   );
 
   useEffect(() => {
@@ -183,7 +193,7 @@ export default function ChartKKD({ pages }: Props) {
         return;
       }
 
-      const [mapAvailable, rpzAvailable] = await Promise.all([
+      const [mapAvailable, rpzAvailable, decreeAvailable] = await Promise.all([
         fileExists(selectedKkd.downloads.map),
         fileExists(selectedKkd.downloads.rpz),
         fileExists(selectedKkd.downloads.decree),
@@ -194,7 +204,7 @@ export default function ChartKKD({ pages }: Props) {
       setAvailableDownloads({
         map: mapAvailable ? selectedKkd.downloads.map : undefined,
         rpz: rpzAvailable ? selectedKkd.downloads.rpz : undefined,
-        decree: rpzAvailable ? selectedKkd.downloads.decree : undefined,
+        decree: decreeAvailable ? selectedKkd.downloads.decree : undefined,
       });
     };
 
@@ -204,6 +214,22 @@ export default function ChartKKD({ pages }: Props) {
       isMounted = false;
     };
   }, [selectedKkd]);
+
+  const handleDownloadFile = (filePath?: string) => {
+    if (!filePath) return;
+
+    if (!isLoggedIn) {
+      setAlertType("login-required");
+      return;
+    }
+
+    downloadFile(filePath);
+  };
+
+  const handleLoginRedirect = () => {
+    setAlertType(null);
+    router.push("/masuk/");
+  };
 
   return (
     <div className="flex w-full">
@@ -252,7 +278,9 @@ export default function ChartKKD({ pages }: Props) {
                               key={item.value}
                               type="button"
                               onClick={() => setLegend(item.value)}
-                              className={`flex w-full cursor-pointer items-center justify-start gap-3 rounded-xl border border-sky-600 px-2 py-1 text-left hover:bg-sky-700 ${isActive && "bg-sky-700"}`}
+                              className={`flex w-full cursor-pointer items-center justify-start gap-3 rounded-xl border border-sky-600 px-2 py-1 text-left hover:bg-sky-700 ${
+                                isActive && "bg-sky-700"
+                              }`}
                             >
                               <div
                                 className={`h-7.5 w-7.5 shrink-0 rounded-full ${item.legendClassName}`}
@@ -284,8 +312,10 @@ export default function ChartKKD({ pages }: Props) {
                     {availableDownloads.map && (
                       <button
                         type="button"
-                        className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2  text-xs text-white hover:bg-sky-700"
-                        onClick={() => downloadFile(availableDownloads.map!)}
+                        className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2 text-xs text-white hover:bg-sky-700"
+                        onClick={() =>
+                          handleDownloadFile(availableDownloads.map)
+                        }
                       >
                         Peta
                       </button>
@@ -295,7 +325,9 @@ export default function ChartKKD({ pages }: Props) {
                       <button
                         type="button"
                         className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2 text-xs text-white hover:bg-sky-700"
-                        onClick={() => downloadFile(availableDownloads.rpz!)}
+                        onClick={() =>
+                          handleDownloadFile(availableDownloads.rpz)
+                        }
                       >
                         RPZ
                       </button>
@@ -305,7 +337,9 @@ export default function ChartKKD({ pages }: Props) {
                       <button
                         type="button"
                         className="flex grow cursor-pointer items-center justify-center rounded-md bg-sky-600 p-2 text-xs text-white hover:bg-sky-700"
-                        onClick={() => downloadFile(availableDownloads.decree!)}
+                        onClick={() =>
+                          handleDownloadFile(availableDownloads.decree)
+                        }
                       >
                         KepmenKP
                       </button>
@@ -431,6 +465,16 @@ export default function ChartKKD({ pages }: Props) {
           </Link>
         )}
       </div>
+
+      {alertType === "login-required" && (
+        <AlertNotif
+          type="single"
+          msg="Log In terlebih dahulu untuk download data"
+          yesText="Log In"
+          icon="warning"
+          confirm={handleLoginRedirect}
+        />
+      )}
     </div>
   );
 }

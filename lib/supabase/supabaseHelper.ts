@@ -133,10 +133,21 @@ export const updateData = async (
   return true;
 };
 
-export const getNumOf = async (dataset: string) => {
-  const { count, error } = await supabase
+type NeqFilter = {
+  column: string;
+  value: string | number | boolean;
+};
+
+export const getNumOf = async (dataset: string, filters: NeqFilter[] = []) => {
+  let query = supabase
     .from(dataset)
     .select("id", { count: "exact", head: true });
+
+  filters.forEach((filter) => {
+    query = query.neq(filter.column, filter.value);
+  });
+
+  const { count, error } = await query;
 
   if (error) {
     alert("Fetching numOf Data failed");

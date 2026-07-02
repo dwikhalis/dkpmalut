@@ -6,6 +6,7 @@ import FormAdd from "./FormAdd";
 import FormEdit from "./FormEdit";
 import ListManager from "./ListManager";
 import AlertNotif from "./AlertNotif";
+import AuthAdminAccess from "../Auth/AuthAdminAccess";
 
 interface DataTypes {
   id: string;
@@ -110,7 +111,7 @@ export default function AdminPages({ type }: Props) {
   };
 
   return (
-    <>
+    <AuthAdminAccess>
       <div className="flex flex-col w-full min-h-[90vh]">
         <div className="relative flex items-center my-8">
           {/* Back Button */}
@@ -194,6 +195,6 @@ export default function AdminPages({ type }: Props) {
           }
         />
       </div>
-    </>
+    </AuthAdminAccess>
   );
 }

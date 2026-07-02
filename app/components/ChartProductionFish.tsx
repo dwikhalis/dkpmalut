@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
 import DataPageDropdown from "./DataPageDropdown";
+import AlertNotif from "./AlertNotif";
+import { useAuthStore } from "../Stores/authStores";
 
 type Row = {
   kab: string | null;
@@ -167,8 +169,11 @@ function toCsv(header: (string | number)[], rows: (string | number)[][]) {
 
 /* ================= Component ================= */
 
-export default function ChartProductionFishCombined({ pages }: Props) {
+export default function ChartProductionFish({ pages }: Props) {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  const [alertType, setAlertType] = useState<null | "login-required">(null);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -516,6 +521,22 @@ export default function ChartProductionFishCombined({ pages }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const handleCsvClick = () => {
+    if (items.length === 0) return;
+
+    if (!isLoggedIn) {
+      setAlertType("login-required");
+      return;
+    }
+
+    downloadCsv();
+  };
+
+  const handleLoginRedirect = () => {
+    setAlertType(null);
+    router.push("/masuk/");
+  };
+
   /* ================= UI States ================= */
 
   if (loading) {
@@ -741,7 +762,7 @@ export default function ChartProductionFishCombined({ pages }: Props) {
                 ? "cursor-not-allowed opacity-50"
                 : "bg-sky-600 text-white hover:bg-sky-500"
             }`}
-            onClick={downloadCsv}
+            onClick={handleCsvClick}
             disabled={items.length === 0}
           >
             CSV
@@ -824,6 +845,16 @@ export default function ChartProductionFishCombined({ pages }: Props) {
           )}
         </table>
       </div>
+
+      {alertType === "login-required" && (
+        <AlertNotif
+          type="single"
+          msg="Log In terlebih dahulu untuk download data"
+          yesText="Log In"
+          icon="warning"
+          confirm={handleLoginRedirect}
+        />
+      )}
     </div>
   );
 }

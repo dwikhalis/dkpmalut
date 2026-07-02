@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
 import { DownChevron, UpChevron } from "@/public/icons/iconSets";
 import DataPageDropdown from "./DataPageDropdown";
+import { useAuthStore } from "../Stores/authStores";
+import AlertNotif from "./AlertNotif";
 
 type Row = {
   kab: string | null;
@@ -112,6 +114,8 @@ function aggregateByKab(
 
 export default function ChartAquaculture({ pages }: Props) {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const [alertType, setAlertType] = useState<null | "login-required">(null);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -414,6 +418,17 @@ export default function ChartAquaculture({ pages }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const handleCsvClick = () => {
+    if (noDatasetSelected || tableRows.length === 0) return;
+
+    if (!isLoggedIn) {
+      setAlertType("login-required");
+      return;
+    }
+
+    downloadCsv();
+  };
+
   if (loading) {
     return (
       <div className="w-full h-[70vh] flex items-center justify-center">
@@ -588,7 +603,7 @@ export default function ChartAquaculture({ pages }: Props) {
                 ? "opacity-50 cursor-not-allowed"
                 : "bg-sky-600 text-white hover:bg-sky-500"
             }`}
-            onClick={downloadCsv}
+            onClick={handleCsvClick}
             disabled={noDatasetSelected || tableRows.length === 0}
           >
             CSV
@@ -726,6 +741,19 @@ export default function ChartAquaculture({ pages }: Props) {
           )}
         </table>
       </div>
+
+      {alertType === "login-required" && (
+        <AlertNotif
+          type="single"
+          msg="Log In terlebih dahulu untuk download data"
+          yesText="Log In"
+          icon="warning"
+          confirm={() => {
+            setAlertType(null);
+            router.push("/masuk/");
+          }}
+        />
+      )}
     </div>
   );
 }

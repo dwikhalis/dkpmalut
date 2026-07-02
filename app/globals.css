@@ -241,6 +241,18 @@ h6 {
     animation: homeFloat 5.5s ease-in-out infinite;
   }
 
+  .home-float-5 {
+    animation: homeFloat 3.5s ease-in-out infinite;
+  }
+
+  .home-float-6 {
+    animation: homeFloat 3s ease-in-out infinite;
+  }
+
+  .home-float-7 {
+    animation: homeFloat 4.5s ease-in-out infinite;
+  }
+
   .home-hover-lift {
     transition:
       transform 250ms ease,

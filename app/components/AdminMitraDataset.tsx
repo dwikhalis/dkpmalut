@@ -15,6 +15,10 @@ const DatasetConfig = dynamic(() => import("./DatasetConfig"), {
   ssr: false,
 });
 
+interface Props {
+  onSignal: (value: string) => void;
+}
+
 type ActionType = "add" | "edit" | "list" | "delete";
 
 type MitraDataPage = {
@@ -33,7 +37,7 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export default function AdminMitraDataset() {
+export default function AdminMitraDataset({ onSignal }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -152,6 +156,7 @@ export default function AdminMitraDataset() {
     setMainPage("main");
     setAction("list");
     setShowMobileAction(false);
+    onSignal("all");
     router.push("/profile/data");
   };
 
@@ -165,12 +170,12 @@ export default function AdminMitraDataset() {
   };
 
   return (
-    <div className="flex w-full min-w-0 max-w-full overflow-hidden">
+    <div className="flex w-full min-h-[80vh] max-w-full overflow-hidden">
       {mainPage === "main" && (
         <div className="flex w-full min-w-0 max-w-full flex-col overflow-hidden">
           <div
-            className={`flex relative items-center justify-center ${
-              role === "admin" ? "mt-3 mb-6" : ""
+            className={`flex relative items-center justify-center pt-2 ${
+              role === "admin" ? "mt-3 mb-6" : "mb-6"
             }`}
           >
             <div
@@ -196,6 +201,7 @@ export default function AdminMitraDataset() {
                     onClick={() => {
                       setMainPage("add");
                       setAction("add");
+                      onSignal("mitra");
                     }}
                   >
                     Tambah Dataset
@@ -206,6 +212,7 @@ export default function AdminMitraDataset() {
                     onClick={() => {
                       setMainPage("edit");
                       setAction("edit");
+                      onSignal("mitra");
                     }}
                   >
                     Atur Dataset
@@ -216,6 +223,7 @@ export default function AdminMitraDataset() {
                     onClick={() => {
                       setMainPage("delete");
                       setAction("delete");
+                      onSignal("mitra");
                     }}
                   >
                     Hapus Dataset

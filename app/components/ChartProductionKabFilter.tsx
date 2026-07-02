@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
 import DataPageDropdown from "./DataPageDropdown";
+import AlertNotif from "./AlertNotif";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "../Stores/authStores";
 
 type Row = {
   kab: string | null;
@@ -93,6 +96,11 @@ function aggregate(
 }
 
 export default function ChartProductionKabFilter({ pages }: Props) {
+  const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  const [alertType, setAlertType] = useState<null | "login-required">(null);
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -377,6 +385,22 @@ export default function ChartProductionKabFilter({ pages }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const handleCsvClick = () => {
+    if (tableRows.length === 0) return;
+
+    if (!isLoggedIn) {
+      setAlertType("login-required");
+      return;
+    }
+
+    downloadCsv();
+  };
+
+  const handleLoginRedirect = () => {
+    setAlertType(null);
+    router.push("/masuk/");
+  };
+
   if (loading) {
     return (
       <div className="w-full h-[70vh] flex items-center justify-center">
@@ -517,7 +541,7 @@ export default function ChartProductionKabFilter({ pages }: Props) {
                 ? "cursor-not-allowed opacity-50"
                 : "bg-sky-600 text-white hover:bg-sky-500"
             }`}
-            onClick={downloadCsv}
+            onClick={handleCsvClick}
             disabled={tableRows.length === 0}
           >
             CSV
@@ -626,6 +650,17 @@ export default function ChartProductionKabFilter({ pages }: Props) {
           )}
         </table>
       </div>
+
+      {alertType === "login-required" && (
+        <AlertNotif
+          type="double"
+          msg="Log In terlebih dahulu untuk download data"
+          yesText="Log In"
+          noText="Batal"
+          icon="warning"
+          confirm={handleLoginRedirect}
+        />
+      )}
     </div>
   );
 }

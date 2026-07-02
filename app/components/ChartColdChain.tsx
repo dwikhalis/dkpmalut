@@ -7,6 +7,9 @@ import MapColdChain_dynamic from "./MapColdChain_dynamic";
 import Image from "next/image";
 import { getColdChain } from "@/lib/supabase/supabaseHelper";
 import DataPageDropdown from "./DataPageDropdown";
+import AlertNotif from "./AlertNotif";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "../Stores/authStores";
 
 type Pages = { title: string; slug: string }[];
 
@@ -54,6 +57,10 @@ type ColdChainRow = {
 // Legends = "landing_sites" | "ports" | "companies" | "ice_factory" | "ice_storage" | "cs" | "abf" | "cpf"
 
 export default function ChartColdChain({ pages }: Props) {
+  const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const [alertType, setAlertType] = useState<null | "login-required">(null);
+
   const [legend, setLegend] = useState("landing_sites");
   const [loading, setLoading] = useState(true);
 
@@ -92,7 +99,7 @@ export default function ChartColdChain({ pages }: Props) {
     });
   };
 
-  const downloadCSV = () => {
+  const downloadCsv = () => {
     if (!dataColdChain || dataColdChain.length === 0) return;
 
     // 1. Extract headers
@@ -119,6 +126,15 @@ export default function ChartColdChain({ pages }: Props) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleCsvClick = () => {
+    if (!isLoggedIn) {
+      setAlertType("login-required");
+      return;
+    }
+
+    downloadCsv();
   };
 
   const handleLoadMap = (status: boolean) => {
@@ -316,7 +332,7 @@ export default function ChartColdChain({ pages }: Props) {
         <div>
           <button
             className="px-3 py-1 mb-3 rounded-lg border lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-sky-600 text-white hover:bg-sky-500"
-            onClick={downloadCSV}
+            onClick={handleCsvClick}
           >
             Download CSV
           </button>
@@ -459,6 +475,19 @@ export default function ChartColdChain({ pages }: Props) {
           </div>
         </div>
       </div>
+
+      {alertType === "login-required" && (
+        <AlertNotif
+          type="single"
+          msg="Log In terlebih dahulu untuk download data"
+          yesText="Log In"
+          icon="warning"
+          confirm={() => {
+            setAlertType(null);
+            router.push("/masuk/");
+          }}
+        />
+      )}
     </div>
   );
 }

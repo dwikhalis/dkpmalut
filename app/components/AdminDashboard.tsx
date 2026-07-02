@@ -11,13 +11,14 @@ export default function AdminDashboard() {
   const [numOfMessage, setNumOfMessage] = useState(0);
   const [numOfDatasets, setNumOfDatasets] = useState(0);
   const [numOfDataMitra, setNumOfDataMitra] = useState(0);
+  const [numOfUser, setNumOfUser] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
     const fetchNum = async () => {
       try {
-        const [staffs, news, galleries, messages, datasets, dataMitra] =
+        const [staffs, news, galleries, messages, datasets, dataMitra, users] =
           await Promise.all([
             getNumOf("staff"),
             getNumOf("news"),
@@ -25,6 +26,7 @@ export default function AdminDashboard() {
             getNumNewMessage(),
             getNumOf("datasets"),
             getNumOf("data_mitra"),
+            getNumOf("users"),
           ]);
 
         if (!mounted) return;
@@ -34,6 +36,7 @@ export default function AdminDashboard() {
         setNumOfMessage(messages);
         setNumOfDatasets(datasets);
         setNumOfDataMitra(dataMitra);
+        setNumOfUser(users);
       } catch (err) {
         console.error("Error fetching numOf data:", err);
       }
@@ -65,16 +68,22 @@ export default function AdminDashboard() {
       route: "/profile/galeri",
     },
     {
-      label: "Inbox",
-      select: "Inbox",
+      label: "Pesan",
+      select: "Pesan",
       numof: numOfMessage,
-      route: "/profile/inbox",
+      route: "/profile/pesan",
     },
     {
       label: "Data",
       select: "Data",
       numof: numOfDatasets + numOfDataMitra,
       route: "/profile/data",
+    },
+    {
+      label: "Pengguna",
+      select: "Pengguna",
+      numof: numOfUser,
+      route: "/profile/pengguna",
     },
   ];
 
@@ -85,7 +94,7 @@ export default function AdminDashboard() {
           <Link
             key={idx}
             href={e.route}
-            className="flex grow p-6 m-3 shadow-xl rounded-2xl border-3 border-stone-100 min-w-30 min-h-30 md:min-w-[20vw] md:min-h-[15vw] cursor-pointer"
+            className="flex grow p-6 m-3 shadow-xl rounded-2xl border-3 border-stone-100 min-w-30 min-h-30 md:min-w-[20vw] md:max-w-[30%] md:min-h-[15vw] cursor-pointer"
           >
             <div className="flex flex-col justify-center items-center gap-2 w-full">
               <h3>{e.label}</h3>

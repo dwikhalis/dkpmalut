@@ -74,6 +74,10 @@ export default function AdminSideMenu({ slug, userRole }: Props) {
       label: "Data",
       slug: "data",
     },
+    {
+      label: "Pengguna",
+      slug: "pengguna",
+    },
   ];
 
   const partnerMenus = [

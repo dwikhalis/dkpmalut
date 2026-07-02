@@ -2,9 +2,9 @@
 
 import AdminData from "@/app/components/AdminData";
 import AdminMessage from "@/app/components/AdminMessage";
-import AdminMitra from "@/app/components/AdminMitra";
 import AdminPages from "@/app/components/AdminPages";
 import AdminSideMenu from "@/app/components/AdminSideMenu";
+import AdminUsers from "@/app/components/AdminUsers";
 import { useAuthStore } from "@/app/Stores/authStores";
 import { useParams } from "next/navigation";
 
@@ -32,7 +32,7 @@ export default function page() {
         {slug === "galeri" && <AdminPages type="gallery" />}
         {slug === "pesan" && <AdminMessage />}
         {slug === "data" && <AdminData />}
-        {slug === "mitra" && <AdminMitra />}
+        {slug === "pengguna" && <AdminUsers />}
       </div>
     </div>
   );

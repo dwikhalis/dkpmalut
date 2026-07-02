@@ -3,7 +3,7 @@ import ChartAquaculture from "@/app/components/ChartAquaculture";
 import ChartColdChain from "@/app/components/ChartColdChain";
 import ChartGeneric from "@/app/components/ChartGeneric";
 import ChartKKD from "@/app/components/ChartKKD";
-import ChartProductionClassFish from "@/app/components/ChartProductionClassFish";
+import ChartProductionFish from "@/app/components/ChartProductionFish";
 import ChartProductionKabFilter from "@/app/components/ChartProductionKabFilter";
 
 interface Props {
@@ -104,7 +104,7 @@ export default async function Page({ params }: Props) {
   }
 
   if (slug === "produksi-komoditas") {
-    return <ChartProductionClassFish pages={pages} />;
+    return <ChartProductionFish pages={pages} />;
   }
 
   if (slug === "perikanan-budidaya-maluku-utara") {

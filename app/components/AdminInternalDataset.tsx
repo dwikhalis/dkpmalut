@@ -14,6 +14,10 @@ const DatasetConfig = dynamic(() => import("./DatasetConfig"), {
   ssr: false,
 });
 
+interface Props {
+  onSignal: (value: string) => void;
+}
+
 type ActionType = "add" | "edit" | "list" | "delete";
 
 type DataPage = {
@@ -22,7 +26,7 @@ type DataPage = {
   table: string;
 };
 
-export default function AdminInternalDataset() {
+export default function AdminInternalDataset({ onSignal }: Props) {
   const loading = useAuthStore((state) => state.loading);
   const userId = useAuthStore((state) => state.userId);
   const role = useAuthStore((state) => state.role);
@@ -94,6 +98,7 @@ export default function AdminInternalDataset() {
     setMainPage("main");
     setPage(labels.home);
     setDataset("");
+    onSignal("all");
     setAction("list");
   };
 
@@ -135,6 +140,7 @@ export default function AdminInternalDataset() {
                       setMainPage("edit");
                       setPage(labels.edit);
                       setAction("edit");
+                      onSignal("internal");
                     }}
                   >
                     Atur Dataset

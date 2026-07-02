@@ -23,7 +23,7 @@ export default function SectionNumber() {
                   width={800}
                   height={600}
                   alt="nelayan"
-                  className="home-float lg:h-50 md:h-20 object-contain"
+                  className="home-float-5 lg:h-50 md:h-20 object-contain"
                   priority
                 />
               </div>
@@ -50,7 +50,7 @@ export default function SectionNumber() {
                   width={800}
                   height={600}
                   alt="nelayan"
-                  className="home-float lg:h-50 md:h-20 object-contain"
+                  className="home-float-6 lg:h-50 md:h-20 object-contain"
                   priority
                 />
               </div>
@@ -76,7 +76,7 @@ export default function SectionNumber() {
                   width={800}
                   height={600}
                   alt="nelayan"
-                  className="home-float lg:h-50 md:h-20 object-contain"
+                  className="home-float-7 lg:h-50 md:h-20 object-contain"
                   priority
                 />
               </div>

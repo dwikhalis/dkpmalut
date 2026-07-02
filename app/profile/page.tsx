@@ -6,6 +6,7 @@ import AdminSideMenu from "../components/AdminSideMenu";
 import { useAuthStore } from "@/app/Stores/authStores";
 import ProfileAccount from "../components/ProfileAccount";
 import { useRouter } from "next/navigation";
+import AuthAdminAccess from "../Auth/AuthAdminAccess";
 
 export default function Page() {
   const router = useRouter();
@@ -43,7 +44,11 @@ export default function Page() {
       <AdminSideMenu slug="home" userRole={role} />
 
       <div className="flex h-full w-full lg:mx-12 mx-8 min-h-[70vh]">
-        {role === "admin" && <AdminDashboard />}
+        {role === "admin" && (
+          <AuthAdminAccess>
+            <AdminDashboard />
+          </AuthAdminAccess>
+        )}
         {role === "partner" && <ProfileAccount />}
       </div>
     </div>
