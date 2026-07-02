@@ -11,6 +11,8 @@ type Row = {
   year: number | string | null;
   semester?: number | string | null;
   class: string | null;
+  common: string | null;
+  name?: string | null;
   landing?: string | null;
   weight?: number | string | null;
 };
@@ -23,47 +25,89 @@ type DatasetConf = {
 
 type Pages = { title: string; slug: string }[];
 
+type SortBy = "name" | "class" | "value";
+type TopN = "all" | 5 | 10;
+
 interface Props {
   pages: Pages;
 }
 
-const TITLE = "Produksi Perikanan Tangkap per Kelas Komoditas";
+const TITLE = "Produksi Perikanan Tangkap per Jenis Komoditas";
 
-// tolerant number parser
+/* ================= Helpers ================= */
+
 function toNum(v: unknown) {
   if (v == null) return NaN;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const cleaned = v.replace(/[^\d.-]/g, "");
-    return Number(cleaned);
+
+  if (typeof v === "number") {
+    return v;
   }
+
+  if (typeof v === "string") {
+    return Number(v.replace(/[^\d.-]/g, ""));
+  }
+
   return NaN;
 }
-function toYear(v: unknown): number | null {
-  const n = typeof v === "string" ? Number(v.slice(0, 4)) : Number(v);
-  return Number.isFinite(n) ? n : null;
+
+function trimOrEmpty(value: string | null | undefined) {
+  return (value ?? "").trim();
 }
-// "1", "2", "Semester 1/II", "I"/"II" -> 1/2
-function toSemester(v: unknown): 1 | 2 | null {
-  if (v == null) return null;
-  if (typeof v === "number") {
-    const n = Math.trunc(v);
-    return n === 1 || n === 2 ? (n as 1 | 2) : null;
+
+function keyOf(value: string) {
+  return value.normalize("NFKC").trim().toLowerCase();
+}
+
+function yearOf(value: unknown): number | null {
+  if (value == null) return null;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
   }
-  if (typeof v === "string") {
-    const s = v.trim().toLowerCase();
-    const m = s.match(/[12]/);
-    if (m) {
-      const n = Number(m[0]);
-      return n === 1 || n === 2 ? (n as 1 | 2) : null;
-    }
-    if (/\bii\b/.test(s)) return 2;
-    if (/\bi\b/.test(s)) return 1;
+
+  if (typeof value === "string") {
+    const match = value.match(/\d{4}/);
+    return match ? Number(match[0]) : null;
   }
+
   return null;
 }
 
-/** Fetch *all* rows with pagination to avoid Supabase/PostgREST limit */
+function semesterOf(value: unknown): 1 | 2 | null {
+  if (value == null) return null;
+
+  if (typeof value === "number") {
+    const num = Math.trunc(value);
+    return num === 1 || num === 2 ? (num as 1 | 2) : null;
+  }
+
+  if (typeof value === "string") {
+    const text = value.trim().toLowerCase();
+
+    const match = text.match(/[12]/);
+    if (match) {
+      const num = Number(match[0]);
+      return num === 1 || num === 2 ? (num as 1 | 2) : null;
+    }
+
+    if (/\bii\b/.test(text)) return 2;
+    if (/\bi\b/.test(text)) return 1;
+  }
+
+  return null;
+}
+
+function shortNameForChart(fullNameRaw: string | null | undefined) {
+  const full = trimOrEmpty(fullNameRaw);
+  if (!full) return "";
+
+  const noParen = full.split("(")[0];
+  const firstAlias = noParen.split(";")[0];
+  const firstSlash = firstAlias.split("/")[0];
+
+  return firstSlash.trim();
+}
+
 async function fetchAllRows<T>(
   table: string,
   columns: string,
@@ -71,196 +115,366 @@ async function fetchAllRows<T>(
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
+
   while (true) {
     const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from(table)
       .select(columns)
       .range(from, to);
+
     if (error) throw error;
     if (!data || data.length === 0) break;
+
     all.push(...(data as T[]));
+
     if (data.length < pageSize) break;
+
     from += pageSize;
   }
+
   return all;
 }
 
-/** Sum weight per CLASS with optional kab + year + semester + landing filters */
-function aggregateByClass(
-  rows: Row[],
-  pick: (r: Row) => number | string | null | undefined,
-  kabFilter?: Set<string>,
-  yearSelected?: number | null,
-  semesterSelected?: 1 | 2 | null,
-  landingSelected?: string | null,
-) {
-  const totals = new Map<string, number>();
-  rows.forEach((r) => {
-    const kab = r.kab?.trim();
-    if (!kab) return;
-    if (kabFilter && kabFilter.size > 0 && !kabFilter.has(kab)) return;
-
-    const y = toYear(r.year);
-    if (y == null) return;
-    if (yearSelected != null && y !== yearSelected) return;
-
-    const sem = toSemester(r.semester);
-    if (semesterSelected != null && sem !== semesterSelected) return;
-
-    const land = r.landing?.trim();
-    if (landingSelected && (!land || land !== landingSelected)) return;
-
-    const cls = r.class?.trim();
-    if (!cls) return;
-
-    const val = toNum(pick(r));
-    if (!Number.isFinite(val)) return;
-
-    totals.set(cls, (totals.get(cls) ?? 0) + val);
-  });
-  return totals;
+function fileNameFromTitle(title: string) {
+  return (
+    title
+      .trim()
+      .replace(/[\/\\?%*:|"<>]/g, "")
+      .replace(/\s+/g, "_") + ".csv"
+  );
 }
 
-export default function ChartProductionClassFish({ pages }: Props) {
+function csvCell(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  const text = String(value ?? "");
+
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function toCsv(header: (string | number)[], rows: (string | number)[][]) {
+  const lines = [
+    header.map(csvCell).join(","),
+    ...rows.map((row) => row.map(csvCell).join(",")),
+  ];
+
+  return lines.join("\r\n");
+}
+
+/* ================= Component ================= */
+
+export default function ChartProductionFishCombined({ pages }: Props) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-
   const [rows, setRows] = useState<Row[]>([]);
 
   // Filters
-  const [selectedKabs, setSelectedKabs] = useState<string[]>([]); // multi (mobile side menu)
-  const [selectedYear, setSelectedYear] = useState<"all" | number>("all"); // single
+  const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const [selectedSemester, setSelectedSemester] = useState<"all" | 1 | 2>(
     "all",
   );
+  const [selectedKab, setSelectedKab] = useState<"all" | string>("all");
   const [selectedLanding, setSelectedLanding] = useState<"all" | string>("all");
-  const [sortBy, setSortBy] = useState<"value" | "class">("class");
-  const [order, setOrder] = useState<"desc" | "asc">("asc");
-  const [showDropDown, setShowDropDown] = useState(false);
-  const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
-  const [unit, setUnit] = useState("ton");
+  const [selectedClass, setSelectedClass] = useState<"all" | string>("all");
+  const [selectedFishName, setSelectedFishName] = useState<"all" | string>(
+    "all",
+  );
 
-  // fetch ALL rows (pagination) — include semester & landing
+  // Sort / display
+  const [sortBy, setSortBy] = useState<SortBy>("value");
+  const [topN, setTopN] = useState<TopN>("all");
+  const [showDropDown, setShowDropDown] = useState(false);
+
+  // Fetch ALL data
   useEffect(() => {
     let cancelled = false;
-    const getErrorMessage = (e: unknown) => {
-      if (e instanceof Error) return e.message;
+
+    const getErrorMessage = (error: unknown) => {
+      if (error instanceof Error) return error.message;
+
       try {
-        return JSON.stringify(e);
+        return JSON.stringify(error);
       } catch {
-        return String(e);
+        return String(error);
       }
     };
 
-    (async () => {
+    async function loadData() {
       try {
-        type TangkapRow = Pick<
-          Row,
-          "kab" | "year" | "semester" | "class" | "landing" | "weight"
-        >;
-        const data = await fetchAllRows<TangkapRow>(
+        const data = await fetchAllRows<Row>(
           "tangkap",
-          "kab, year, semester, class, landing, weight",
+          "kab, year, semester, class, common, name, landing, weight",
         );
+
         if (cancelled) return;
-        setRows((data ?? []) as Row[]);
+
+        const cleaned = (data ?? []).map((row) => ({
+          kab: trimOrEmpty(row.kab),
+          year: row.year,
+          semester: row.semester,
+          class: trimOrEmpty(row.class),
+          common: trimOrEmpty(row.common),
+          name: trimOrEmpty(row.name ?? ""),
+          landing: trimOrEmpty(row.landing ?? ""),
+          weight: row.weight,
+        }));
+
+        setRows(cleaned);
         setErr(null);
-      } catch (e) {
-        setErr(getErrorMessage(e) || "Failed to load data");
+      } catch (error) {
+        setErr(getErrorMessage(error) || "Failed to load data");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    }
+
+    loadData();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Options
-  const kabOptions = useMemo(() => {
-    const s = new Set<string>();
-    rows.forEach((r) => {
-      const k = r.kab?.trim();
-      if (k) s.add(k);
-    });
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
-  }, [rows]);
+  /* ================= Options ================= */
 
   const yearOptions = useMemo(() => {
-    const s = new Set<number>();
-    rows.forEach((r) => {
-      const y = toYear(r.year);
-      if (y != null) s.add(y);
+    const set = new Set<number>();
+
+    rows.forEach((row) => {
+      const year = yearOf(row.year);
+      if (year != null) set.add(year);
     });
-    return Array.from(s).sort((a, b) => b - a); // newest first
+
+    return Array.from(set).sort((a, b) => b - a);
+  }, [rows]);
+
+  const kabOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    rows.forEach((row) => {
+      const label = trimOrEmpty(row.kab);
+      if (!label) return;
+
+      const key = keyOf(label);
+      if (!map.has(key)) map.set(key, label);
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
   const landingOptions = useMemo(() => {
-    const s = new Set<string>();
-    rows.forEach((r) => {
-      const l = r.landing?.trim();
-      if (l) s.add(l);
+    const map = new Map<string, string>();
+
+    rows.forEach((row) => {
+      const label = trimOrEmpty(row.landing);
+      if (!label) return;
+
+      const key = keyOf(label);
+      if (!map.has(key)) map.set(key, label);
     });
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
+
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
-  // Totals per class with filters applied
-  const totals = useMemo(() => {
-    const kabSet = selectedKabs.length > 0 ? new Set(selectedKabs) : undefined;
-    const ySel = selectedYear === "all" ? null : selectedYear;
-    const semSel = selectedSemester === "all" ? null : selectedSemester;
-    const landSel = selectedLanding === "all" ? null : selectedLanding.trim();
+  const classOptions = useMemo(() => {
+    const map = new Map<string, string>();
 
-    return aggregateByClass(
-      rows,
-      (r) => r.weight,
-      kabSet,
-      ySel,
-      semSel,
-      landSel,
-    );
-  }, [rows, selectedKabs, selectedYear, selectedSemester, selectedLanding]);
+    rows.forEach((row) => {
+      const label = trimOrEmpty(row.class);
+      if (!label) return;
 
-  // Build X labels (classes) and dataset
-  const { labels, datasets }: { labels: string[]; datasets: DatasetConf[] } =
-    useMemo(() => {
-      const labs = Array.from(totals.keys());
+      const key = keyOf(label);
+      if (!map.has(key)) map.set(key, label);
+    });
 
-      if (sortBy === "class") {
-        labs.sort((a, b) => a.localeCompare(b) * (order === "asc" ? 1 : -1));
-      } else {
-        labs.sort(
-          (a, b) =>
-            ((totals.get(a) ?? 0) - (totals.get(b) ?? 0)) *
-            (order === "asc" ? 1 : -1),
-        );
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const fishNameOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    rows.forEach((row) => {
+      const label = trimOrEmpty(row.name) || trimOrEmpty(row.common);
+      if (!label) return;
+
+      const key = keyOf(label);
+      if (!map.has(key)) map.set(key, label);
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  /* ================= Filtering ================= */
+
+  const filteredRows = useMemo(() => {
+    const selectedYearValue = selectedYear === "all" ? null : selectedYear;
+    const selectedSemesterValue =
+      selectedSemester === "all" ? null : selectedSemester;
+
+    const selectedKabKey =
+      selectedKab === "all" ? null : keyOf(String(selectedKab));
+
+    const selectedLandingKey =
+      selectedLanding === "all" ? null : keyOf(String(selectedLanding));
+
+    const selectedClassKey =
+      selectedClass === "all" ? null : keyOf(String(selectedClass));
+
+    const selectedFishNameKey =
+      selectedFishName === "all" ? null : keyOf(String(selectedFishName));
+
+    return rows.filter((row) => {
+      const kab = trimOrEmpty(row.kab);
+      if (!kab) return false;
+
+      const cls = trimOrEmpty(row.class);
+      if (!cls) return false;
+
+      const fishName = trimOrEmpty(row.name) || trimOrEmpty(row.common);
+      if (!fishName) return false;
+
+      const year = yearOf(row.year);
+      if (selectedYearValue != null && year !== selectedYearValue) {
+        return false;
       }
 
-      const ds: DatasetConf[] = [
-        {
-          label: "Tangkap",
-          values: labs.map((cls) => totals.get(cls) ?? 0),
-          backgroundColor: "rgba(53, 162, 235, 0.6)",
-        },
-      ];
-      return { labels: labs, datasets: ds };
-    }, [totals, sortBy, order]);
+      const semester = semesterOf(row.semester);
+      if (selectedSemesterValue != null && semester !== selectedSemesterValue) {
+        return false;
+      }
 
-  // Table helpers (source of truth for CSV)
-  const tableRows = useMemo(
-    () =>
-      labels.map((cls) => ({
-        cls,
-        val: totals.get(cls) ?? 0,
-      })),
-    [labels, totals],
+      if (selectedKabKey && keyOf(kab) !== selectedKabKey) {
+        return false;
+      }
+
+      const landing = trimOrEmpty(row.landing);
+      if (selectedLandingKey && keyOf(landing) !== selectedLandingKey) {
+        return false;
+      }
+
+      if (selectedClassKey && keyOf(cls) !== selectedClassKey) {
+        return false;
+      }
+
+      if (selectedFishNameKey && keyOf(fishName) !== selectedFishNameKey) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    rows,
+    selectedYear,
+    selectedSemester,
+    selectedKab,
+    selectedLanding,
+    selectedClass,
+    selectedFishName,
+  ]);
+
+  /* ================= Aggregation by fish name ================= */
+
+  const items = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        key: string;
+        tableLabel: string;
+        chartLabel: string;
+        classSet: Set<string>;
+        value: number;
+      }
+    >();
+
+    filteredRows.forEach((row) => {
+      const fishName = trimOrEmpty(row.name) || trimOrEmpty(row.common);
+      if (!fishName) return;
+
+      const fishKey = keyOf(fishName);
+      const cls = trimOrEmpty(row.class);
+
+      const value = toNum(row.weight);
+      if (!Number.isFinite(value)) return;
+
+      if (!map.has(fishKey)) {
+        map.set(fishKey, {
+          key: fishKey,
+          tableLabel: fishName,
+          chartLabel: shortNameForChart(fishName) || fishName,
+          classSet: new Set<string>(),
+          value: 0,
+        });
+      }
+
+      const target = map.get(fishKey);
+      if (!target) return;
+
+      if (cls) {
+        target.classSet.add(cls);
+      }
+
+      target.value += value;
+    });
+
+    let result = Array.from(map.values())
+      .map((item) => ({
+        key: item.key,
+        tableLabel: item.tableLabel,
+        chartLabel: item.chartLabel,
+        classLabel: Array.from(item.classSet).sort().join(", "),
+        value: item.value,
+      }))
+      .filter((item) => Math.abs(item.value) > 1e-9);
+
+    result.sort((a, b) => {
+      if (sortBy === "name") {
+        return a.tableLabel.localeCompare(b.tableLabel);
+      }
+
+      if (sortBy === "class") {
+        return a.classLabel.localeCompare(b.classLabel);
+      }
+
+      return b.value - a.value;
+    });
+
+    if (topN !== "all") {
+      result = result.slice(0, topN);
+    }
+
+    return result;
+  }, [filteredRows, sortBy, topN]);
+
+  /* ================= Chart data ================= */
+
+  const { labels, datasets }: { labels: string[]; datasets: DatasetConf[] } =
+    useMemo(() => {
+      return {
+        labels: items.map((item) => item.chartLabel),
+        datasets: [
+          {
+            label: "Tangkap",
+            values: items.map((item) => item.value),
+            backgroundColor: "rgba(53, 162, 235, 0.6)",
+          },
+        ],
+      };
+    }, [items]);
+
+  const tooltipLabels = useMemo(
+    () => items.map((item) => item.tableLabel),
+    [items],
   );
 
   const grandTotal = useMemo(
-    () => tableRows.reduce((acc, r) => acc + r.val, 0),
-    [tableRows],
+    () => items.reduce((sum, item) => sum + item.value, 0),
+    [items],
   );
 
   const nf = useMemo(
@@ -268,52 +482,40 @@ export default function ChartProductionClassFish({ pages }: Props) {
     [],
   );
 
-  // CSV
-  const noDatasetSelected = false; // single dataset
-
-  const fileNameFromTitle = (title: string) =>
-    title
-      .trim()
-      .replace(/[\/\\?%*:|"<>]/g, "")
-      .replace(/\s+/g, "_") + ".csv";
-
-  const csvCell = (v: unknown) => {
-    if (typeof v === "number" && Number.isFinite(v)) return String(v);
-    const s = String(v ?? "");
-    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-
-  const toCsv = (
-    header: (string | number)[],
-    rowsData: (string | number)[][],
-  ) => {
-    const lines = [
-      header.map(csvCell).join(","),
-      ...rowsData.map((r) => r.map(csvCell).join(",")),
-    ];
-    return lines.join("\r\n");
-  };
+  /* ================= CSV ================= */
 
   const downloadCsv = () => {
-    if (noDatasetSelected || tableRows.length === 0) return;
+    if (items.length === 0) return;
 
-    const header: (string | number)[] = ["Kelas", "Total"];
-    const body: (string | number)[][] = tableRows.map((r) => [r.cls, r.val]);
+    const header: (string | number)[] = ["Nama Ikan", "Kelas", "Total (ton)"];
 
-    // footer (Jumlah)
-    body.push(["Jumlah", grandTotal]);
+    const body: (string | number)[][] = items.map((item) => [
+      item.tableLabel,
+      item.classLabel,
+      item.value,
+    ]);
+
+    body.push(["Jumlah", "", grandTotal]);
 
     const csv = toCsv(header, body);
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF", csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileNameFromTitle(TITLE);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = fileNameFromTitle(TITLE);
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+
     URL.revokeObjectURL(url);
   };
+
+  /* ================= UI States ================= */
 
   if (loading) {
     return (
@@ -322,6 +524,7 @@ export default function ChartProductionClassFish({ pages }: Props) {
       </div>
     );
   }
+
   if (err) {
     return (
       <div className="bg-red-50 text-red-700 border border-red-200 p-3 rounded">
@@ -331,538 +534,363 @@ export default function ChartProductionClassFish({ pages }: Props) {
   }
 
   return (
-    <div className="flex w-full">
-      {/* //! SIDE MENU (mobile) */}
-      <aside
-        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-[100vh] transition-transform duration-300 md:translate-x-0 ${
-          showSideMenu ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex flex-col gap-3 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full">
-          <h3 className="font-bold">Kabupaten</h3>
+    <div className="flex flex-col lg:mx-12 mx-8 w-full">
+      {/* Header + page nav */}
+      <div className="flex w-full">
+        <Link
+          href={"/data"}
+          className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
+        >
+          <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
+        </Link>
 
-          {/* Kabupaten (multi) */}
-          <div>
-            {kabOptions.map((kab) => {
-              const checked = selectedKabs.includes(kab);
+        <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
+          <div
+            onClick={() => setShowDropDown(!showDropDown)}
+            className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
+          >
+            <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Lihat Data Lainnya
+            </p>
+
+            <DownChevron
+              className={`${
+                showDropDown ? "hidden" : "flex"
+              } lg:w-7 lg:h-7 w-4 h-4`}
+            />
+
+            <UpChevron
+              className={`${
+                showDropDown ? "flex" : "hidden"
+              } lg:w-7 lg:h-7 w-4 h-4`}
+            />
+          </div>
+
+          {/* Dropdown list */}
+          <div
+            className={`${
+              showDropDown ? "flex" : "hidden"
+            } flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
+          >
+            {pages.map((page, index) => {
+              if (page.title === "Home") return null;
+
               return (
-                <label key={kab} className="flex items-center gap-2 py-0.5">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => {
-                      setSelectedKabs((prev) =>
-                        e.target.checked
-                          ? [...prev, kab]
-                          : prev.filter((k) => k !== kab),
-                      );
-                    }}
-                  />
-                  <h6 className="text-sm">{kab}</h6>
-                </label>
+                <Link
+                  href={`/data/${page.slug}`}
+                  key={index}
+                  onClick={() => setShowDropDown(false)}
+                  className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+                >
+                  <h5>{page.title}</h5>
+                </Link>
               );
             })}
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <button
-              className="flex py-1 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center"
-              onClick={() => setSelectedKabs(kabOptions)}
-            >
-              Semua
-            </button>
-            <button
-              className="flex py-1 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center"
-              onClick={() => setSelectedKabs([])}
-            >
-              Reset
-            </button>
-          </div>
-
-          {/* //! FILTERS - MOBILE (inside side menu) */}
-          <div className="reltive flex md:hidden gap-x-6 md:gap-y-2 gap-y-6 flex-wrap">
-            {/* Tahun */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Tahun
-              </label>
-              <div>
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={selectedYear === "all" ? "all" : String(selectedYear)}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setSelectedYear(v === "all" ? "all" : Number(v));
-                  }}
-                >
-                  <option value="all" className="text-black">
-                    Semua
-                  </option>
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y} className="text-black">
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Semester */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Semester
-              </label>
-              <div>
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={String(selectedSemester)}
-                  onChange={(e) => {
-                    const v = e.target.value as "all" | "1" | "2";
-                    setSelectedSemester(
-                      v === "all" ? "all" : (Number(v) as 1 | 2),
-                    );
-                  }}
-                >
-                  <option value="all" className="text-black">
-                    Semua
-                  </option>
-                  <option value="1" className="text-black">
-                    1
-                  </option>
-                  <option value="2" className="text-black">
-                    2
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {/* Landing */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Landing
-              </label>
-              <div>
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={selectedLanding}
-                  onChange={(e) =>
-                    setSelectedLanding(
-                      e.target.value === "all" ? "all" : e.target.value,
-                    )
-                  }
-                >
-                  <option value="all" className="text-black">
-                    Semua
-                  </option>
-                  {landingOptions.map((l) => (
-                    <option key={l} value={l} className="text-black">
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Sorting */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Urutkan
-              </label>
-              <div className="flex flex-col gap-3">
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={sortBy}
-                  onChange={(e) =>
-                    setSortBy(e.target.value as "value" | "class")
-                  }
-                >
-                  <option value="class" className="text-black">
-                    Nama Kelas
-                  </option>
-                  <option value="value" className="text-black">
-                    Nilai
-                  </option>
-                </select>
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={order}
-                  onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
-                >
-                  <option value="asc" className="text-black">
-                    Naik
-                  </option>
-                  <option value="desc" className="text-black">
-                    Turun
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {/* Unit */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Satuan
-              </label>
-
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
-              >
-                <option value="kg" className="text-black">
-                  kg
-                </option>
-                <option value="ton" className="text-black">
-                  ton
-                </option>
-              </select>
-            </div>
-
-            {/* Download */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Download
-              </label>
-              <div>
-                <button
-                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
-                    noDatasetSelected || tableRows.length === 0
-                      ? "opacity-50 cursor-not-allowed"
-                      : "bg-sky-600 text-white hover:bg-sky-500"
-                  }`}
-                  onClick={downloadCsv}
-                  disabled={noDatasetSelected || tableRows.length === 0}
-                >
-                  CSV
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* //! RETRACT "❬" BUTTON when open */}
-        <div
-          className="flex justify-center items-center md:hidden cursor-pointer"
-          onClick={() => setShowSideMenu(!showSideMenu)}
-        >
-          <div
-            className="px-0 pb-3 -rotate-90 -translate-x-6"
-            onClick={() => setShowSideMenu(!showSideMenu)}
-          >
-            <div className="flex justify-center items-center bg-sky-800 px-2 rounded-b-md">
-              <p className="text-sm w-full text-white">Filters </p>
-              <UpChevron className="w-6 h-6" color="white" />
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* //! RETRACT "❭" BUTTON (mobile) */}
-      <div
-        className="flex fixed top-[50%] items-center justify-start md:hidden cursor-pointer
-            -translate-x-12"
-      >
-        <div
-          className="-rotate-90 pb-2 px-6"
-          onClick={() => setShowSideMenu(!showSideMenu)}
-        >
-          <div className="flex justify-center items-center bg-stone-300 px-2 rounded-b-md">
-            <p className="text-sm w-full text-white">Filters </p>
-            <DownChevron className="w-6 h-6" color="white" />
           </div>
         </div>
       </div>
 
-      {/* //! POP UP FOCUS OVERLAY */}
-      <div
-        className={`${showSideMenu ? "flex" : "hidden"} md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
-        onClick={() => setShowSideMenu(false)}
+      {/* Title */}
+      <h2 className="md:mb-6 mb-3">{TITLE}</h2>
+
+      {/* Top controls */}
+      <div className="flex gap-x-3 md:gap-y-2 gap-y-3 flex-wrap mb-6">
+        {/* Tahun */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Tahun
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={selectedYear === "all" ? "all" : String(selectedYear)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSelectedYear(value === "all" ? "all" : Number(value));
+              }}
+            >
+              <option value="all">Semua</option>
+
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Semester */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Semester
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={String(selectedSemester)}
+              onChange={(event) => {
+                const value = event.target.value as "all" | "1" | "2";
+                setSelectedSemester(
+                  value === "all" ? "all" : (Number(value) as 1 | 2),
+                );
+              }}
+            >
+              <option value="all">Semua</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Kabupaten */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Kabupaten
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={selectedKab}
+              onChange={(event) =>
+                setSelectedKab(
+                  event.target.value === "all" ? "all" : event.target.value,
+                )
+              }
+            >
+              <option value="all">Semua Kabupaten</option>
+
+              {kabOptions.map((kab) => (
+                <option key={kab} value={kab}>
+                  {kab}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Landing */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Landing
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={selectedLanding}
+              onChange={(event) =>
+                setSelectedLanding(
+                  event.target.value === "all" ? "all" : event.target.value,
+                )
+              }
+            >
+              <option value="all">Semua Landing</option>
+
+              {landingOptions.map((landing) => (
+                <option key={landing} value={landing}>
+                  {landing}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Kelas */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Kelas
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={selectedClass}
+              onChange={(event) =>
+                setSelectedClass(
+                  event.target.value === "all" ? "all" : event.target.value,
+                )
+              }
+            >
+              <option value="all">Semua Kelas</option>
+
+              {classOptions.map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Nama Ikan */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Nama Ikan
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white max-w-[240px]"
+              value={selectedFishName}
+              onChange={(event) =>
+                setSelectedFishName(
+                  event.target.value === "all" ? "all" : event.target.value,
+                )
+              }
+            >
+              <option value="all">Semua Nama Ikan</option>
+
+              {fishNameOptions.map((fishName) => (
+                <option key={fishName} value={fishName}>
+                  {fishName}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Urutkan */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Urutkan
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortBy)}
+            >
+              <option value="value">Total</option>
+              <option value="name">Nama Ikan</option>
+              <option value="class">Kelas</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Top */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Top
+          </label>
+
+          <div>
+            <select
+              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
+              value={topN}
+              onChange={(event) => {
+                const value = event.target.value as "all" | "5" | "10";
+                setTopN(value === "all" ? "all" : (Number(value) as 5 | 10));
+              }}
+            >
+              <option value="all">Semua</option>
+              <option value="5">Top 5</option>
+              <option value="10">Top 10</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Download */}
+        <div>
+          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Download
+          </label>
+
+          <div>
+            <button
+              type="button"
+              className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
+                items.length === 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : "bg-sky-600 text-white hover:bg-sky-500"
+              }`}
+              onClick={downloadCsv}
+              disabled={items.length === 0}
+            >
+              CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <BarCharts
+        chartTitle=""
+        labels={labels}
+        datasets={datasets}
+        stacked={false}
+        datalabel={false}
+        yAxis={true}
+        tooltipLabels={tooltipLabels}
+        rotateXLabels={45}
+        unit="ton"
       />
 
-      {/* Main */}
-      <div className="flex flex-col lg:mx-12 mx-8 w-full">
-        {/* Header + page nav */}
-        <div className="flex w-full">
-          {/* //! HEAD DROPDOWN */}
-          <Link
-            href={"/data"}
-            className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
-          >
-            <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
-          </Link>
+      {/* Table */}
+      <div className="overflow-x-auto mb-12">
+        <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
+          <thead className="bg-sky-100">
+            <tr>
+              <th className="px-3 py-2 border border-gray-400 text-center">
+                Nama Ikan
+              </th>
 
-          <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
-            <div
-              onClick={() => setShowDropDown(!showDropDown)}
-              className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
-            >
-              <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Lihat Data Lainnya
-              </p>
-              <DownChevron
-                className={`${showDropDown ? "hidden" : "flex"} lg:w-7 lg:h-7 w-4 h-4`}
-              />
-              <UpChevron
-                className={`${showDropDown ? "flex" : "hidden"} lg:w-7 lg:h-7 w-4 h-4`}
-              />
-            </div>
+              <th className="px-3 py-2 border border-gray-400 text-center">
+                Kelas
+              </th>
 
-            {/* Dropdown list */}
-            <div
-              className={`${showDropDown ? "flex" : "hidden"} flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
-            >
-              {pages.map((e, idx) => {
-                if (e.title === "Home") return;
+              <th className="px-3 py-2 border border-gray-400 text-center">
+                Total (ton)
+              </th>
+            </tr>
+          </thead>
 
-                return (
-                  <Link
-                    href={`/data/${e.slug}`}
-                    key={idx}
-                    onClick={() => {
-                      setShowDropDown(false);
-                    }}
-                    className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                  >
-                    <h5>{e.title}</h5>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Title */}
-        <h2 className="md:mb-6 mb-3">{TITLE}</h2>
-
-        {/* //! TOP CONTROL (desktop only) */}
-        <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
-          {/* Tahun */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Tahun
-            </label>
-            <div>
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={selectedYear === "all" ? "all" : String(selectedYear)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSelectedYear(v === "all" ? "all" : Number(v));
-                }}
-              >
-                <option
-                  value="all"
-                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  Semua
-                </option>
-                {yearOptions.map((y) => (
-                  <option
-                    key={y}
-                    value={y}
-                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                  >
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Semester */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Semester
-            </label>
-            <div>
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={String(selectedSemester)}
-                onChange={(e) => {
-                  const v = e.target.value as "all" | "1" | "2";
-                  setSelectedSemester(
-                    v === "all" ? "all" : (Number(v) as 1 | 2),
-                  );
-                }}
-              >
-                <option
-                  value="all"
-                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  Semua
-                </option>
-                <option
-                  value="1"
-                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  1
-                </option>
-                <option
-                  value="2"
-                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  2
-                </option>
-              </select>
-            </div>
-          </div>
-
-          {/* Sorting */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Urutkan
-            </label>
-            <div className="flex gap-3">
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as "value" | "class")}
-              >
-                <option value="class">Nama Kelas</option>
-                <option value="value">Nilai</option>
-              </select>
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={order}
-                onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
-              >
-                <option value="asc">Naik</option>
-                <option value="desc">Turun</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Landing */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Landing
-            </label>
-            <div>
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={selectedLanding}
-                onChange={(e) =>
-                  setSelectedLanding(
-                    e.target.value === "all" ? "all" : e.target.value,
-                  )
-                }
-              >
-                <option
-                  value="all"
-                  className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  Semua
-                </option>
-                {landingOptions.map((l) => (
-                  <option
-                    key={l}
-                    value={l}
-                    className="lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                  >
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Unit */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Satuan
-            </label>
-            <div className="flex gap-3">
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as "kg" | "ton")}
-              >
-                <option value="kg">kg</option>
-                <option value="ton">ton</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Download */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Download
-            </label>
-            <div>
-              <button
-                className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  noDatasetSelected || tableRows.length === 0
-                    ? "opacity-50 cursor-not-allowed"
-                    : "bg-sky-600 text-white hover:bg-sky-500"
-                }`}
-                onClick={downloadCsv}
-                disabled={noDatasetSelected || tableRows.length === 0}
-              >
-                CSV
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <BarCharts
-          chartTitle=""
-          labels={labels}
-          datasets={datasets}
-          stacked={false}
-          datalabel={false}
-          yAxis={true}
-          rotateXLabels={45}
-          unit={unit}
-        />
-
-        {/* Table */}
-        <div className="overflow-x-auto mb-12">
-          <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-            <thead className="bg-sky-100">
+          <tbody>
+            {items.length === 0 ? (
               <tr>
-                <th className="px-3 py-2 border border-gray-400 text-center">
-                  Kelas
-                </th>
-                <th className="px-3 py-2 border border-gray-400 text-center">
-                  Total ({unit})
-                </th>
+                <td className="px-3 py-3 text-gray-500" colSpan={3}>
+                  Tidak ada data untuk filter saat ini.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {tableRows.length === 0 ? (
-                <tr>
-                  <td className="px-3 py-3 text-gray-500" colSpan={2}>
-                    Tidak ada data untuk filter saat ini.
+            ) : (
+              items.map((item) => (
+                <tr key={item.key}>
+                  <td className="px-3 py-2 border border-gray-400">
+                    {item.tableLabel}
+                  </td>
+
+                  <td className="px-3 py-2 border border-gray-400">
+                    {item.classLabel || "-"}
+                  </td>
+
+                  <td className="px-3 py-2 border border-gray-400 text-right">
+                    {nf.format(item.value)}
                   </td>
                 </tr>
-              ) : (
-                tableRows.map((r) => (
-                  <tr key={r.cls}>
-                    <td className="px-3 py-2 border border-gray-400">
-                      {r.cls}
-                    </td>
-                    <td className="px-3 py-2 border border-gray-400 text-right">
-                      {nf.format(unit === "ton" ? r.val / 1000 : r.val)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            {tableRows.length > 0 && (
-              <tfoot className="bg-sky-50">
-                <tr>
-                  <td className="px-3 py-2 border border-gray-400 font-semibold">
-                    Jumlah
-                  </td>
-                  <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                    {nf.format(unit === "ton" ? grandTotal / 1000 : grandTotal)}
-                  </td>
-                </tr>
-              </tfoot>
+              ))
             )}
-          </table>
-        </div>
+          </tbody>
+
+          {items.length > 0 && (
+            <tfoot className="bg-sky-50">
+              <tr>
+                <td className="px-3 py-2 border border-gray-400 font-semibold">
+                  Jumlah
+                </td>
+
+                <td className="px-3 py-2 border border-gray-400 font-semibold" />
+
+                <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                  {nf.format(grandTotal)}
+                </td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
     </div>
   );

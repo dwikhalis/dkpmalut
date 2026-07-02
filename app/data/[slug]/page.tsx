@@ -1,10 +1,10 @@
 import ChartAquaculture from "@/app/components/ChartAquaculture";
 import ChartColdChain from "@/app/components/ChartColdChain";
+import ChartGeneric from "@/app/components/ChartGeneric";
 import ChartKKD from "@/app/components/ChartKKD";
 import ChartProductionClassFish from "@/app/components/ChartProductionClassFish";
 import ChartProductionCommonFish from "@/app/components/ChartProductionCommonFish";
 import ChartProductionKabFilter from "@/app/components/ChartProductionKabFilter";
-import ChartProductionYearFilter from "@/app/components/ChartProductionYearFilter";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -17,10 +17,6 @@ export default async function Page({ params }: Props) {
     {
       title: "Produksi Perikanan Tangkap dan Budidaya per Kabupaten",
       slug: "produksi-perikanan-kabupaten",
-    },
-    {
-      title: "Produksi Perikanan Tangkap dan Budidaya per Tahun",
-      slug: "produksi-perikanan-tahun",
     },
     {
       title: "Produksi Perikanan Tangkap per Kelas Komoditas",
@@ -47,16 +43,16 @@ export default async function Page({ params }: Props) {
   if (slug === pages[0].slug) {
     return <ChartProductionKabFilter pages={pages} />;
   } else if (slug === pages[1].slug) {
-    return <ChartProductionYearFilter pages={pages} />;
-  } else if (slug === pages[2].slug) {
     return <ChartProductionClassFish pages={pages} />;
-  } else if (slug === pages[3].slug) {
+  } else if (slug === pages[2].slug) {
     return <ChartProductionCommonFish pages={pages} />;
-  } else if (slug === pages[4].slug) {
+  } else if (slug === pages[3].slug) {
     return <ChartAquaculture pages={pages} />;
-  } else if (slug === pages[5].slug) {
+  } else if (slug === pages[4].slug) {
     return <ChartColdChain pages={pages} />;
-  } else if (slug === pages[6].slug) {
+  } else if (slug === pages[5].slug) {
     return <ChartKKD pages={pages} />;
+  } else {
+    return <ChartGeneric slug={slug} />;
   }
 }
