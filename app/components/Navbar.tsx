@@ -92,7 +92,7 @@ export default function Navbar() {
     <>
       {/* //! DESKTOP */}
       <nav
-        className={`hidden md:flex sticky z-10 top-0 xl:h-[6vw] h-[8vw] bg-white w-full transition-transform duration-300 ${
+        className={`hidden md:flex sticky z-50 top-0 xl:h-[6vw] h-[8vw] bg-white w-full transition-transform duration-300 ${
           show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}

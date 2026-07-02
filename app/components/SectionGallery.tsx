@@ -35,10 +35,7 @@ export default function SectionGallery() {
   return (
     <>
       {/* Desktop & Tablet */}
-      <Reveal
-        animation="fade-up"
-        className="hidden md:block bg-gradient-to-r from-sky-700 to-sky-200 pt-12"
-      >
+      <Reveal animation="fade-up" className="hidden md:block pt-12">
         <div className="flex flex-col gap-6 py-12 md:px-12 px-6 mx-12 2xl:mx-24 justify-center items-center bg-sky-100 rounded-4xl shadow-2xl">
           <Reveal
             animation="fade-up"

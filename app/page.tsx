@@ -10,7 +10,6 @@ import SectionNumber from "./components/SectionNumber";
 import SectionNews from "./components/SectionNews";
 import SectionGallery from "./components/SectionGallery";
 import SpinnerLoading from "./components/SpinnerLoading";
-import Reveal from "./components/Reveal";
 
 const Loading = () => <SpinnerLoading size="sm" color="black" />;
 
@@ -52,10 +51,25 @@ export default function Page() {
   }, [router]);
 
   return (
-    <div className="min-h-[70vh] overflow-hidden bg-gradient-to-r from-sky-700 to-sky-200">
+    <div className="min-h-[70vh] overflow-hidden bg-sky-300  md:bg-gradient-to-r md:from-sky-700 md:to-sky-200">
       <Hero />
-      <SectionOrg />
-      <SectionNumber />
+
+      {/* Shared background for SectionOrg + SectionNumber */}
+      <section className="bg-gradient-to-r from-sky-700 to-sky-200 md:block hidden">
+        <div className="mx-12 2xl:mx-24 bg-sky-100 rounded-4xl">
+          <SectionOrg />
+          <SectionNumber />
+        </div>
+      </section>
+
+      {/* Shared mobile background */}
+      <section className="md:hidden bg-sky-300 pb-10">
+        <div className="mx-6 bg-sky-100 rounded-4xl shadow-xl">
+          <SectionOrg />
+          <SectionNumber />
+        </div>
+      </section>
+
       <SectionNews />
       <SectionGallery />
 

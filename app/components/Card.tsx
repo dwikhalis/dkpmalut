@@ -48,6 +48,7 @@ export default function Card({ type, data, id, loading }: Props) {
                 width={800}
                 height={600}
                 className="object-cover w-full h-full"
+                loading="eager"
               />
             </div>
             <h6 className="text-stone-500 mb-1">{tag}</h6>
@@ -73,6 +74,7 @@ export default function Card({ type, data, id, loading }: Props) {
                 width={800}
                 height={600}
                 className="object-cover w-full h-full"
+                loading="eager"
               />
             </div>
             <h6 className="text-stone-500 mb-1">{tag}</h6>
@@ -89,15 +91,16 @@ export default function Card({ type, data, id, loading }: Props) {
     const { tag, title, image } = select;
     return (
       <Link href={`/berita/${id}`}>
-        <div className="flex flex-col w-full h-90 p-3 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
+        <div className="flex flex-col w-45 h-70 p-3 shadow-2xl hover:shadow-xl justify-between rounded-2xl bg-white">
           <div className="w-full">
-            <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
+            <div className="flex justify-center items-center h-35 mb-3 overflow-hidden">
               <Image
                 src={image}
                 alt="Gambar"
                 width={800}
                 height={600}
                 className="object-cover w-full h-full"
+                loading="eager"
               />
             </div>
             <h6 className="text-stone-500 mb-1">{tag}</h6>
