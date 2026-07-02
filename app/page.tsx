@@ -10,9 +10,7 @@ import SectionNumber from "./components/SectionNumber";
 import SectionNews from "./components/SectionNews";
 import SectionGallery from "./components/SectionGallery";
 import SpinnerLoading from "./components/SpinnerLoading";
-
-// ! DEPRECATED
-// import SectionData from "./components/SectionData";
+import Reveal from "./components/Reveal";
 
 const Loading = () => <SpinnerLoading size="sm" color="black" />;
 
@@ -33,7 +31,6 @@ export default function Page() {
         return;
       }
 
-      // ✅ If redirected after email confirmation, user will have a session here
       if (data.session) {
         router.push("/");
       }
@@ -41,7 +38,6 @@ export default function Page() {
 
     handleSession();
 
-    // Listen for any auth changes (login after confirmation, etc.)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -56,12 +52,13 @@ export default function Page() {
   }, [router]);
 
   return (
-    <div className="min-h-[70vh]">
+    <div className="min-h-[70vh] overflow-hidden bg-gradient-to-r from-sky-700 to-sky-200">
       <Hero />
       <SectionOrg />
       <SectionNumber />
       <SectionNews />
       <SectionGallery />
+
       <Suspense fallback={<Loading />}>
         <SectionAddr />
       </Suspense>

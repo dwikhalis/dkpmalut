@@ -1,12 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import DataTableMitra, {
   type ColumnConfig,
   type FilterConfig,
 } from "./DataTableMitra";
 import DataMitraChart from "./DataMitraChart";
+import AlertNotif from "./AlertNotif";
+
+type PublicationStatus = null | "requested" | "approved" | "rejected" | string;
+
+type PublicationAlertType =
+  | "none"
+  | "confirm-submit"
+  | "confirm-image-change"
+  | "confirm-status-change"
+  | "success-submit"
+  | "success-status-change"
+  | "invalid-form"
+  | "failed";
+
+type EditablePublicationStatus = "requested" | "approved" | "rejected";
+
+type DataMitraPublicationRow = {
+  label: string | null;
+  column_config: ColumnConfig[] | string | null;
+  filter_config: FilterConfig[] | string | null;
+  main_column_config: string[] | string | null;
+  published: PublicationStatus;
+  tag: string[] | string | null;
+  description: string | null;
+  image_path: string | null;
+};
+
+const TAG_OPTIONS = [
+  { label: "Tangkap", value: "tangkap" },
+  { label: "Budidaya", value: "budidaya" },
+  { label: "Ekologi", value: "ekologi" },
+  { label: "Konservasi", value: "konservasi" },
+  { label: "Sosial", value: "sosial" },
+  { label: "Ekonomi", value: "ekonomi" },
+  { label: "Lainnya", value: "lainnya" },
+];
 
 function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
   if (!value) return [];
@@ -23,17 +67,83 @@ function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
   }
 }
 
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getFileExtension(file: File) {
+  const fromName = file.name.split(".").pop();
+
+  if (fromName && fromName.length <= 5) {
+    return fromName.toLowerCase();
+  }
+
+  const fromType = file.type.split("/")[1];
+
+  return fromType || "png";
+}
+
+function getUploadDateStamp() {
+  const now = new Date();
+
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const year = String(now.getFullYear());
+
+  return `${month}${day}${year}`;
+}
+
+function getStatusBar(status: PublicationStatus) {
+  if (status === "requested") {
+    return {
+      className: "border-yellow-200 bg-yellow-50 text-yellow-700",
+      content: "Publikasi ini menunggu persetujuan.",
+    };
+  }
+
+  if (status === "approved") {
+    return {
+      className: "border-green-200 bg-green-50 text-green-700",
+      content: "Data telah dipublikasikan.",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      className: "border-red-200 bg-red-50 text-red-700",
+      content: "Publikasi data ini ditolak.",
+    };
+  }
+
+  return {
+    className: "border-yellow-200 bg-yellow-50 text-yellow-700",
+    content: "Data belum dipublikasikan.",
+  };
+}
+
 export default function DataMitra({
   dataMitraId,
   action,
   saveData,
   onSignalAction,
+  role,
 }: {
   dataMitraId: string;
   action: "add" | "edit" | "list" | "delete";
   saveData: number;
   onSignalAction: (signal: string) => void;
+  role: "admin" | "partner" | null;
 }) {
+  console.log(role, "role");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -44,6 +154,50 @@ export default function DataMitra({
   const [activeView, setActiveView] = useState<
     "table" | "chart" | "publication"
   >("table");
+
+  const [originalLabel, setOriginalLabel] = useState("");
+  const [publicationStatus, setPublicationStatus] =
+    useState<PublicationStatus>(null);
+  const [publicationTitle, setPublicationTitle] = useState("");
+  const [publicationTags, setPublicationTags] = useState<string[]>([]);
+  const [publicationDescription, setPublicationDescription] = useState("");
+  const [publicationImagePath, setPublicationImagePath] = useState<
+    string | null
+  >(null);
+  const [publicationImageUrl, setPublicationImageUrl] = useState<string | null>(
+    null,
+  );
+  const [publicationImageFile, setPublicationImageFile] = useState<File | null>(
+    null,
+  );
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [showPublicationForm, setShowPublicationForm] = useState(false);
+  const [publicationSaving, setPublicationSaving] = useState(false);
+  const [publicationMessage, setPublicationMessage] = useState("");
+  const [publicationAlert, setPublicationAlert] =
+    useState<PublicationAlertType>("none");
+  const [pendingPublicationStatus, setPendingPublicationStatus] =
+    useState<EditablePublicationStatus | null>(null);
+
+  const fetchImageUrl = useCallback(async (path: string | null) => {
+    if (!path) {
+      setPublicationImageUrl(null);
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("images")
+      .createSignedUrl(path, 60 * 60);
+
+    if (!error && data?.signedUrl) {
+      setPublicationImageUrl(data.signedUrl);
+      return;
+    }
+
+    const publicResult = supabase.storage.from("images").getPublicUrl(path);
+
+    setPublicationImageUrl(publicResult.data.publicUrl || null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,23 +213,21 @@ export default function DataMitra({
 
         const { data: configData, error: configError } = await supabase
           .from("data_mitra")
-          .select("column_config, filter_config, main_column_config")
+          .select(
+            "label, column_config, filter_config, main_column_config, published, tag, description, image_path",
+          )
           .eq("id", dataMitraId)
           .maybeSingle();
 
         if (configError) throw configError;
         if (!configData) throw new Error("Config data mitra tidak ditemukan.");
 
-        const columnConfig = parseJsonArray<ColumnConfig>(
-          configData.column_config,
-        );
+        const row = configData as DataMitraPublicationRow;
 
-        const filterConfig = parseJsonArray<FilterConfig>(
-          configData.filter_config,
-        );
-
+        const columnConfig = parseJsonArray<ColumnConfig>(row.column_config);
+        const filterConfig = parseJsonArray<FilterConfig>(row.filter_config);
         const parsedMainColumnKeys = parseJsonArray<string>(
-          configData.main_column_config,
+          row.main_column_config,
         );
 
         const availableColumnKeys = columnConfig.map((column) => column.key);
@@ -83,6 +235,8 @@ export default function DataMitra({
         const validMainColumnKeys = parsedMainColumnKeys.filter((key) =>
           availableColumnKeys.includes(key),
         );
+
+        const parsedTags = parseJsonArray<string>(row.tag);
 
         if (cancelled) return;
 
@@ -94,6 +248,19 @@ export default function DataMitra({
             ? validMainColumnKeys
             : availableColumnKeys,
         );
+
+        setOriginalLabel(row.label ?? "");
+        setPublicationTitle(row.label ?? "");
+        setPublicationStatus(row.published ?? null);
+        setPublicationTags(parsedTags);
+        setPublicationDescription(row.description ?? "");
+        setPublicationImagePath(row.image_path ?? null);
+        setPublicationImageFile(null);
+        setPendingImageFile(null);
+        setPublicationMessage("");
+        setShowPublicationForm(row.published !== null);
+
+        await fetchImageUrl(row.image_path ?? null);
       } catch (error) {
         console.error("Failed to fetch data mitra config:", error);
 
@@ -115,18 +282,19 @@ export default function DataMitra({
     return () => {
       cancelled = true;
     };
-  }, [dataMitraId]);
+  }, [dataMitraId, fetchImageUrl]);
 
   const visibleColumns = useMemo(
     () => columns.filter((column) => visibleColumnKeys.includes(column.key)),
     [columns, visibleColumnKeys],
   );
 
+  const defaultSortKey = filters[0]?.key ?? columns[0]?.key ?? "";
+
   const toggleColumn = (key: string) => {
     setVisibleColumnKeys((prev) => {
       const isSelected = prev.includes(key);
 
-      // Prevent empty table
       if (isSelected && prev.length === 1) {
         return prev;
       }
@@ -149,7 +317,213 @@ export default function DataMitra({
     setVisibleColumnKeys(mainColumnKeys);
   };
 
-  const defaultSortKey = filters[0]?.key ?? columns[0]?.key ?? "";
+  const togglePublicationTag = (tag: string) => {
+    setPublicationTags((prev) => {
+      if (prev.includes(tag)) {
+        return prev.filter((item) => item !== tag);
+      }
+
+      return [...prev, tag];
+    });
+  };
+
+  const applySelectedImage = (file: File) => {
+    setPublicationImageFile(file);
+
+    const previewUrl = URL.createObjectURL(file);
+    setPublicationImageUrl(previewUrl);
+    setPublicationMessage("");
+  };
+
+  const handleSelectedImage = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setPublicationMessage("File harus berupa gambar.");
+      return;
+    }
+
+    const hasExistingUploadedImage = Boolean(publicationImagePath);
+
+    if (hasExistingUploadedImage) {
+      setPendingImageFile(file);
+      setPublicationAlert("confirm-image-change");
+      return;
+    }
+
+    applySelectedImage(file);
+  };
+
+  const handleDropImage = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+
+    const file = event.dataTransfer.files?.[0];
+
+    if (file) {
+      handleSelectedImage(file);
+    }
+  };
+
+  const validatePublicationForm = () => {
+    if (!publicationTitle.trim()) {
+      setPublicationMessage("Judul data wajib diisi.");
+      setPublicationAlert("invalid-form");
+      return false;
+    }
+
+    if (publicationTags.length === 0) {
+      setPublicationMessage("Pilih minimal satu tag.");
+      setPublicationAlert("invalid-form");
+      return false;
+    }
+
+    if (!publicationImagePath && !publicationImageFile) {
+      setPublicationMessage("Gambar publikasi wajib diunggah.");
+      setPublicationAlert("invalid-form");
+      return false;
+    }
+
+    return true;
+  };
+
+  const requestPublicationSubmit = () => {
+    if (!validatePublicationForm()) return;
+
+    setPublicationAlert("confirm-submit");
+  };
+
+  const uploadPublicationImage = async () => {
+    const imageFile = publicationImageFile;
+
+    if (!imageFile) {
+      return publicationImagePath;
+    }
+
+    const extension = getFileExtension(imageFile);
+    const fileNameBase = toSlug(
+      publicationTitle || originalLabel || dataMitraId,
+    );
+    const dateStamp = getUploadDateStamp();
+
+    const path = `charts/${fileNameBase}-${dateStamp}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("images")
+      .upload(path, imageFile, {
+        upsert: true,
+        contentType: imageFile.type || undefined,
+      });
+
+    if (error) throw error;
+
+    return path;
+  };
+
+  const handleConfirmPublicationSubmit = async (confirmation?: boolean) => {
+    if (confirmation === false) {
+      setPublicationAlert("none");
+      return;
+    }
+
+    setPublicationAlert("none");
+
+    if (!validatePublicationForm()) return;
+
+    setPublicationSaving(true);
+
+    try {
+      const imagePath = await uploadPublicationImage();
+
+      const { error } = await supabase
+        .from("data_mitra")
+        .update({
+          label: publicationTitle.trim(),
+          tag: publicationTags,
+          description: publicationDescription.trim(),
+          image_path: imagePath,
+          published: "requested",
+        })
+        .eq("id", dataMitraId);
+
+      if (error) throw error;
+
+      setOriginalLabel(publicationTitle.trim());
+      setPublicationStatus("requested");
+      setPublicationImagePath(imagePath ?? null);
+      setPublicationImageFile(null);
+      setShowPublicationForm(true);
+
+      await fetchImageUrl(imagePath ?? null);
+
+      setPublicationAlert("success-submit");
+    } catch (error) {
+      console.error("Failed to submit publication:", error);
+      setPublicationAlert("failed");
+    } finally {
+      setPublicationSaving(false);
+    }
+  };
+
+  const handleConfirmImageChange = (confirmation?: boolean) => {
+    if (confirmation === false) {
+      setPendingImageFile(null);
+      setPublicationAlert("none");
+      return;
+    }
+
+    if (pendingImageFile) {
+      applySelectedImage(pendingImageFile);
+    }
+
+    setPendingImageFile(null);
+    setPublicationAlert("none");
+  };
+
+  const requestPublicationStatusChange = (
+    nextStatus: EditablePublicationStatus,
+  ) => {
+    if (nextStatus === publicationStatus) return;
+
+    setPendingPublicationStatus(nextStatus);
+    setPublicationAlert("confirm-status-change");
+  };
+
+  const handleConfirmPublicationStatusChange = async (
+    confirmation?: boolean,
+  ) => {
+    if (confirmation === false) {
+      setPendingPublicationStatus(null);
+      setPublicationAlert("none");
+      return;
+    }
+
+    if (!pendingPublicationStatus) {
+      setPublicationAlert("none");
+      return;
+    }
+
+    setPublicationSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from("data_mitra")
+        .update({
+          published: pendingPublicationStatus,
+        })
+        .eq("id", dataMitraId);
+
+      if (error) throw error;
+
+      setPublicationStatus(pendingPublicationStatus);
+      setPendingPublicationStatus(null);
+      setPublicationAlert("success-status-change");
+    } catch (error) {
+      console.error("Failed to update publication status:", error);
+      setPublicationAlert("failed");
+    } finally {
+      setPublicationSaving(false);
+    }
+  };
+
+  const statusBar = getStatusBar(publicationStatus);
 
   if (loading) {
     return (
@@ -279,9 +653,246 @@ export default function DataMitra({
       )}
 
       {activeView === "publication" && (
-        <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
-          Fitur publikasi belum tersedia.
+        <div className="space-y-4">
+          <div className={`rounded border p-3 text-sm ${statusBar.className}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {publicationStatus === "rejected" ? (
+                  <>
+                    Publikasi data ini ditolak.{" "}
+                    <Link href="/kontak" className="underline">
+                      Hubungi Admin
+                    </Link>
+                  </>
+                ) : (
+                  statusBar.content
+                )}
+              </span>
+
+              {role === "admin" && publicationStatus !== null && (
+                <select
+                  value={
+                    publicationStatus === "requested" ||
+                    publicationStatus === "approved" ||
+                    publicationStatus === "rejected"
+                      ? publicationStatus
+                      : ""
+                  }
+                  disabled={publicationSaving}
+                  onChange={(event) =>
+                    requestPublicationStatusChange(
+                      event.target.value as EditablePublicationStatus,
+                    )
+                  }
+                  className="ml-2 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-black disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="" disabled>
+                    Pilih Status
+                  </option>
+                  <option value="requested">Tangguhkan</option>
+                  <option value="approved">Setujui</option>
+                  <option value="rejected">Tolak</option>
+                </select>
+              )}
+            </div>
+          </div>
+
+          {!showPublicationForm && publicationStatus === null && (
+            <button
+              type="button"
+              onClick={() => setShowPublicationForm(true)}
+              className="w-full rounded-md bg-sky-800 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-900"
+            >
+              Publikasikan Data Ini
+            </button>
+          )}
+
+          {showPublicationForm && (
+            <div className="space-y-4 rounded-md border border-gray-300 bg-white p-4">
+              {publicationMessage && (
+                <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
+                  {publicationMessage}
+                </div>
+              )}
+
+              <div
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDropImage}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-4 border-dashed border-gray-300 bg-gray-50 p-4 text-center hover:bg-gray-100"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+
+                    if (file) {
+                      handleSelectedImage(file);
+                    }
+
+                    event.target.value = "";
+                  }}
+                />
+
+                {publicationImageUrl ? (
+                  <img
+                    src={publicationImageUrl}
+                    alt={publicationTitle || "Preview publikasi"}
+                    className="max-h-[320px] w-full rounded object-contain"
+                  />
+                ) : (
+                  <>
+                    <p className="max-w-xl text-2xl font-semibold text-gray-700">
+                      Lakukan screenshot grafik, dan drag file tersebut kesini
+                    </p>
+
+                    <p className="mt-2 text-sm text-gray-500">
+                      Klik untuk memilih gambar
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Judul Data</span>
+
+                <input
+                  value={publicationTitle}
+                  onChange={(event) => setPublicationTitle(event.target.value)}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Tag Data</p>
+
+                <div className="grid gap-2 md:grid-cols-3">
+                  {TAG_OPTIONS.map((tag) => (
+                    <label
+                      key={tag.value}
+                      className="flex cursor-pointer items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={publicationTags.includes(tag.value)}
+                        onChange={() => togglePublicationTag(tag.value)}
+                      />
+
+                      <span>{tag.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Deskripsi</span>
+
+                <textarea
+                  value={publicationDescription}
+                  onChange={(event) =>
+                    setPublicationDescription(event.target.value)
+                  }
+                  rows={5}
+                  className="resize-y rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Tuliskan deskripsi singkat tentang data ini."
+                />
+              </label>
+
+              <button
+                type="button"
+                disabled={publicationSaving}
+                onClick={requestPublicationSubmit}
+                className="w-full rounded-md bg-green-700 px-4 py-3 text-sm font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {publicationStatus === null
+                  ? "Ajukan Publikasi"
+                  : "Update Publikasi"}
+              </button>
+            </div>
+          )}
         </div>
+      )}
+
+      {publicationAlert === "confirm-submit" && (
+        <AlertNotif
+          type="double"
+          msg={
+            publicationStatus === null
+              ? "Apakah Anda yakin ingin mengajukan publikasi data ini?"
+              : "Apakah Anda yakin ingin mengupdate publikasi data ini?"
+          }
+          yesText="Ya"
+          noText="Tidak"
+          icon="warning"
+          loading={publicationSaving}
+          confirm={handleConfirmPublicationSubmit}
+        />
+      )}
+
+      {publicationAlert === "confirm-image-change" && (
+        <AlertNotif
+          type="double"
+          msg="Apakah Anda yakin ingin mengganti gambar publikasi?"
+          yesText="Ya"
+          noText="Tidak"
+          icon="warning"
+          confirm={handleConfirmImageChange}
+        />
+      )}
+
+      {publicationAlert === "success-submit" && (
+        <AlertNotif
+          type="single"
+          msg="Publikasi berhasil diajukan dan menunggu persetujuan admin."
+          yesText="OK"
+          icon="success"
+          confirm={() => setPublicationAlert("none")}
+        />
+      )}
+
+      {publicationAlert === "invalid-form" && (
+        <AlertNotif
+          type="single"
+          msg={publicationMessage || "Lengkapi data publikasi terlebih dahulu."}
+          yesText="OK"
+          icon="warning"
+          confirm={() => setPublicationAlert("none")}
+        />
+      )}
+
+      {publicationAlert === "failed" && (
+        <AlertNotif
+          type="single"
+          msg="Gagal menyimpan data publikasi."
+          yesText="OK"
+          icon="failed"
+          confirm={() => setPublicationAlert("none")}
+        />
+      )}
+
+      {publicationAlert === "confirm-status-change" && (
+        <AlertNotif
+          type="double"
+          msg="Ubah status publikasi?"
+          yesText="Ya"
+          noText="Tidak"
+          icon="warning"
+          loading={publicationSaving}
+          confirm={handleConfirmPublicationStatusChange}
+        />
+      )}
+
+      {publicationAlert === "success-status-change" && (
+        <AlertNotif
+          type="single"
+          msg="Status publikasi berhasil diubah."
+          yesText="OK"
+          icon="success"
+          confirm={() => setPublicationAlert("none")}
+        />
       )}
     </div>
   );

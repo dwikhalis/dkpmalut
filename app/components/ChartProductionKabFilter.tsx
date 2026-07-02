@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
-import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
-import Link from "next/link";
+import DataPageDropdown from "./DataPageDropdown";
 
 type Row = {
   kab: string | null;
@@ -80,9 +79,11 @@ function aggregate(
 
   rows.forEach((r) => {
     const kab = r.kab?.trim();
+
     if (!kab) return;
 
     const val = toNum(pick(r));
+
     if (!Number.isFinite(val)) return;
 
     totals.set(kab, (totals.get(kab) ?? 0) + val);
@@ -103,7 +104,6 @@ export default function ChartProductionKabFilter({ pages }: Props) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("group");
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const [sortColumn, setSortColumn] = useState<SortColumn>("total");
-  const [showDropDown, setShowDropDown] = useState(false);
 
   const showBudidaya =
     selectedDataset === "all" || selectedDataset === "budidaya";
@@ -177,11 +177,11 @@ export default function ChartProductionKabFilter({ pages }: Props) {
     const set = new Set<string>();
 
     if (showBudidaya) {
-      totals.tb.forEach((_, k) => set.add(k));
+      totals.tb.forEach((_, kab) => set.add(kab));
     }
 
     if (showTangkap) {
-      totals.tt.forEach((_, k) => set.add(k));
+      totals.tt.forEach((_, kab) => set.add(kab));
     }
 
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -208,7 +208,10 @@ export default function ChartProductionKabFilter({ pages }: Props) {
 
     [...rowsBudidaya, ...rowsTangkap].forEach((r) => {
       const y = r.year != null ? Number(r.year) : NaN;
-      if (Number.isFinite(y)) set.add(y);
+
+      if (Number.isFinite(y)) {
+        set.add(y);
+      }
     });
 
     return Array.from(set).sort((a, b) => b - a);
@@ -289,10 +292,10 @@ export default function ChartProductionKabFilter({ pages }: Props) {
   const grand = useMemo(
     () =>
       tableRows.reduce(
-        (acc, r) => ({
-          bud: acc.bud + r.bud,
-          tang: acc.tang + r.tang,
-          total: acc.total + r.total,
+        (acc, row) => ({
+          bud: acc.bud + row.bud,
+          tang: acc.tang + row.tang,
+          total: acc.total + row.total,
         }),
         { bud: 0, tang: 0, total: 0 },
       ),
@@ -314,13 +317,14 @@ export default function ChartProductionKabFilter({ pages }: Props) {
     if (typeof v === "number" && Number.isFinite(v)) return String(v);
 
     const s = String(v ?? "");
+
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
 
   const toCsv = (header: (string | number)[], rows: (string | number)[][]) => {
     const lines = [
       header.map(csvCell).join(","),
-      ...rows.map((r) => r.map(csvCell).join(",")),
+      ...rows.map((row) => row.map(csvCell).join(",")),
     ];
 
     return lines.join("\r\n");
@@ -336,15 +340,15 @@ export default function ChartProductionKabFilter({ pages }: Props) {
 
     header.push("Total (ton)");
 
-    const body: (string | number)[][] = tableRows.map((r) => {
-      const row: (string | number)[] = [r.kab];
+    const body: (string | number)[][] = tableRows.map((row) => {
+      const dataRow: (string | number)[] = [row.kab];
 
-      if (showBudidaya) row.push(r.bud);
-      if (showTangkap) row.push(r.tang);
+      if (showBudidaya) dataRow.push(row.bud);
+      if (showTangkap) dataRow.push(row.tang);
 
-      row.push(r.total);
+      dataRow.push(row.total);
 
-      return row;
+      return dataRow;
     });
 
     const grandRow: (string | number)[] = ["Jumlah"];
@@ -390,202 +394,137 @@ export default function ChartProductionKabFilter({ pages }: Props) {
   }
 
   return (
-    <div className="flex flex-col lg:mx-12 mx-8 w-full">
-      {/* //! HEAD DROPDOWN */}
-      <div className="flex w-full">
-        <Link
-          href={"/data"}
-          className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
-        >
-          <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
-        </Link>
+    <div className="flex w-full max-w-full min-w-0 flex-col overflow-hidden px-6 md:px-12">
+      <DataPageDropdown pages={pages} />
 
-        <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
-          <div
-            onClick={() => setShowDropDown(!showDropDown)}
-            className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
-          >
-            <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Lihat Data Lainnya
-            </p>
+      <h2 className="mb-3 md:mb-6">{TITLE}</h2>
 
-            <DownChevron
-              className={`${
-                showDropDown ? "hidden" : "flex"
-              } lg:w-7 lg:h-7 w-4 h-4`}
-            />
-
-            <UpChevron
-              width={20}
-              height={20}
-              className={showDropDown ? "flex" : "hidden"}
-            />
-          </div>
-
-          {/* //! DROPDOWN */}
-          <div
-            className={`${
-              showDropDown ? "flex" : "hidden"
-            } flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
-          >
-            {pages.map((e, idx) => {
-              if (e.title === "Home") return null;
-
-              return (
-                <Link
-                  href={`/data/${e.slug}`}
-                  key={idx}
-                  onClick={() => {
-                    setShowDropDown(false);
-                  }}
-                  className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  <h5>{e.title}</h5>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* //! MAIN TITLE */}
-      <h2 className="md:mb-6 mb-3">{TITLE}</h2>
-
-      {/* //! TOP CONTROL */}
-      <div className="flex gap-x-3 md:gap-y-2 gap-y-3 flex-wrap mb-6">
+      {/* Top Control */}
+      <div className="mb-6 flex flex-wrap justify-between gap-x-3 gap-y-3 md:gap-y-2">
         {/* Tahun */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Tahun
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedYear === "all" ? "all" : String(selectedYear)}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSelectedYear(v === "all" ? "all" : Number(v));
-              }}
-            >
-              <option value="all">Semua</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedYear === "all" ? "all" : String(selectedYear)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedYear(value === "all" ? "all" : Number(value));
+            }}
+          >
+            <option value="all">Semua</option>
 
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Kabupaten */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Kabupaten
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedKab}
-              onChange={(e) => setSelectedKab(e.target.value)}
-            >
-              <option value="all">Semua Kabupaten</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedKab}
+            onChange={(event) => setSelectedKab(event.target.value)}
+          >
+            <option value="all">Semua Kabupaten</option>
 
-              {allKabOptions.map((kab) => (
-                <option key={kab} value={kab}>
-                  {kab}
-                </option>
-              ))}
-            </select>
-          </div>
+            {allKabOptions.map((kab) => (
+              <option key={kab} value={kab}>
+                {kab}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Dataset */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Dataset
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedDataset}
-              onChange={(e) =>
-                setSelectedDataset(e.target.value as DatasetFilter)
-              }
-            >
-              <option value="all">Semua Dataset</option>
-              <option value="budidaya">Budidaya</option>
-              <option value="tangkap">Tangkap</option>
-            </select>
-          </div>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedDataset}
+            onChange={(event) =>
+              setSelectedDataset(event.target.value as DatasetFilter)
+            }
+          >
+            <option value="all">Semua Dataset</option>
+            <option value="budidaya">Budidaya</option>
+            <option value="tangkap">Tangkap</option>
+          </select>
         </div>
 
         {/* Tampilan */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Tampilan
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={displayMode}
-              onChange={(e) => setDisplayMode(e.target.value as DisplayMode)}
-            >
-              <option value="group">Grup</option>
-              <option value="stacked">Tumpuk</option>
-            </select>
-          </div>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={displayMode}
+            onChange={(event) =>
+              setDisplayMode(event.target.value as DisplayMode)
+            }
+          >
+            <option value="group">Grup</option>
+            <option value="stacked">Tumpuk</option>
+          </select>
         </div>
 
         {/* Urutkan */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Urutkan
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={sortColumn}
-              onChange={(e) => setSortColumn(e.target.value as SortColumn)}
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={sortColumn}
+            onChange={(event) =>
+              setSortColumn(event.target.value as SortColumn)
+            }
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Download */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Download
           </label>
 
-          <div>
-            <button
-              type="button"
-              className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                tableRows.length === 0
-                  ? "opacity-50 cursor-not-allowed"
-                  : "bg-sky-600 text-white hover:bg-sky-500"
-              }`}
-              onClick={downloadCsv}
-              disabled={tableRows.length === 0}
-            >
-              CSV
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`w-full rounded border px-3 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm ${
+              tableRows.length === 0
+                ? "cursor-not-allowed opacity-50"
+                : "bg-sky-600 text-white hover:bg-sky-500"
+            }`}
+            onClick={downloadCsv}
+            disabled={tableRows.length === 0}
+          >
+            CSV
+          </button>
         </div>
       </div>
 
-      {/* //! CHART */}
       <BarCharts
         chartTitle=""
         labels={labels}
@@ -597,26 +536,29 @@ export default function ChartProductionKabFilter({ pages }: Props) {
         unit="ton"
       />
 
-      {/* Table */}
-      <div className="overflow-x-auto mb-12">
-        <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
+      <div className="mb-12 w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain">
+        <table className="min-w-max table-auto text-[2vw] md:text-[1.5vw] lg:text-sm">
           <thead className="bg-sky-100">
             <tr>
-              <th className="px-3 py-2 border border-gray-400">Kabupaten</th>
+              <th className="whitespace-nowrap border border-gray-400 px-3 py-2">
+                Kabupaten
+              </th>
 
               {showBudidaya && (
-                <th className="px-3 py-2 border border-gray-400">
+                <th className="whitespace-nowrap border border-gray-400 px-3 py-2">
                   Budidaya (ton)
                 </th>
               )}
 
               {showTangkap && (
-                <th className="px-3 py-2 border border-gray-400">
+                <th className="whitespace-nowrap border border-gray-400 px-3 py-2">
                   Tangkap (ton)
                 </th>
               )}
 
-              <th className="px-3 py-2 border border-gray-400">Total (ton)</th>
+              <th className="whitespace-nowrap border border-gray-400 px-3 py-2">
+                Total (ton)
+              </th>
             </tr>
           </thead>
 
@@ -631,24 +573,26 @@ export default function ChartProductionKabFilter({ pages }: Props) {
                 </td>
               </tr>
             ) : (
-              tableRows.map((r) => (
-                <tr key={r.kab}>
-                  <td className="px-3 py-2 border border-gray-400">{r.kab}</td>
+              tableRows.map((row) => (
+                <tr key={row.kab}>
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2">
+                    {row.kab}
+                  </td>
 
                   {showBudidaya && (
-                    <td className="px-3 py-2 border border-gray-400 text-right">
-                      {nf.format(r.bud)}
+                    <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right">
+                      {nf.format(row.bud)}
                     </td>
                   )}
 
                   {showTangkap && (
-                    <td className="px-3 py-2 border border-gray-400 text-right">
-                      {nf.format(r.tang)}
+                    <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right">
+                      {nf.format(row.tang)}
                     </td>
                   )}
 
-                  <td className="px-3 py-2 border border-gray-400 text-right font-medium">
-                    {nf.format(r.total)}
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right font-medium">
+                    {nf.format(row.total)}
                   </td>
                 </tr>
               ))
@@ -658,23 +602,23 @@ export default function ChartProductionKabFilter({ pages }: Props) {
           {tableRows.length > 0 && (
             <tfoot className="bg-sky-50">
               <tr>
-                <td className="px-3 py-2 border border-gray-400 font-semibold">
+                <td className="whitespace-nowrap border border-gray-400 px-3 py-2 font-semibold">
                   Jumlah
                 </td>
 
                 {showBudidaya && (
-                  <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right font-semibold">
                     {nf.format(grand.bud)}
                   </td>
                 )}
 
                 {showTangkap && (
-                  <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right font-semibold">
                     {nf.format(grand.tang)}
                   </td>
                 )}
 
-                <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right font-semibold">
                   {nf.format(grand.total)}
                 </td>
               </tr>

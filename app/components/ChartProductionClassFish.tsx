@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
-import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
-import Link from "next/link";
+import DataPageDropdown from "./DataPageDropdown";
 
 type Row = {
   kab: string | null;
@@ -168,6 +168,8 @@ function toCsv(header: (string | number)[], rows: (string | number)[][]) {
 /* ================= Component ================= */
 
 export default function ChartProductionFishCombined({ pages }: Props) {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -187,7 +189,6 @@ export default function ChartProductionFishCombined({ pages }: Props) {
   // Sort / display
   const [sortBy, setSortBy] = useState<SortBy>("value");
   const [topN, setTopN] = useState<TopN>("all");
-  const [showDropDown, setShowDropDown] = useState(false);
 
   // Fetch ALL data
   useEffect(() => {
@@ -534,286 +535,217 @@ export default function ChartProductionFishCombined({ pages }: Props) {
   }
 
   return (
-    <div className="flex flex-col lg:mx-12 mx-8 w-full">
-      {/* Header + page nav */}
-      <div className="flex w-full">
-        <Link
-          href={"/data"}
-          className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
-        >
-          <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
-        </Link>
-
-        <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
-          <div
-            onClick={() => setShowDropDown(!showDropDown)}
-            className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
-          >
-            <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Lihat Data Lainnya
-            </p>
-
-            <DownChevron
-              className={`${
-                showDropDown ? "hidden" : "flex"
-              } lg:w-7 lg:h-7 w-4 h-4`}
-            />
-
-            <UpChevron
-              className={`${
-                showDropDown ? "flex" : "hidden"
-              } lg:w-7 lg:h-7 w-4 h-4`}
-            />
-          </div>
-
-          {/* Dropdown list */}
-          <div
-            className={`${
-              showDropDown ? "flex" : "hidden"
-            } flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
-          >
-            {pages.map((page, index) => {
-              if (page.title === "Home") return null;
-
-              return (
-                <Link
-                  href={`/data/${page.slug}`}
-                  key={index}
-                  onClick={() => setShowDropDown(false)}
-                  className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                >
-                  <h5>{page.title}</h5>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+    <div className="flex w-full max-w-full min-w-0 flex-col overflow-hidden px-6 md:px-12">
+      <DataPageDropdown pages={pages} />
 
       {/* Title */}
-      <h2 className="md:mb-6 mb-3">{TITLE}</h2>
+      <h2 className="mb-3 md:mb-6">{TITLE}</h2>
 
       {/* Top controls */}
-      <div className="flex gap-x-3 md:gap-y-2 gap-y-3 flex-wrap mb-6">
+      <div className="mb-6 flex flex-wrap justify-between gap-x-3 gap-y-3 md:gap-y-2">
         {/* Tahun */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Tahun
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedYear === "all" ? "all" : String(selectedYear)}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSelectedYear(value === "all" ? "all" : Number(value));
-              }}
-            >
-              <option value="all">Semua</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedYear === "all" ? "all" : String(selectedYear)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedYear(value === "all" ? "all" : Number(value));
+            }}
+          >
+            <option value="all">Semua</option>
 
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Semester */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Semester
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={String(selectedSemester)}
-              onChange={(event) => {
-                const value = event.target.value as "all" | "1" | "2";
-                setSelectedSemester(
-                  value === "all" ? "all" : (Number(value) as 1 | 2),
-                );
-              }}
-            >
-              <option value="all">Semua</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-            </select>
-          </div>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={String(selectedSemester)}
+            onChange={(event) => {
+              const value = event.target.value as "all" | "1" | "2";
+
+              setSelectedSemester(
+                value === "all" ? "all" : (Number(value) as 1 | 2),
+              );
+            }}
+          >
+            <option value="all">Semua</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+          </select>
         </div>
 
         {/* Kabupaten */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Kabupaten
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedKab}
-              onChange={(event) =>
-                setSelectedKab(
-                  event.target.value === "all" ? "all" : event.target.value,
-                )
-              }
-            >
-              <option value="all">Semua Kabupaten</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedKab}
+            onChange={(event) =>
+              setSelectedKab(
+                event.target.value === "all" ? "all" : event.target.value,
+              )
+            }
+          >
+            <option value="all">Semua Kabupaten</option>
 
-              {kabOptions.map((kab) => (
-                <option key={kab} value={kab}>
-                  {kab}
-                </option>
-              ))}
-            </select>
-          </div>
+            {kabOptions.map((kab) => (
+              <option key={kab} value={kab}>
+                {kab}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Landing */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Landing
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedLanding}
-              onChange={(event) =>
-                setSelectedLanding(
-                  event.target.value === "all" ? "all" : event.target.value,
-                )
-              }
-            >
-              <option value="all">Semua Landing</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedLanding}
+            onChange={(event) =>
+              setSelectedLanding(
+                event.target.value === "all" ? "all" : event.target.value,
+              )
+            }
+          >
+            <option value="all">Semua Landing</option>
 
-              {landingOptions.map((landing) => (
-                <option key={landing} value={landing}>
-                  {landing}
-                </option>
-              ))}
-            </select>
-          </div>
+            {landingOptions.map((landing) => (
+              <option key={landing} value={landing}>
+                {landing}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Kelas */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Kelas
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={selectedClass}
-              onChange={(event) =>
-                setSelectedClass(
-                  event.target.value === "all" ? "all" : event.target.value,
-                )
-              }
-            >
-              <option value="all">Semua Kelas</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedClass}
+            onChange={(event) =>
+              setSelectedClass(
+                event.target.value === "all" ? "all" : event.target.value,
+              )
+            }
+          >
+            <option value="all">Semua Kelas</option>
 
-              {classOptions.map((cls) => (
-                <option key={cls} value={cls}>
-                  {cls}
-                </option>
-              ))}
-            </select>
-          </div>
+            {classOptions.map((cls) => (
+              <option key={cls} value={cls}>
+                {cls}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Nama Ikan */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Nama Ikan
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white max-w-[240px]"
-              value={selectedFishName}
-              onChange={(event) =>
-                setSelectedFishName(
-                  event.target.value === "all" ? "all" : event.target.value,
-                )
-              }
-            >
-              <option value="all">Semua Nama Ikan</option>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={selectedFishName}
+            onChange={(event) =>
+              setSelectedFishName(
+                event.target.value === "all" ? "all" : event.target.value,
+              )
+            }
+          >
+            <option value="all">Semua Nama Ikan</option>
 
-              {fishNameOptions.map((fishName) => (
-                <option key={fishName} value={fishName}>
-                  {fishName}
-                </option>
-              ))}
-            </select>
-          </div>
+            {fishNameOptions.map((fishName) => (
+              <option key={fishName} value={fishName}>
+                {fishName}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Urutkan */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Urutkan
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value as SortBy)}
-            >
-              <option value="value">Total</option>
-              <option value="name">Nama Ikan</option>
-              <option value="class">Kelas</option>
-            </select>
-          </div>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as SortBy)}
+          >
+            <option value="value">Total</option>
+            <option value="name">Nama Ikan</option>
+            <option value="class">Kelas</option>
+          </select>
         </div>
 
         {/* Top */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Top
           </label>
 
-          <div>
-            <select
-              className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] bg-white"
-              value={topN}
-              onChange={(event) => {
-                const value = event.target.value as "all" | "5" | "10";
-                setTopN(value === "all" ? "all" : (Number(value) as 5 | 10));
-              }}
-            >
-              <option value="all">Semua</option>
-              <option value="5">Top 5</option>
-              <option value="10">Top 10</option>
-            </select>
-          </div>
+          <select
+            className="w-full rounded border bg-white px-2 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+            value={topN}
+            onChange={(event) => {
+              const value = event.target.value as "all" | "5" | "10";
+
+              setTopN(value === "all" ? "all" : (Number(value) as 5 | 10));
+            }}
+          >
+            <option value="all">Semua</option>
+            <option value="5">Top 5</option>
+            <option value="10">Top 10</option>
+          </select>
         </div>
 
         {/* Download */}
-        <div>
-          <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+        <div className="flex flex-col w-[45%] md:w-auto  ">
+          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
             Download
           </label>
 
-          <div>
-            <button
-              type="button"
-              className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                items.length === 0
-                  ? "opacity-50 cursor-not-allowed"
-                  : "bg-sky-600 text-white hover:bg-sky-500"
-              }`}
-              onClick={downloadCsv}
-              disabled={items.length === 0}
-            >
-              CSV
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`w-full rounded border px-3 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm ${
+              items.length === 0
+                ? "cursor-not-allowed opacity-50"
+                : "bg-sky-600 text-white hover:bg-sky-500"
+            }`}
+            onClick={downloadCsv}
+            disabled={items.length === 0}
+          >
+            CSV
+          </button>
         </div>
       </div>
 
@@ -831,19 +763,19 @@ export default function ChartProductionFishCombined({ pages }: Props) {
       />
 
       {/* Table */}
-      <div className="overflow-x-auto mb-12">
-        <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
+      <div className="mb-12 w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain">
+        <table className="min-w-max table-auto text-[2vw] md:text-[1.5vw] lg:text-sm">
           <thead className="bg-sky-100">
             <tr>
-              <th className="px-3 py-2 border border-gray-400 text-center">
+              <th className="whitespace-nowrap border border-gray-400 px-3 py-2 text-center">
                 Nama Ikan
               </th>
 
-              <th className="px-3 py-2 border border-gray-400 text-center">
+              <th className="whitespace-nowrap border border-gray-400 px-3 py-2 text-center">
                 Kelas
               </th>
 
-              <th className="px-3 py-2 border border-gray-400 text-center">
+              <th className="whitespace-nowrap border border-gray-400 px-3 py-2 text-center">
                 Total (ton)
               </th>
             </tr>
@@ -859,15 +791,15 @@ export default function ChartProductionFishCombined({ pages }: Props) {
             ) : (
               items.map((item) => (
                 <tr key={item.key}>
-                  <td className="px-3 py-2 border border-gray-400">
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2">
                     {item.tableLabel}
                   </td>
 
-                  <td className="px-3 py-2 border border-gray-400">
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2">
                     {item.classLabel || "-"}
                   </td>
 
-                  <td className="px-3 py-2 border border-gray-400 text-right">
+                  <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right">
                     {nf.format(item.value)}
                   </td>
                 </tr>
@@ -878,13 +810,13 @@ export default function ChartProductionFishCombined({ pages }: Props) {
           {items.length > 0 && (
             <tfoot className="bg-sky-50">
               <tr>
-                <td className="px-3 py-2 border border-gray-400 font-semibold">
+                <td className="whitespace-nowrap border border-gray-400 px-3 py-2 font-semibold">
                   Jumlah
                 </td>
 
-                <td className="px-3 py-2 border border-gray-400 font-semibold" />
+                <td className="whitespace-nowrap border border-gray-400 px-3 py-2 font-semibold" />
 
-                <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
+                <td className="whitespace-nowrap border border-gray-400 px-3 py-2 text-right font-semibold">
                   {nf.format(grandTotal)}
                 </td>
               </tr>

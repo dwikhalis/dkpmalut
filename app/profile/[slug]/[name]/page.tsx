@@ -340,6 +340,7 @@ export default function Page() {
               action={action}
               saveData={saveData}
               onSignalAction={handleSignalAction}
+              role={role}
             />
           )}
 

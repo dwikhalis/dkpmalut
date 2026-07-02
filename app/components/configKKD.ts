@@ -74,6 +74,7 @@ export type KkdOption = {
     rpz?: string;
     decree?: string;
   };
+  data_link?: string;
 };
 
 export const ZONA_ORDER = [
@@ -133,13 +134,14 @@ export const GEOJSON_LAYERS = [
 }[];
 
 export const KKD_OPTIONS: KkdOption[] = [
-  {
-    id: "all",
-    label: "Semua KKPD",
-    layers: ["widi", "makian_moti", "guraici", "mare", "rao_dehegila", "sula"],
-    center: DEFAULT_MAP_VIEW.center,
-    zoom: DEFAULT_MAP_VIEW.zoom,
-  },
+  // ! SHOW ALL KKPD OPTION IS DISABLED
+  // {
+  //   id: "all",
+  //   label: "Semua KKPD",
+  //   layers: ["widi", "makian_moti", "guraici", "mare", "rao_dehegila", "sula"],
+  //   center: DEFAULT_MAP_VIEW.center,
+  //   zoom: DEFAULT_MAP_VIEW.zoom,
+  // },
   {
     id: "widi",
     label: "TPK Kepulauan Widi",
@@ -151,6 +153,8 @@ export const KKD_OPTIONS: KkdOption[] = [
       rpz: "/documents/rpz_widi.pdf",
       decree: "/documents/kepmenkp_widi.pdf",
     },
+    data_link:
+      "https://explore.datamermaid.org/?lat=-0.5691674027445686&lng=128.4358287002309&zoom=10.025080875900432",
   },
   {
     id: "makian_moti",
@@ -163,6 +167,8 @@ export const KKD_OPTIONS: KkdOption[] = [
       rpz: "/documents/rpz_makian_moti.pdf",
       decree: "/documents/kepmenkp_makian_moti.pdf",
     },
+    data_link:
+      "https://explore.datamermaid.org/?lat=0.3884449816521425&lng=127.4087498296833&zoom=10.7821418162412",
   },
   {
     id: "guraici",
@@ -175,6 +181,8 @@ export const KKD_OPTIONS: KkdOption[] = [
       rpz: "/documents/rpz_guraici.pdf",
       decree: "/documents/kepmenkp_guraici.pdf",
     },
+    data_link:
+      "https://explore.datamermaid.org/?lat=0.01870372610049742&lng=127.28376207057408&zoom=10.437054988374738",
   },
   {
     id: "mare",
@@ -187,6 +195,8 @@ export const KKD_OPTIONS: KkdOption[] = [
       rpz: "/documents/rpz_mare.pdf",
       decree: "/documents/kepmenkp_mare.pdf",
     },
+    data_link:
+      "https://explore.datamermaid.org/?lat=0.5763984374883933&lng=127.39199797405445&zoom=13.292138810620731",
   },
   {
     id: "rao_dehegila",
@@ -199,6 +209,8 @@ export const KKD_OPTIONS: KkdOption[] = [
       rpz: "/documents/rpz_rao_dehegila.pdf",
       decree: "/documents/kepmenkp_rao_dehegila.pdf",
     },
+    data_link:
+      "https://explore.datamermaid.org/?lat=2.204355268634359&lng=128.19846554821027&zoom=10.01414314192795",
   },
   {
     id: "sula",
@@ -211,6 +223,8 @@ export const KKD_OPTIONS: KkdOption[] = [
       rpz: "/documents/rpz_sula.pdf",
       decree: "/documents/kepmenkp_sula.pdf",
     },
+    data_link:
+      "https://explore.datamermaid.org/?lat=-2.0857299697138103&lng=126.10304850107377&zoom=9.091227411710365",
   },
 ];
 

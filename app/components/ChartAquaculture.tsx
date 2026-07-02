@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import BarCharts from "./BarCharts";
-import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
-import Link from "next/link";
+import { DownChevron, UpChevron } from "@/public/icons/iconSets";
+import DataPageDropdown from "./DataPageDropdown";
 
 type Row = {
   kab: string | null;
@@ -29,7 +30,6 @@ interface Props {
 
 const TITLE = "Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara";
 
-/* ================= Helpers ================= */
 const toNum = (v: unknown) => {
   if (v == null) return NaN;
   if (typeof v === "number") return v;
@@ -39,15 +39,19 @@ const toNum = (v: unknown) => {
 
 const toYear = (v: unknown): number | null => {
   if (v == null) return null;
-  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+
+  if (typeof v === "number") {
+    return Number.isFinite(v) ? v : null;
+  }
+
   if (typeof v === "string") {
     const m = v.match(/\d{4}/);
     return m ? Number(m[0]) : null;
   }
+
   return null;
 };
 
-/** Fetch *all* rows with pagination */
 async function fetchAllRows<T>(
   table: string,
   columns: string,
@@ -55,71 +59,76 @@ async function fetchAllRows<T>(
 ): Promise<T[]> {
   const all: T[] = [];
   let from = 0;
+
   while (true) {
     const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from(table)
       .select(columns)
       .range(from, to);
+
     if (error) throw error;
     if (!data || data.length === 0) break;
+
     all.push(...(data as T[]));
+
     if (data.length < pageSize) break;
+
     from += pageSize;
   }
+
   return all;
 }
 
-/** Sum selected metric per kab with optional year/kab filters */
 function aggregateByKab(
   rows: Row[],
   pick: (r: Row) => number | string | null | undefined,
   yearSelected: number | null,
-  kabFilter?: Set<string>,
+  kabSelected: string,
 ) {
   const totals = new Map<string, number>();
+
   rows.forEach((r) => {
     const kab = r.kab?.trim();
+
     if (!kab) return;
-    if (kabFilter && kabFilter.size > 0 && !kabFilter.has(kab)) return;
+    if (kabSelected !== "all" && kab !== kabSelected) return;
 
     const y = toYear(r.year);
+
     if (y == null) return;
     if (yearSelected != null && y !== yearSelected) return;
 
     const val = toNum(pick(r));
+
     if (!Number.isFinite(val)) return;
 
     totals.set(kab, (totals.get(kab) ?? 0) + val);
   });
+
   return totals;
 }
 
-/* ================= Component ================= */
 export default function ChartAquaculture({ pages }: Props) {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [rowsBudidaya, setRowsBudidaya] = useState<Row[]>([]);
 
-  // Filters
-  const [selectedKabs, setSelectedKabs] = useState<string[]>([]); // multi (side menu)
+  const [selectedKab, setSelectedKab] = useState("all");
   const [selectedYear, setSelectedYear] = useState<"all" | number>("all");
   const [sortBy, setSortBy] = useState<"value" | "kab">("value");
-  const [order, setOrder] = useState<"desc" | "asc">("desc");
 
-  // Dataset toggles
   const [showRTP, setShowRTP] = useState(true);
   const [showPembudi, setShowPembudi] = useState(true);
   const [showLahan, setShowLahan] = useState(true);
   const [showProduksi, setShowProduksi] = useState(true);
 
-  // UI
-  const [showDropDown, setShowDropDown] = useState(false);
-  const [showSideMenu, setShowSideMenu] = useState(false); // retractable side menu (mobile)
-
-  // Fetch ALL data
   useEffect(() => {
     let cancelled = false;
+
     const getErrorMessage = (e: unknown) =>
       e instanceof Error
         ? e.message
@@ -137,13 +146,17 @@ export default function ChartAquaculture({ pages }: Props) {
           "budidaya",
           "kab, year, jum_rtp, jum_pembudidaya, luas_lahan, tot_produksi",
         );
+
         if (cancelled) return;
+
         setRowsBudidaya(data ?? []);
         setErr(null);
       } catch (e) {
         setErr(getErrorMessage(e) || "Failed to load data");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
 
@@ -152,116 +165,135 @@ export default function ChartAquaculture({ pages }: Props) {
     };
   }, []);
 
-  /* ======= Options ======= */
   const yearOptions = useMemo(() => {
     const set = new Set<number>();
+
     rowsBudidaya.forEach((r) => {
       const y = toYear(r.year);
-      if (y != null) set.add(y);
+
+      if (y != null) {
+        set.add(y);
+      }
     });
+
     return Array.from(set).sort((a, b) => b - a);
   }, [rowsBudidaya]);
 
   const allKabOptions = useMemo(() => {
-    const s = new Set<string>();
+    const set = new Set<string>();
+
     rowsBudidaya.forEach((r) => {
-      const k = r.kab?.trim();
-      if (k) s.add(k);
+      const kab = r.kab?.trim();
+
+      if (kab) {
+        set.add(kab);
+      }
     });
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [rowsBudidaya]);
 
-  /* ======= Aggregations ======= */
   const totals = useMemo(() => {
     const ySel = selectedYear === "all" ? null : selectedYear;
-    const kabSet = selectedKabs.length > 0 ? new Set(selectedKabs) : undefined;
 
-    const tRTP = aggregateByKab(rowsBudidaya, (r) => r.jum_rtp, ySel, kabSet);
+    const tRTP = aggregateByKab(
+      rowsBudidaya,
+      (r) => r.jum_rtp,
+      ySel,
+      selectedKab,
+    );
+
     const tPembudi = aggregateByKab(
       rowsBudidaya,
       (r) => r.jum_pembudidaya,
       ySel,
-      kabSet,
+      selectedKab,
     );
+
     const tLahan = aggregateByKab(
       rowsBudidaya,
       (r) => r.luas_lahan,
       ySel,
-      kabSet,
+      selectedKab,
     );
+
     const tProd = aggregateByKab(
       rowsBudidaya,
       (r) => r.tot_produksi,
       ySel,
-      kabSet,
+      selectedKab,
     );
-    return { tRTP, tPembudi, tLahan, tProd };
-  }, [rowsBudidaya, selectedYear, selectedKabs]);
 
-  // Labels & datasets
+    return { tRTP, tPembudi, tLahan, tProd };
+  }, [rowsBudidaya, selectedYear, selectedKab]);
+
   const { labels, datasets }: { labels: string[]; datasets: DatasetConf[] } =
     useMemo(() => {
       const unionKabs = new Set<string>();
-      if (showRTP) totals.tRTP.forEach((_, k) => unionKabs.add(k));
-      if (showPembudi) totals.tPembudi.forEach((_, k) => unionKabs.add(k));
-      if (showLahan) totals.tLahan.forEach((_, k) => unionKabs.add(k));
-      if (showProduksi) totals.tProd.forEach((_, k) => unionKabs.add(k));
+
+      if (showRTP) totals.tRTP.forEach((_, kab) => unionKabs.add(kab));
+      if (showPembudi) totals.tPembudi.forEach((_, kab) => unionKabs.add(kab));
+      if (showLahan) totals.tLahan.forEach((_, kab) => unionKabs.add(kab));
+      if (showProduksi) totals.tProd.forEach((_, kab) => unionKabs.add(kab));
+
       const labs = Array.from(unionKabs);
 
-      const sumForKab = (k: string) =>
-        (showRTP ? (totals.tRTP.get(k) ?? 0) : 0) +
-        (showPembudi ? (totals.tPembudi.get(k) ?? 0) : 0) +
-        (showLahan ? (totals.tLahan.get(k) ?? 0) : 0) +
-        (showProduksi ? (totals.tProd.get(k) ?? 0) : 0);
+      const sumForKab = (kab: string) =>
+        (showRTP ? (totals.tRTP.get(kab) ?? 0) : 0) +
+        (showPembudi ? (totals.tPembudi.get(kab) ?? 0) : 0) +
+        (showLahan ? (totals.tLahan.get(kab) ?? 0) : 0) +
+        (showProduksi ? (totals.tProd.get(kab) ?? 0) : 0);
 
       if (sortBy === "kab") {
-        labs.sort((a, b) => a.localeCompare(b) * (order === "asc" ? 1 : -1));
+        labs.sort((a, b) => a.localeCompare(b));
       } else {
-        labs.sort(
-          (a, b) => (sumForKab(a) - sumForKab(b)) * (order === "asc" ? 1 : -1),
-        );
+        labs.sort((a, b) => sumForKab(b) - sumForKab(a));
       }
 
       const ds: DatasetConf[] = [];
+
       if (showRTP) {
         ds.push({
           label: "RTP",
-          values: labs.map((k) => totals.tRTP.get(k) ?? 0),
-          backgroundColor: "rgba(255, 159, 64, 0.7)", // orange
+          values: labs.map((kab) => totals.tRTP.get(kab) ?? 0),
+          backgroundColor: "rgba(255, 159, 64, 0.7)",
         });
       }
+
       if (showPembudi) {
         ds.push({
           label: "Pembudidaya",
-          values: labs.map((k) => totals.tPembudi.get(k) ?? 0),
-          backgroundColor: "rgba(75, 192, 192, 0.7)", // sky
+          values: labs.map((kab) => totals.tPembudi.get(kab) ?? 0),
+          backgroundColor: "rgba(75, 192, 192, 0.7)",
         });
       }
+
       if (showLahan) {
         ds.push({
           label: "Luas Lahan",
-          values: labs.map((k) => totals.tLahan.get(k) ?? 0),
-          backgroundColor: "rgba(153, 102, 255, 0.7)", // purple
+          values: labs.map((kab) => totals.tLahan.get(kab) ?? 0),
+          backgroundColor: "rgba(153, 102, 255, 0.7)",
         });
       }
+
       if (showProduksi) {
         ds.push({
           label: "Produksi",
-          values: labs.map((k) => totals.tProd.get(k) ?? 0),
-          backgroundColor: "rgba(54, 162, 235, 0.7)", // blue
+          values: labs.map((kab) => totals.tProd.get(kab) ?? 0),
+          backgroundColor: "rgba(54, 162, 235, 0.7)",
         });
       }
 
       return { labels: labs, datasets: ds };
-    }, [totals, sortBy, order, showRTP, showPembudi, showLahan, showProduksi]);
+    }, [totals, sortBy, showRTP, showPembudi, showLahan, showProduksi]);
 
-  /* ======= Table model ======= */
   const tableRows = useMemo(() => {
     return labels.map((kab) => {
       const rtp = showRTP ? (totals.tRTP.get(kab) ?? 0) : 0;
       const pembudi = showPembudi ? (totals.tPembudi.get(kab) ?? 0) : 0;
       const lahan = showLahan ? (totals.tLahan.get(kab) ?? 0) : 0;
       const prod = showProduksi ? (totals.tProd.get(kab) ?? 0) : 0;
+
       return {
         kab,
         rtp,
@@ -276,24 +308,38 @@ export default function ChartAquaculture({ pages }: Props) {
   const grand = useMemo(
     () =>
       tableRows.reduce(
-        (acc, r) => ({
-          rtp: acc.rtp + r.rtp,
-          pembudi: acc.pembudi + r.pembudi,
-          lahan: acc.lahan + r.lahan,
-          prod: acc.prod + r.prod,
+        (acc, row) => ({
+          rtp: acc.rtp + row.rtp,
+          pembudi: acc.pembudi + row.pembudi,
+          lahan: acc.lahan + row.lahan,
+          prod: acc.prod + row.prod,
         }),
         { rtp: 0, pembudi: 0, lahan: 0, prod: 0 },
       ),
     [tableRows],
   );
 
-  // Formatter
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
     [],
   );
 
-  /* ======= CSV ======= */
+  const noDatasetSelected =
+    !showRTP && !showPembudi && !showLahan && !showProduksi;
+
+  const selectedDatasetCount =
+    Number(showRTP) +
+    Number(showPembudi) +
+    Number(showLahan) +
+    Number(showProduksi);
+
+  const datasetDropdownLabel =
+    selectedDatasetCount === 0
+      ? "Pilih Dataset"
+      : selectedDatasetCount === 4
+        ? "Semua Dataset"
+        : `${selectedDatasetCount} Dataset`;
+
   const fileNameFromTitle = (title: string) =>
     title
       .trim()
@@ -302,61 +348,72 @@ export default function ChartAquaculture({ pages }: Props) {
 
   const csvCell = (v: unknown) => {
     if (typeof v === "number" && Number.isFinite(v)) return String(v);
+
     const s = String(v ?? "");
+
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
 
   const toCsv = (header: (string | number)[], rows: (string | number)[][]) => {
     const lines = [
       header.map(csvCell).join(","),
-      ...rows.map((r) => r.map(csvCell).join(",")),
+      ...rows.map((row) => row.map(csvCell).join(",")),
     ];
+
     return lines.join("\r\n");
   };
-
-  const noDatasetSelected =
-    !showRTP && !showPembudi && !showLahan && !showProduksi;
 
   const downloadCsv = () => {
     if (noDatasetSelected || tableRows.length === 0) return;
 
     const header: (string | number)[] = ["Kabupaten"];
+
     if (showRTP) header.push("RTP");
     if (showPembudi) header.push("Pembudidaya");
     if (showLahan) header.push("Luas Lahan");
     if (showProduksi) header.push("Produksi");
+
     header.push("Total");
 
-    const body: (string | number)[][] = tableRows.map((r) => {
-      const row: (string | number)[] = [r.kab];
-      if (showRTP) row.push(r.rtp);
-      if (showPembudi) row.push(r.pembudi);
-      if (showLahan) row.push(r.lahan);
-      if (showProduksi) row.push(r.prod);
-      row.push(r.total);
-      return row;
+    const body: (string | number)[][] = tableRows.map((row) => {
+      const dataRow: (string | number)[] = [row.kab];
+
+      if (showRTP) dataRow.push(row.rtp);
+      if (showPembudi) dataRow.push(row.pembudi);
+      if (showLahan) dataRow.push(row.lahan);
+      if (showProduksi) dataRow.push(row.prod);
+
+      dataRow.push(row.total);
+
+      return dataRow;
     });
 
     const grandRow: (string | number)[] = ["Jumlah"];
+
     if (showRTP) grandRow.push(grand.rtp);
     if (showPembudi) grandRow.push(grand.pembudi);
     if (showLahan) grandRow.push(grand.lahan);
     if (showProduksi) grandRow.push(grand.prod);
+
+    grandRow.push(grand.rtp + grand.pembudi + grand.lahan + grand.prod);
+
     body.push(grandRow);
 
     const csv = toCsv(header, body);
     const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
+
     a.href = url;
     a.download = fileNameFromTitle(TITLE);
+
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+
     URL.revokeObjectURL(url);
   };
 
-  /* ======= UI States ======= */
   if (loading) {
     return (
       <div className="w-full h-[70vh] flex items-center justify-center">
@@ -364,6 +421,7 @@ export default function ChartAquaculture({ pages }: Props) {
       </div>
     );
   }
+
   if (err) {
     return (
       <div className="bg-red-50 text-red-700 border border-red-200 p-3 rounded">
@@ -373,519 +431,300 @@ export default function ChartAquaculture({ pages }: Props) {
   }
 
   return (
-    <div className="flex w-full">
-      {/* //! SIDE MENU (mobile) */}
-      <aside
-        className={`flex top-0 md:top-auto md:static fixed z-5 md:z-0 justify-between md:w-[30vw] w-[65%] md:grow md:h-auto h-full transition-transform duration-300 md:translate-x-0 ${
-          showSideMenu ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex flex-col gap-3 bg-sky-800 px-5 md:pt-8 lg:pt-12 pt-18 text-white overflow-y-scroll scrollbar-hide pb-20 w-full">
-          <h3 className="font-bold">Kabupaten</h3>
+    <div className="flex w-full max-w-full min-w-0 flex-col overflow-hidden px-6 md:px-12">
+      <DataPageDropdown pages={pages} />
 
-          {/* Kabupaten (multi) */}
-          <div>
-            {allKabOptions.map((kab) => {
-              const checked = selectedKabs.includes(kab);
-              return (
-                <label key={kab} className="flex items-center gap-2 py-0.5">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => {
-                      setSelectedKabs((prev) =>
-                        e.target.checked
-                          ? [...prev, kab]
-                          : prev.filter((k) => k !== kab),
-                      );
-                    }}
-                  />
-                  <h6 className="text-sm">{kab}</h6>
-                </label>
-              );
-            })}
-          </div>
+      <h2 className="md:mb-6 mb-3">{TITLE}</h2>
 
-          <div className="flex flex-col gap-3">
-            <button
-              className="flex py-1 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center"
-              onClick={() => setSelectedKabs(allKabOptions)}
-            >
-              Semua
-            </button>
-            <button
-              className="flex py-1 bg-sky-600 rounded-md text-xs text-white hover:bg-sky-700 cursor-pointer justify-center items-center"
-              onClick={() => setSelectedKabs([])}
-            >
-              Reset
-            </button>
-          </div>
+      <div className="flex gap-x-3 gap-y-2 flex-wrap mb-6">
+        <div className="w-full sm:w-auto">
+          <label className="mb-1 block font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Tahun
+          </label>
 
-          {/* //! FILTERS - MOBILE (inside side menu) */}
-          <div className="reltive flex md:hidden gap-x-6 md:gap-y-2 gap-y-6 flex-wrap">
-            {/* Tahun */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Tahun
-              </label>
-              <div>
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={selectedYear === "all" ? "all" : String(selectedYear)}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setSelectedYear(v === "all" ? "all" : Number(v));
-                  }}
-                >
-                  <option value="all" className="text-black">
-                    Semua
-                  </option>
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y} className="text-black">
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Datasets */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Datasets
-              </label>
-              <div className="flex flex-col gap-2">
-                <button
-                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                    showRTP
-                      ? "bg-orange-500 text-white border-orange-500"
-                      : "border-white"
-                  }`}
-                  onClick={() => setShowRTP((v) => !v)}
-                >
-                  RTP
-                </button>
-                <button
-                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                    showPembudi
-                      ? "bg-teal-600 text-white border-teal-600"
-                      : "border-white"
-                  }`}
-                  onClick={() => setShowPembudi((v) => !v)}
-                >
-                  Pembudidaya
-                </button>
-                <button
-                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                    showLahan
-                      ? "bg-purple-600 text-white border-purple-600"
-                      : "border-white"
-                  }`}
-                  onClick={() => setShowLahan((v) => !v)}
-                >
-                  Luas Lahan
-                </button>
-                <button
-                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                    showProduksi
-                      ? "bg-sky-600 text-white border-sky-600"
-                      : "border-white"
-                  }`}
-                  onClick={() => setShowProduksi((v) => !v)}
-                >
-                  Produksi
-                </button>
-              </div>
-            </div>
-
-            {/* Sorting */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Urutkan
-              </label>
-              <div className="flex flex-col gap-3">
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as "value" | "kab")}
-                >
-                  <option value="value" className="text-black">
-                    Nilai
-                  </option>
-                  <option value="kab" className="text-black">
-                    Nama
-                  </option>
-                </select>
-                <select
-                  className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full"
-                  value={order}
-                  onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
-                >
-                  <option value="desc" className="text-black">
-                    Atas
-                  </option>
-                  <option value="asc" className="text-black">
-                    Bawah
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {/* Download */}
-            <div className="w-full">
-              <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Download
-              </label>
-              <div>
-                <button
-                  className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] w-full ${
-                    noDatasetSelected || tableRows.length === 0
-                      ? "opacity-50 cursor-not-allowed"
-                      : "bg-sky-600 text-white hover:bg-sky-500"
-                  }`}
-                  onClick={downloadCsv}
-                  disabled={noDatasetSelected || tableRows.length === 0}
-                >
-                  CSV
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* //! Close Side Menu */}
-        <div
-          className="flex justify-center items-center md:hidden cursor-pointer"
-          onClick={() => setShowSideMenu(!showSideMenu)}
-        >
-          <div
-            className="px-0 pb-3 -rotate-90 -translate-x-6"
-            onClick={() => setShowSideMenu(!showSideMenu)}
+          <select
+            className="w-full rounded border border-gray-400 px-3 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+            value={selectedYear === "all" ? "all" : String(selectedYear)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedYear(value === "all" ? "all" : Number(value));
+            }}
           >
-            <div className="flex justify-center items-center bg-sky-800 px-2 rounded-b-md">
-              <p className="text-sm w-full text-white">Filters </p>
-              <UpChevron className="w-6 h-6" color="white" />
+            <option value="all">Semua</option>
+
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <label className="mb-1 block font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Kabupaten
+          </label>
+
+          <select
+            className="w-full rounded border border-gray-400 px-3 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+            value={selectedKab}
+            onChange={(e) => setSelectedKab(e.target.value)}
+          >
+            <option value="all">Semua</option>
+
+            {allKabOptions.map((kab) => (
+              <option key={kab} value={kab}>
+                {kab}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <label className="mb-1 block font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Urutkan
+          </label>
+
+          <select
+            className="w-full rounded border border-gray-400 px-3 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "value" | "kab")}
+          >
+            <option value="value">Nilai</option>
+            <option value="kab">Nama Kabupaten</option>
+          </select>
+        </div>
+
+        <details className="group relative w-full sm:w-auto">
+          <summary className="list-none">
+            <label className="mb-1 block font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+              Datasets
+            </label>
+
+            <div className="flex min-w-[180px] cursor-pointer items-center justify-between gap-3 rounded border border-gray-400 bg-white px-3 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm">
+              <span>{datasetDropdownLabel}</span>
+              <DownChevron className="h-4 w-4 group-open:hidden" />
+              <UpChevron className="hidden h-4 w-4 group-open:flex" />
+            </div>
+          </summary>
+
+          <div className="absolute left-0 z-30 mt-2 w-full min-w-[240px] rounded-lg border border-gray-300 bg-white shadow-lg">
+            <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRTP(true);
+                  setShowPembudi(true);
+                  setShowLahan(true);
+                  setShowProduksi(true);
+                }}
+                className="text-xs text-sky-700 hover:underline"
+              >
+                Pilih Semua
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRTP(false);
+                  setShowPembudi(false);
+                  setShowLahan(false);
+                  setShowProduksi(false);
+                }}
+                className="text-xs text-sky-700 hover:underline"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="p-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-gray-100">
+                <input
+                  type="checkbox"
+                  checked={showRTP}
+                  onChange={() => setShowRTP((v) => !v)}
+                />
+                <span>RTP</span>
+              </label>
+
+              <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-gray-100">
+                <input
+                  type="checkbox"
+                  checked={showPembudi}
+                  onChange={() => setShowPembudi((v) => !v)}
+                />
+                <span>Pembudidaya</span>
+              </label>
+
+              <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-gray-100">
+                <input
+                  type="checkbox"
+                  checked={showLahan}
+                  onChange={() => setShowLahan((v) => !v)}
+                />
+                <span>Luas Lahan</span>
+              </label>
+
+              <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-gray-100">
+                <input
+                  type="checkbox"
+                  checked={showProduksi}
+                  onChange={() => setShowProduksi((v) => !v)}
+                />
+                <span>Produksi</span>
+              </label>
             </div>
           </div>
-        </div>
-      </aside>
+        </details>
 
-      {/* //! Open Side Menu */}
-      <div
-        className="flex fixed top-[50%] items-center justify-start md:hidden cursor-pointer
-      -translate-x-12"
-      >
-        <div
-          className="-rotate-90 pb-2 px-6"
-          onClick={() => setShowSideMenu(!showSideMenu)}
-        >
-          <div className="flex justify-center items-center bg-stone-300 px-2 rounded-b-md">
-            <p className="text-sm w-full text-white">Filters </p>
-            <DownChevron className="w-6 h-6" color="white" />
-          </div>
+        <div className="w-full sm:w-auto">
+          <label className="mb-1 block font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
+            Download
+          </label>
+
+          <button
+            className={`w-full rounded border px-3 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
+              noDatasetSelected || tableRows.length === 0
+                ? "opacity-50 cursor-not-allowed"
+                : "bg-sky-600 text-white hover:bg-sky-500"
+            }`}
+            onClick={downloadCsv}
+            disabled={noDatasetSelected || tableRows.length === 0}
+          >
+            CSV
+          </button>
         </div>
       </div>
 
-      {/* //! Pop Up Focus - Overlay */}
-      <div
-        className={`${
-          showSideMenu ? "flex" : "hidden"
-        } md:hidden fixed z-3 inset-0 bg-black/50 w-[100vw] h-[100vh]`}
-        onClick={() => setShowSideMenu(false)}
+      <BarCharts
+        chartTitle=""
+        labels={labels}
+        datasets={datasets}
+        stacked={false}
+        datalabel={false}
+        yAxis={true}
+        rotateXLabels={45}
       />
 
-      {/* Main */}
-      <div className="flex flex-col lg:mx-12 mx-8 w-full">
-        <div className="flex w-full">
-          {/* //! HEAD DROPDOWN */}
-          <Link
-            href={"/data"}
-            className="flex justify-center items-center md:pr-6 pr-3 md:py-3 py-0 cursor-pointer"
-          >
-            <LeftChevron className="lg:w-7 lg:h-7 w-5 h-5" />
-          </Link>
+      <div className="mb-12 w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain">
+        <table className="min-w-max table-auto lg:text-sm md:text-[1.5vw] text-[2vw]">
+          <thead className="bg-sky-100">
+            <tr>
+              <th className="whitespace-nowrap px-3 py-2 border border-gray-400">
+                Kabupaten
+              </th>
 
-          <div className="relative flex flex-col justify-center items-center md:my-3 my-0 w-full">
-            <div
-              onClick={() => setShowDropDown(!showDropDown)}
-              className="flex items-center justify-between w-full lg:h-10 h-8 mx-12 px-3 my-3 rounded-lg mt-6 mb-6 border border-stone-100 cursor-pointer shadow-md"
-            >
-              <p className="lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-                Lihat Data Lainnya
-              </p>
-              <DownChevron
-                className={`${showDropDown ? "hidden" : "flex"} lg:w-7 lg:h-7 w-4 h-4`}
-              />
-              <UpChevron
-                className={`${showDropDown ? "flex" : "hidden"} lg:w-7 lg:h-7 w-4 h-4`}
-              />
-            </div>
+              {showRTP && (
+                <th className="whitespace-nowrap px-3 py-2 border border-gray-400">
+                  RTP
+                </th>
+              )}
 
-            {/* //! DROPDOWN */}
-            <div
-              className={`${
-                showDropDown ? "flex" : "hidden"
-              } flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
-            >
-              {pages.map((e, idx) => {
-                if (e.title === "Home") return;
+              {showPembudi && (
+                <th className="whitespace-nowrap px-3 py-2 border border-gray-400">
+                  Pembudidaya (org)
+                </th>
+              )}
 
-                return (
-                  <Link
-                    href={`/data/${e.slug}`}
-                    key={idx}
-                    onClick={() => {
-                      setShowDropDown(false);
-                    }}
-                    className="px-3 py-1.5 hover:bg-stone-100 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                  >
-                    <h5>{e.title}</h5>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+              {showLahan && (
+                <th className="whitespace-nowrap px-3 py-2 border border-gray-400">
+                  Luas Lahan (ha)
+                </th>
+              )}
 
-        {/* Title */}
-        <h2 className="md:mb-6 mb-3">{TITLE}</h2>
+              {showProduksi && (
+                <th className="whitespace-nowrap px-3 py-2 border border-gray-400">
+                  Produksi (ton)
+                </th>
+              )}
+            </tr>
+          </thead>
 
-        {/* //! TOP CONTROL (desktop only) */}
-        <div className="hidden md:flex gap-x-3 md:gap-y-2 gap-y-1 flex-wrap mb-6">
-          {/* Tahun */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Tahun
-            </label>
-            <div>
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={selectedYear === "all" ? "all" : String(selectedYear)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSelectedYear(v === "all" ? "all" : Number(v));
-                }}
-              >
-                <option value="all">Semua</option>
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Datasets */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Datasets
-            </label>
-            <div className="flex gap-2">
-              <button
-                className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  showRTP
-                    ? "bg-orange-500 text-white border-orange-500"
-                    : "bg-white"
-                }`}
-                onClick={() => setShowRTP((v) => !v)}
-              >
-                RTP
-              </button>
-              <button
-                className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  showPembudi
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "bg-white"
-                }`}
-                onClick={() => setShowPembudi((v) => !v)}
-              >
-                Pembudidaya
-              </button>
-              <button
-                className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  showLahan
-                    ? "bg-purple-600 text-white border-purple-600"
-                    : "bg-white"
-                }`}
-                onClick={() => setShowLahan((v) => !v)}
-              >
-                Luas Lahan
-              </button>
-              <button
-                className={`px-3 py-1 rounded border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  showProduksi
-                    ? "bg-sky-600 text-white border-sky-600"
-                    : "bg-white"
-                }`}
-                onClick={() => setShowProduksi((v) => !v)}
-              >
-                Produksi
-              </button>
-            </div>
-          </div>
-
-          {/* Sorting */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Urutkan
-            </label>
-            <div className="flex gap-3">
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as "value" | "kab")}
-              >
-                <option value="value">Nilai</option>
-                <option value="kab">Nama</option>
-              </select>
-              <select
-                className="rounded border px-2 py-1 lg:text-sm md:text-[1.5vw] text-[2.8vw]"
-                value={order}
-                onChange={(e) => setOrder(e.target.value as "asc" | "desc")}
-              >
-                <option value="desc">Atas</option>
-                <option value="asc">Bawah</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Download */}
-          <div>
-            <label className="font-medium lg:text-sm md:text-[1.5vw] text-[2.8vw]">
-              Download
-            </label>
-            <div>
-              <button
-                className={`px-3 py-1 rounded w-full border lg:text-sm md:text-[1.5vw] text-[2.8vw] ${
-                  noDatasetSelected || tableRows.length === 0
-                    ? "opacity-50 cursor-not-allowed"
-                    : "bg-sky-600 text-white hover:bg-sky-500"
-                }`}
-                onClick={downloadCsv}
-                disabled={noDatasetSelected || tableRows.length === 0}
-              >
-                CSV
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <BarCharts
-          chartTitle=""
-          labels={labels}
-          datasets={datasets}
-          stacked={false}
-          datalabel={false}
-          yAxis={true}
-          rotateXLabels={45}
-        />
-
-        {/* Table */}
-        <div className="overflow-x-auto mb-12">
-          <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-            <thead className="bg-sky-100">
+          <tbody>
+            {tableRows.length === 0 ? (
               <tr>
-                <th className="px-3 py-2 border border-gray-400">Kabupaten</th>
+                <td
+                  className="px-3 py-3 text-gray-500"
+                  colSpan={
+                    1 +
+                    Number(showRTP) +
+                    Number(showPembudi) +
+                    Number(showLahan) +
+                    Number(showProduksi)
+                  }
+                >
+                  Tidak ada data untuk filter saat ini.
+                </td>
+              </tr>
+            ) : (
+              tableRows.map((row) => (
+                <tr key={row.kab}>
+                  <td className="whitespace-nowrap px-3 py-2 border border-gray-400">
+                    {row.kab}
+                  </td>
+
+                  {showRTP && (
+                    <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right">
+                      {nf.format(row.rtp)}
+                    </td>
+                  )}
+
+                  {showPembudi && (
+                    <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right">
+                      {nf.format(row.pembudi)}
+                    </td>
+                  )}
+
+                  {showLahan && (
+                    <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right">
+                      {nf.format(row.lahan)}
+                    </td>
+                  )}
+
+                  {showProduksi && (
+                    <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right">
+                      {nf.format(row.prod / 1000)}
+                    </td>
+                  )}
+                </tr>
+              ))
+            )}
+          </tbody>
+
+          {tableRows.length > 0 && (
+            <tfoot className="bg-sky-50">
+              <tr>
+                <td className="whitespace-nowrap px-3 py-2 border border-gray-400 font-semibold">
+                  Jumlah
+                </td>
+
                 {showRTP && (
-                  <th className="px-3 py-2 border border-gray-400">RTP</th>
+                  <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right font-semibold">
+                    {nf.format(grand.rtp)}
+                  </td>
                 )}
+
                 {showPembudi && (
-                  <th className="px-3 py-2 border border-gray-400 wrap-anywhere">
-                    {"Pembudidaya (org)"}
-                  </th>
+                  <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right font-semibold">
+                    {nf.format(grand.pembudi)}
+                  </td>
                 )}
+
                 {showLahan && (
-                  <th className="px-3 py-2 border border-gray-400">
-                    {"Luas Lahan (ha)"}
-                  </th>
+                  <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right font-semibold">
+                    {nf.format(grand.lahan)}
+                  </td>
                 )}
+
                 {showProduksi && (
-                  <th className="px-3 py-2 border border-gray-400">
-                    {"Produksi (ton)"}
-                  </th>
+                  <td className="whitespace-nowrap px-3 py-2 border border-gray-400 text-right font-semibold">
+                    {nf.format(grand.prod / 1000)}
+                  </td>
                 )}
               </tr>
-            </thead>
-            <tbody>
-              {tableRows.length === 0 ? (
-                <tr>
-                  <td
-                    className="px-3 py-3 text-gray-500"
-                    colSpan={
-                      2 +
-                      Number(showRTP) +
-                      Number(showPembudi) +
-                      Number(showLahan) +
-                      Number(showProduksi)
-                    }
-                  >
-                    Tidak ada data untuk filter saat ini.
-                  </td>
-                </tr>
-              ) : (
-                tableRows.map((r) => (
-                  <tr key={r.kab}>
-                    <td className="px-3 py-2 border border-gray-400">
-                      {r.kab}
-                    </td>
-                    {showRTP && (
-                      <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.rtp)}
-                      </td>
-                    )}
-                    {showPembudi && (
-                      <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.pembudi)}
-                      </td>
-                    )}
-                    {showLahan && (
-                      <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.lahan)}
-                      </td>
-                    )}
-                    {showProduksi && (
-                      <td className="px-3 py-2 border border-gray-400 text-right">
-                        {nf.format(r.prod / 1000)}
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-
-            {tableRows.length > 0 && (
-              <tfoot className="bg-sky-50">
-                <tr>
-                  <td className="px-3 py-2 border border-gray-400 font-semibold">
-                    Jumlah
-                  </td>
-                  {showRTP && (
-                    <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.rtp)}
-                    </td>
-                  )}
-                  {showPembudi && (
-                    <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.pembudi)}
-                    </td>
-                  )}
-                  {showLahan && (
-                    <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.lahan)}
-                    </td>
-                  )}
-                  {showProduksi && (
-                    <td className="px-3 py-2 border border-gray-400 text-right font-semibold">
-                      {nf.format(grand.prod / 1000)}
-                    </td>
-                  )}
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+            </tfoot>
+          )}
+        </table>
       </div>
     </div>
   );

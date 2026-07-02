@@ -344,6 +344,7 @@ export default function AdminMitraDataset() {
               action={action}
               saveData={saveData}
               onSignalAction={handleSignalAction}
+              role={role}
             />
           )}
 

@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DownChevron, UpChevron } from "@/public/icons/iconSets";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CardData from "../components/CardData";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
-type DataPageOption = {
+export type DataPageOption = {
   title: string;
   slug: string;
 };
 
-type PublishedMitraDataset = {
+export type PublishedMitraDataset = {
   id: string;
   label: string | null;
 };
@@ -28,8 +27,8 @@ function toSlug(value: string) {
 }
 
 export default function Page() {
-  const [viewData, setViewData] = useState("Home");
-  const [showDropDown, setShowDropDown] = useState(false);
+  const router = useRouter();
+
   const [publishedDatasets, setPublishedDatasets] = useState<DataPageOption[]>(
     [],
   );
@@ -42,12 +41,8 @@ export default function Page() {
         slug: "produksi-perikanan-kabupaten",
       },
       {
-        title: "Produksi Perikanan Tangkap per Kelas Komoditas",
-        slug: "produksi-kelas-komoditas",
-      },
-      {
-        title: "Produksi Perikanan Tangkap per Jenis Komoditas",
-        slug: "produksi-jenis-komoditas",
+        title: "Produksi Perikanan Tangkap per Komoditas",
+        slug: "produksi-komoditas",
       },
       {
         title: "Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara",
@@ -71,7 +66,7 @@ export default function Page() {
         const { data, error } = await supabase
           .from("data_mitra")
           .select("id, label")
-          .eq("published", "true")
+          .eq("published", "approved")
           .order("label", { ascending: true });
 
         if (error) throw error;
@@ -106,69 +101,43 @@ export default function Page() {
   }, [title, publishedDatasets]);
 
   return (
-    <section className="flex flex-col min-h-[100vh]">
-      <div
-        className={`${
-          viewData === title[0].title ? "flex" : "hidden"
-        } flex flex-col lg:mx-12 2xl:mx-24 mx-8 lg:my-12 my-8`}
-      >
+    <section className="flex min-h-[100vh] flex-col">
+      <div className="flex flex-col lg:mx-12 2xl:mx-24 mx-8 lg:my-12 my-8">
         <div>
           <h2>Data Kelautan Perikanan</h2>
           <h5>Data seputar Kelautan dan Perikanan di Provinsi Maluku Utara</h5>
         </div>
 
-        {/* //! DROPDOWN HEAD */}
-        <div
-          className={`${
-            viewData === title[0].title ? "flex" : "hidden"
-          } relative flex flex-col justify-center items-center`}
-        >
-          <div
-            onClick={() => setShowDropDown((prev) => !prev)}
-            className="flex items-center justify-between w-full h-10 mx-12 px-3 border rounded-lg mt-6 cursor-pointer"
+        {/* Regular Dropdown */}
+        <div className="mt-6 w-full">
+          <select
+            defaultValue=""
+            onChange={(event) => {
+              const slug = event.target.value;
+
+              if (!slug) return;
+
+              router.push(`/data/${slug}`);
+            }}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm shadow-sm"
           >
-            <h5>{viewData === "Home" ? "Pilih Dataset" : viewData}</h5>
+            <option value="" disabled>
+              Pilih Dataset
+            </option>
 
-            <DownChevron
-              width={20}
-              height={20}
-              className={showDropDown ? "hidden" : "flex"}
-            />
-
-            <UpChevron
-              width={20}
-              height={20}
-              className={showDropDown ? "flex" : "hidden"}
-            />
-          </div>
-
-          {/* //! DROPDOWN */}
-          <div
-            className={`${
-              showDropDown ? "flex" : "hidden"
-            } flex-col w-full py-1.5 border rounded-lg absolute z-10 top-17 bg-white cursor-pointer`}
-          >
             {dropdownOptions.map((item) => {
               if (item.title === "Home") return null;
 
               return (
-                <Link
-                  key={item.slug}
-                  href={`/data/${item.slug}`}
-                  onClick={() => {
-                    setShowDropDown(false);
-                    setViewData(item.title);
-                  }}
-                  className="px-3 py-1.5 hover:bg-stone-100"
-                >
-                  <h5>{item.title}</h5>
-                </Link>
+                <option key={item.slug} value={item.slug}>
+                  {item.title}
+                </option>
               );
             })}
-          </div>
+          </select>
         </div>
 
-        <div className="flex flex-wrap justify-between md:justify-start lg:gap-10 gap-6 w-full mt-12">
+        <div className="mt-12 flex w-full flex-wrap justify-between gap-6 md:justify-start lg:gap-10">
           <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Tangkap, Budidaya"
@@ -181,9 +150,9 @@ export default function Page() {
           <div className="w-[45%] md:w-[30%]">
             <CardData
               tag="Tangkap"
-              title="Produksi Perikanan Tangkap per Kelas Komoditas"
+              title="Produksi Perikanan Tangkap per Komoditas"
               image="/assets/pic_data_perikanan_kelas.png"
-              link="/data/produksi-kelas-komoditas"
+              link="/data/produksi-komoditas"
             />
           </div>
 

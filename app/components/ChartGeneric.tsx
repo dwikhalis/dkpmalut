@@ -7,6 +7,7 @@ import DataPublishTable, {
   type FilterConfig,
 } from "./DataPublishTable";
 import DataPublishChart from "./DataPublishChart";
+import DataPageDropdown from "./DataPageDropdown";
 
 type DataMitraPublishedRow = {
   id: string;
@@ -14,11 +15,12 @@ type DataMitraPublishedRow = {
   column_config: ColumnConfig[] | string | null;
   filter_config: FilterConfig[] | string | null;
   main_column_config: string[] | string | null;
-  published?: boolean | string | null;
+  published?: "approved" | "requested" | "rejected" | null;
 };
 
 type Props = {
   slug: string;
+  pages: { title: string; slug: string }[];
 };
 
 function toSlug(value: string) {
@@ -47,7 +49,7 @@ function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
   }
 }
 
-export default function ChartGeneric({ slug }: Props) {
+export default function ChartGeneric({ slug, pages }: Props) {
   const [loading, setLoading] = useState(true);
   const [dataset, setDataset] = useState<DataMitraPublishedRow | null>(null);
 
@@ -61,7 +63,7 @@ export default function ChartGeneric({ slug }: Props) {
           .select(
             "id, label, column_config, filter_config, main_column_config, published",
           )
-          .eq("published", "true")
+          .eq("published", "approved")
           .order("label", { ascending: true });
 
         if (error) throw error;
@@ -135,7 +137,8 @@ export default function ChartGeneric({ slug }: Props) {
   }
 
   return (
-    <section className="flex min-h-[100vh] w-full flex-col px-4 py-8 md:px-10 lg:px-16">
+    <section className="flex min-h-[100vh] w-full flex-col px-8 md:px-10 lg:px-16">
+      <DataPageDropdown pages={pages} />
       <div className="mb-8">
         <h2 className="font-bold">{dataset.label ?? "Dataset"}</h2>
       </div>

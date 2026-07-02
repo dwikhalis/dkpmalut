@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DownChevron, LeftChevron, UpChevron } from "@/public/icons/iconSets";
+import { DownChevron, UpChevron } from "@/public/icons/iconSets";
 import "leaflet/dist/leaflet.css";
-import Link from "next/link";
 import MapKKD_dynamic from "./MapKKD_dynamic";
 import {
   ZONA_ORDER,
@@ -17,6 +16,9 @@ import {
   type SelectedKkdId,
   type ZoneFeatureCollection,
 } from "./configKKD";
+import DataPageDropdown from "./DataPageDropdown";
+import Image from "next/image";
+import Link from "next/link";
 
 type Pages = { title: string; slug: string }[];
 
@@ -83,7 +85,6 @@ function getZonaLabel(zona: string) {
 }
 
 export default function ChartKKD({ pages }: Props) {
-  const [showDropDown, setShowDropDown] = useState(false);
   const [legend, setLegend] = useState<LegendValue>("All");
   const [kkd, setKkd] = useState<SelectedKkdId>("");
   const [showSideMenu, setShowSideMenu] = useState(false);
@@ -239,7 +240,7 @@ export default function ChartKKD({ pages }: Props) {
                           <p className="mt-0 text-xs text-white/80">Sub Zona</p>
                         )}
 
-                        {group.items.map((itemValue, itemIndex) => {
+                        {group.items.map((itemValue) => {
                           const item = LEGEND_ITEMS[itemValue];
 
                           if (!item) return null;
@@ -357,58 +358,15 @@ export default function ChartKKD({ pages }: Props) {
 
       <div className="mx-8 flex w-full flex-col lg:mx-12">
         {/* //! HEAD DROPDOWN */}
-        <div className="flex w-full">
-          <Link
-            href="/data"
-            className="flex cursor-pointer items-center justify-center py-0 pr-3 md:py-3 md:pr-6"
-          >
-            <LeftChevron className="h-5 w-5 lg:h-7 lg:w-7" />
-          </Link>
-
-          {/* //! DROPDOWN */}
-          <div className="relative my-0 flex w-full flex-col items-center justify-center md:my-3">
-            <div
-              onClick={() => setShowDropDown((prev) => !prev)}
-              className="my-3 mt-6 mb-6 flex h-8 w-full cursor-pointer items-center justify-between rounded-lg border border-stone-100 px-3 shadow-md lg:h-10"
-            >
-              <p className="text-[2.8vw] md:text-[1.5vw] lg:text-sm">
-                Lihat Data Lainnya
-              </p>
-
-              {showDropDown ? (
-                <UpChevron className="h-4 w-4 lg:h-7 lg:w-7" />
-              ) : (
-                <DownChevron className="h-4 w-4 lg:h-7 lg:w-7" />
-              )}
-            </div>
-
-            <div
-              className={`
-                ${showDropDown ? "flex" : "hidden"} absolute top-17 z-10 w-full cursor-pointer flex-col rounded-lg border bg-white py-1.5`}
-            >
-              {pages
-                .filter((page) => page.title !== "Home")
-                .map((page) => (
-                  <Link
-                    href={`/data/${page.slug}`}
-                    key={page.slug}
-                    onClick={() => setShowDropDown(false)}
-                    className="px-3 py-1.5 text-[2.8vw] hover:bg-stone-100 md:text-[1.5vw] lg:text-sm"
-                  >
-                    <h5>{page.title}</h5>
-                  </Link>
-                ))}
-            </div>
-          </div>
-        </div>
+        <DataPageDropdown pages={pages} />
 
         {/* //! MAIN TITLE */}
         <h2 className="mb-3">Kawasan Konservasi Daerah</h2>
 
-        <div className="mb-6 flex justify-between">
+        <div className="flex justify-between mb-6">
           <form className="w-full">
             <select
-              className="w-full rounded-xl border border-stone-200 p-2"
+              className="w-full rounded-sm border border-black p-2"
               value={kkd}
               onChange={(e) => {
                 const value = e.target.value as SelectedKkdId;
@@ -423,7 +381,7 @@ export default function ChartKKD({ pages }: Props) {
               <option value="">Pilih Kawasan Konservasi</option>
 
               {KKD_OPTIONS.map((option) => (
-                <option key={option.id} className="text-xs" value={option.id}>
+                <option key={option.id} className="text-sm" value={option.id}>
                   {option.label}
                 </option>
               ))}
@@ -451,6 +409,27 @@ export default function ChartKKD({ pages }: Props) {
             <div />
           </div>
         </div>
+
+        {kkd && (
+          <Link
+            target="_blank"
+            rel="noopener"
+            href={
+              KKD_OPTIONS.find((option) => option.id === kkd)?.data_link || "#"
+            }
+            className="flex justify-between items-center w-full rounded-md border border-stone-200 p-4 bg-sky-800 mb-6"
+          >
+            <p className="text-md text-white">Lihat Data Ekologi</p>
+            <Image
+              src="/assets/mermaid_logo.svg"
+              alt="datamermaid"
+              width={1}
+              height={1}
+              priority
+              className="h-10 w-30 object-contain"
+            />
+          </Link>
+        )}
       </div>
     </div>
   );
