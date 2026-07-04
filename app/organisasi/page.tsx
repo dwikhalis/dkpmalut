@@ -1,8 +1,7 @@
 //! Force page to load fresh data each render
 export const revalidate = 0;
 
-import React from "react";
-import StaffList from "../components/ListManager";
+import ListManager from "../components/ListManager";
 
 export default function Page() {
   return (
@@ -16,12 +15,12 @@ export default function Page() {
         </div>
         {/* //! DESKTOP */}
         <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          <StaffList admin={false} type="staff" />
+          <ListManager admin={false} type="staff" />
         </div>
 
         {/* //! MOBILE */}
         <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          <StaffList admin={false} type="staff" />
+          <ListManager admin={false} type="staff" />
         </div>
       </section>
     </>

@@ -78,7 +78,7 @@ export default function SectionAddr() {
       </Reveal>
 
       {/* Mobile */}
-      <Reveal animation="fade-up" className="md:hidden bg-sky-300 pb-6">
+      <Reveal animation="fade-up" className="md:hidden  pb-6">
         <div className="flex flex-col gap-6 py-6 mx-6 pb-6 justify-center items-center bg-sky-100 rounded-4xl shadow-xl">
           <Reveal
             animation="fade-up"

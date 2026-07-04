@@ -63,7 +63,7 @@ export default function SectionGallery() {
       </Reveal>
 
       {/* Mobile */}
-      <Reveal animation="fade-up" className="md:hidden bg-sky-300 pb-10">
+      <Reveal animation="fade-up" className="md:hidden  pb-10">
         <div className="flex flex-col gap-3 py-6 mx-6 justify-center items-center bg-sky-100 rounded-4xl shadow-xl">
           <Reveal
             animation="fade-up"

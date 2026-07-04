@@ -340,7 +340,7 @@ function NewsMovingCarousel({
   return (
     <div
       ref={viewportRef}
-      className="news-marquee w-full max-w-full overflow-hidden pt-3 pb-20 mt-3"
+      className="news-marquee w-full max-w-full pt-3 pb-20 mt-3"
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
       onPointerDown={handlePointerDown}
@@ -431,7 +431,6 @@ function NewsMovingCarousel({
 
         .news-card-scale {
           position: relative;
-          opacity: var(--news-opacity, 0.6);
           filter: saturate(var(--news-saturation, 0.85));
           transform: scale(var(--news-scale, 0.88));
           transform-origin: center center;
@@ -550,7 +549,7 @@ export default function SectionNews() {
 
       {/* Mobile */}
       <Reveal animation="fade-up" className="md:hidden block pb-10">
-        <div className="relative flex flex-col gap-3 py-6 mx-6 2xl:mx-24 justify-center items-center bg-sky-100 rounded-4xl shadow-xl overflow-hidden">
+        <div className="relative flex flex-col gap-3 py-6 mx-6 2xl:mx-24 justify-center items-center bg-sky-100 rounded-4xl shadow-xl ">
           <Reveal animation="fade-up" delay={80}>
             <h2 className="text-center">BERITA TERKINI</h2>
             <h5 className="text-center mx-12">
@@ -558,7 +557,7 @@ export default function SectionNews() {
             </h5>
           </Reveal>
 
-          <div className="flex w-full overflow-hidden">
+          <div className="flex w-full ">
             {loading ? (
               <p className="text-center w-full">Loading...</p>
             ) : (

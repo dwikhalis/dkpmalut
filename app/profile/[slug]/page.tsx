@@ -5,6 +5,7 @@ import AdminMessage from "@/app/components/AdminMessage";
 import AdminPages from "@/app/components/AdminPages";
 import AdminSideMenu from "@/app/components/AdminSideMenu";
 import AdminUsers from "@/app/components/AdminUsers";
+import LabelCMS from "@/app/components/LabelCMS";
 import { useAuthStore } from "@/app/Stores/authStores";
 import { useParams } from "next/navigation";
 
@@ -33,6 +34,7 @@ export default function page() {
         {slug === "pesan" && <AdminMessage />}
         {slug === "data" && <AdminData />}
         {slug === "pengguna" && <AdminUsers />}
+        {slug === "label-cms" && <LabelCMS />}
       </div>
     </div>
   );

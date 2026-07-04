@@ -487,3 +487,88 @@ export const saveMitraJsonbRows = async (
     throw error;
   }
 };
+
+//! ========== APP LABELS CMS ========== //
+
+export async function getAppLabels(component: string, locale = "id") {
+  const { data, error } = await supabase
+    .from("app_labels")
+    .select("target, value")
+    .eq("component", component)
+    .eq("locale", locale)
+    .eq("is_active", true);
+
+  if (error) {
+    console.error(error.message);
+    return {};
+  }
+
+  return (data || []).reduce<Record<string, string>>((acc, item) => {
+    acc[item.target] = item.value || "";
+    return acc;
+  }, {});
+}
+
+// ! ICON PICKER
+
+const IMAGE_BUCKET = "images";
+const ICON_FOLDER = "icon_images";
+
+export type IconImage = {
+  name: string;
+  path: string;
+  url: string;
+};
+
+function isImageFile(filename: string) {
+  return /\.(png|jpe?g|webp|gif|svg)$/i.test(filename);
+}
+
+async function listImagesRecursive(folderPath: string): Promise<IconImage[]> {
+  const { data, error } = await supabase.storage
+    .from(IMAGE_BUCKET)
+    .list(folderPath, {
+      limit: 500,
+      sortBy: {
+        column: "name",
+        order: "asc",
+      },
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const results: IconImage[] = [];
+
+  for (const item of data || []) {
+    const path = `${folderPath}/${item.name}`;
+
+    // Supabase folders usually do not have metadata/id like normal files.
+    const isLikelyFolder = !item.id && !isImageFile(item.name);
+
+    if (isLikelyFolder) {
+      const nestedImages = await listImagesRecursive(path);
+      results.push(...nestedImages);
+      continue;
+    }
+
+    if (!isImageFile(item.name)) continue;
+
+    const { data: publicData } = supabase.storage
+      .from(IMAGE_BUCKET)
+      .getPublicUrl(path);
+
+    results.push({
+      name: item.name,
+      path,
+      url: publicData.publicUrl,
+    });
+  }
+
+  return results;
+}
+
+export async function getIconImages(): Promise<IconImage[]> {
+  return listImagesRecursive(ICON_FOLDER);
+}

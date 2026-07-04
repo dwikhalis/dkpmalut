@@ -78,6 +78,10 @@ export default function AdminSideMenu({ slug, userRole }: Props) {
       label: "Pengguna",
       slug: "pengguna",
     },
+    {
+      label: "Label CMS",
+      slug: "label-cms",
+    },
   ];
 
   const partnerMenus = [

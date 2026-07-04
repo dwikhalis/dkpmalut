@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { FaFacebook, FaInstagram, FaYoutube } from "react-icons/fa";
+import { FaFacebook, FaInstagram, FaYoutube, FaTiktok } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 
 export default function Footer() {
+  const socmed_facebook = "#";
+  const socmed_instagram = "#";
+  const socmed_youtube = "#";
+  const socmed_xtwitter = "";
+  const socmed_tiktok = "";
+
   return (
     <>
       {/* //! DESKTOP */}
@@ -14,24 +21,31 @@ export default function Footer() {
           </Link>
           <br />
           <div className="flex h-10 gap-4 items-center">
-            <Link
-              href="#"
-              className="text-stone-600 hover:text-blue-700 text-2xl"
-            >
-              <FaFacebook className="text-white" />
-            </Link>
-            <Link
-              href="#"
-              className="text-stone-600 hover:text-pink-700 text-2xl"
-            >
-              <FaInstagram className="text-white" />
-            </Link>
-            <Link
-              href="#"
-              className="text-stone-600 hover:text-red-700 text-2xl"
-            >
-              <FaYoutube className="text-white" />
-            </Link>
+            {socmed_facebook && (
+              <Link href={socmed_facebook}>
+                <FaFacebook className="text-white" />
+              </Link>
+            )}
+            {socmed_instagram && (
+              <Link href={socmed_instagram}>
+                <FaInstagram className="text-white" />
+              </Link>
+            )}
+            {socmed_youtube && (
+              <Link href={socmed_youtube}>
+                <FaYoutube className="text-white" />
+              </Link>
+            )}
+            {socmed_xtwitter && (
+              <Link href={socmed_xtwitter}>
+                <FaXTwitter className="text-white" />
+              </Link>
+            )}
+            {socmed_tiktok && (
+              <Link href={socmed_tiktok}>
+                <FaTiktok className="text-white" />
+              </Link>
+            )}
           </div>
         </div>
 
@@ -186,24 +200,31 @@ export default function Footer() {
         <div className="pt-6">
           {/* Middle */}
           <div className="flex h-10 gap-4 items-center justify-center">
-            <Link
-              href="#"
-              className="text-stone-600 hover:text-blue-700 text-2xl"
-            >
-              <FaFacebook className="text-white" />
-            </Link>
-            <Link
-              href="#"
-              className="text-stone-600 hover:text-pink-700 text-2xl"
-            >
-              <FaInstagram className="text-white" />
-            </Link>
-            <Link
-              href="#"
-              className="text-stone-600 hover:text-red-700 text-2xl"
-            >
-              <FaYoutube className="text-white" />
-            </Link>
+            {socmed_facebook && (
+              <Link href={socmed_facebook}>
+                <FaFacebook className="text-white" />
+              </Link>
+            )}
+            {socmed_instagram && (
+              <Link href={socmed_instagram}>
+                <FaInstagram className="text-white" />
+              </Link>
+            )}
+            {socmed_youtube && (
+              <Link href={socmed_youtube}>
+                <FaYoutube className="text-white" />
+              </Link>
+            )}
+            {socmed_xtwitter && (
+              <Link href={socmed_xtwitter}>
+                <FaXTwitter className="text-white" />
+              </Link>
+            )}
+            {socmed_tiktok && (
+              <Link href={socmed_tiktok}>
+                <FaTiktok className="text-white" />
+              </Link>
+            )}
           </div>
 
           {/* BOTTOM SIDE */}

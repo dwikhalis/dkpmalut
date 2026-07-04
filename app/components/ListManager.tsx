@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   deleteData,
@@ -25,8 +25,10 @@ interface DataTypes {
   photo?: string;
   title?: string;
   division?: string;
+  division_long?: string;
   gender?: string;
   tag?: string;
+  tag_long?: string;
   date?: string;
   content?: string;
   source?: string;
@@ -37,17 +39,23 @@ interface DataTypes {
   status?: string;
 }
 
-const typeConfig = {
+type DataKey = keyof DataTypes;
+
+type TypeConfigItem = {
+  fetch: () => Promise<DataTypes[] | null | undefined>;
+  table: string;
+  groupKey: DataKey;
+  labelField: DataKey;
+  titleField: DataKey;
+  subtitleField: DataKey;
+};
+
+const typeConfig: Record<Prop["type"], TypeConfigItem> = {
   staff: {
     fetch: getStaff,
     table: "staff",
     groupKey: "division",
-    labels: {
-      PRL: "Bidang Pemanfaatan Ruang Laut (PRL)",
-      Budidaya: "Bidang Budidaya",
-      Penangkapan: "Bidang Penangkapan",
-      PSDKP: "Bidang Pengawasan Sumber Daya Kelautan dan Perikanan (PSDKP)",
-    },
+    labelField: "division_long",
     titleField: "name",
     subtitleField: "title",
   },
@@ -55,11 +63,7 @@ const typeConfig = {
     fetch: getNews,
     table: "news",
     groupKey: "tag",
-    labels: {
-      Artikel: "Artikel",
-      Berita: "Berita",
-      Peraturan: "Peraturan",
-    },
+    labelField: "tag_long",
     titleField: "title",
     subtitleField: "date",
   },
@@ -67,15 +71,23 @@ const typeConfig = {
     fetch: getGallery,
     table: "gallery",
     groupKey: "tag",
-    labels: {
-      Alam: "Keindahan Alam Maluku Utara",
-      Kegiatan: "Kegiatan DKP Maluku Utara",
-      Lainnya: "Lainnya",
-    },
+    labelField: "tag_long",
     titleField: "title",
     subtitleField: "date",
   },
-} as const;
+};
+
+type LabelRow = Record<string, string | null>;
+
+function formatDate(value?: string) {
+  if (!value) return "";
+
+  return new Date(value).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function ListManager({
   admin,
@@ -83,6 +95,7 @@ export default function ListManager({
   sendToParent = () => {},
 }: Prop) {
   const [data, setData] = useState<DataTypes[]>([]);
+  const [labels, setLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
   const [confirmAction, setConfirmAction] = useState<[boolean, string]>([
@@ -90,14 +103,61 @@ export default function ListManager({
     "",
   ]);
 
-  const { fetch, table, groupKey, labels, titleField, subtitleField } =
+  const { fetch, table, groupKey, labelField, titleField, subtitleField } =
     typeConfig[type];
 
   useEffect(() => {
+    let mounted = true;
+
+    async function fetchLabels() {
+      const groupColumn = String(groupKey);
+      const labelColumn = String(labelField);
+
+      const selectColumns =
+        groupColumn === labelColumn
+          ? groupColumn
+          : `${groupColumn}, ${labelColumn}`;
+
+      const { data: rows, error } = await supabase
+        .from(table)
+        .select(selectColumns);
+
+      if (error) {
+        console.error(`Failed to fetch labels from ${table}:`, error.message);
+
+        if (mounted) {
+          setLabels({});
+        }
+
+        return;
+      }
+
+      const typedRows = (rows || []) as unknown as LabelRow[];
+      const nextLabels: Record<string, string> = {};
+
+      typedRows.forEach((row) => {
+        const key = row[groupColumn]?.trim();
+        const value = row[labelColumn]?.trim();
+
+        if (!key) return;
+
+        nextLabels[key] = value || key;
+      });
+
+      if (mounted) {
+        setLabels(nextLabels);
+      }
+    }
+
     async function fetchData() {
-      const result = await fetch();
-      setData(result || []);
-      setLoading(false);
+      setLoading(true);
+
+      const [result] = await Promise.all([fetch(), fetchLabels()]);
+
+      if (mounted) {
+        setData(result || []);
+        setLoading(false);
+      }
     }
 
     fetchData();
@@ -107,122 +167,126 @@ export default function ListManager({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        fetchData
+        fetchData,
       )
       .subscribe();
 
     return () => {
+      mounted = false;
       channel.unsubscribe();
     };
-  }, [fetch, table]);
+  }, [fetch, table, groupKey, labelField]);
 
   async function actionConfirmed(confirmation: boolean) {
     const dataId = confirmAction[1];
-    if (confirmation) {
-      setLoadingAction(true);
-      const executed = await deleteData(type, dataId);
-      if (executed) {
-        setLoadingAction(false);
-        setConfirmAction([true, ""]);
-      } else {
-        setConfirmAction([false, ""]);
-      }
+
+    if (!confirmation) {
+      setConfirmAction([false, ""]);
+      return;
+    }
+
+    setLoadingAction(true);
+
+    const executed = await deleteData(type, dataId);
+
+    setLoadingAction(false);
+
+    if (executed) {
+      setConfirmAction([true, ""]);
     } else {
       setConfirmAction([false, ""]);
     }
   }
 
+  const groupedData = useMemo(() => {
+    return data.reduce(
+      (acc, item) => {
+        const key = String(item[groupKey] || "undefined");
+
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+
+        return acc;
+      },
+      {} as Record<string, DataTypes[]>,
+    );
+  }, [data, groupKey]);
+
   if (loading) return <p>Loading...</p>;
   if (!data.length) return <p>Belum ada data terdaftar</p>;
 
-  const groupedData = data.reduce(
-    (acc, item) => {
-      const key = (item[groupKey as keyof DataTypes] as string) ?? "undefined";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    },
-    {} as Record<string, DataTypes[]>
-  );
-
   return (
-    <div className="flex flex-col md:gap-12 gap-6 w-full">
+    <div className="flex w-full flex-col gap-6 md:gap-12">
       {Object.entries(groupedData)
         .sort(([a], [b]) =>
-          a.localeCompare(b, undefined, { sensitivity: "base" })
+          a.localeCompare(b, undefined, { sensitivity: "base" }),
         )
         .map(([key, items]) => (
           <div key={key}>
-            <h4 className="font-bold mb-6 md:mb-12">
-              {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
+            <h4 className="mb-6 font-bold md:mb-12">
+              {key === "undefined" ? "Tidak Terdata" : labels[key] || key}
             </h4>
 
             {items
               .sort((a, b) =>
-                (a[titleField] ?? "").localeCompare(
-                  b[titleField] ?? "",
+                String(a[titleField] || "").localeCompare(
+                  String(b[titleField] || ""),
                   undefined,
                   {
                     sensitivity: "base",
-                  }
-                )
+                  },
+                ),
               )
-              .map((e, idx) => (
+              .map((e) => (
                 <div
-                  key={idx}
-                  className="flex w-full justify-between items-center bg-stone-100 rounded-xl shadow-xl px-3 md:px-10 py-3 my-6"
+                  key={e.id}
+                  className="my-6 flex w-full items-center justify-between rounded-xl bg-stone-100 px-3 py-3 shadow-xl md:px-10"
                 >
-                  <div className="flex md:w-[30%] w-[20%]  items-center justify-center md:justify-start">
+                  <div className="flex w-[20%] items-center justify-center md:w-[30%] md:justify-start">
                     <Image
                       src={e.photo || e.image || "/assets/icon_profile_u.png"}
                       width={120}
                       height={120}
                       alt="photo"
-                      className="object-contain h-12 w-12 md:h-30 md:w-30"
+                      className="h-12 w-12 object-contain md:h-30 md:w-30"
                     />
                   </div>
 
                   {/* Desktop */}
-                  <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
-                    {e[titleField] as string}
+                  <h5 className="hidden w-[30%] break-words text-sm font-bold md:flex">
+                    {String(e[titleField] || "")}
                   </h5>
-                  <h5 className="hidden md:flex text-sm break-words w-[30%]">
-                    {subtitleField === "date" && e.date
-                      ? new Date(e.date).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : (e[subtitleField] as string)}
+
+                  <h5 className="hidden w-[30%] break-words text-sm md:flex">
+                    {subtitleField === "date"
+                      ? formatDate(e.date)
+                      : String(e[subtitleField] || "")}
                   </h5>
 
                   {/* Mobile */}
-                  <div className="flex md:hidden flex-col w-[60%] gap-1 px-2">
-                    <h6 className="text-sm font-bold break-words">
-                      {e[titleField] as string}
+                  <div className="flex w-[60%] flex-col gap-1 px-2 md:hidden">
+                    <h6 className="break-words text-sm font-bold">
+                      {String(e[titleField] || "")}
                     </h6>
-                    <h6 className="text-sm break-words">
-                      {subtitleField === "date" && e.date
-                        ? new Date(e.date).toLocaleDateString("id-ID", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })
-                        : (e[subtitleField] as string)}
+
+                    <h6 className="break-words text-sm">
+                      {subtitleField === "date"
+                        ? formatDate(e.date)
+                        : String(e[subtitleField] || "")}
                     </h6>
                   </div>
 
-                  {/* Admin Buttons */}
                   {admin && (
                     <div className="flex gap-2">
                       <div
-                        className="flex w-8 h-8 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
+                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-sky-500"
                         onClick={() => sendToParent(e)}
                       >
                         <Edit className="size-6 text-white" />
                       </div>
+
                       <div
-                        className="flex w-8 h-8 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"
+                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-rose-500"
                         onClick={() => setConfirmAction([false, e.id])}
                       >
                         <Delete className="size-6 text-white" />
@@ -234,7 +298,6 @@ export default function ListManager({
           </div>
         ))}
 
-      {/* Confirm Delete */}
       {confirmAction[1] && (
         <AlertNotif
           type="double"
@@ -247,7 +310,6 @@ export default function ListManager({
         />
       )}
 
-      {/* Delete Success */}
       {confirmAction[0] && (
         <AlertNotif
           type="single"
