@@ -4,7 +4,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import { getIconImages, type IconImage } from "@/lib/supabase/supabaseHelper";
+import {
+  getDateTimeStamp,
+  getIconImages,
+  type IconImage,
+} from "@/lib/supabase/supabaseHelper";
 import AlertNotif from "./AlertNotif";
 
 type Locale = "id" | "en";
@@ -25,7 +29,8 @@ type OriginalLabelValue = {
 };
 
 const IMAGE_BUCKET = "images";
-const LABEL_IMAGE_FOLDER = "icon_images";
+const ICON_FOLDER = "icon_images";
+const IMAGE_FOLDER = "assets";
 
 const locales: { value: Locale; label: string }[] = [
   { value: "id", label: "Indonesia" },
@@ -445,11 +450,11 @@ export default function LabelCMS() {
     setMessage(null);
 
     const extension = file.name.split(".").pop() || "png";
-    const filename = `${safeFileName(label.component)}-${safeFileName(
+    const filename = `${safeFileName(
       label.target,
-    )}-${Date.now()}.${extension}`;
+    )}-${getDateTimeStamp(Date.now())}.${extension}`;
 
-    const storagePath = `${LABEL_IMAGE_FOLDER}/${filename}`;
+    const storagePath = `${label.type === "image" ? IMAGE_FOLDER : ICON_FOLDER}/${filename}`;
 
     const { error } = await supabase.storage
       .from(IMAGE_BUCKET)
@@ -627,7 +632,7 @@ export default function LabelCMS() {
           </div>
 
           {isOpen && (
-            <div className="grid max-h-72 grid-cols-4 gap-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-lg md:grid-cols-8">
+            <div className="flex flex-wrap max-h-72 grid-cols-4 gap-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-lg md:grid-cols-8">
               {iconOptions.length === 0 ? (
                 <p className="col-span-4 text-sm text-slate-500 md:col-span-8">
                   Tidak ada icon ditemukan.
@@ -645,7 +650,7 @@ export default function LabelCMS() {
                       );
                       setOpenIconPicker(null);
                     }}
-                    className={`flex h-16 w-full items-center justify-center rounded-lg border bg-slate-50 p-2 hover:border-sky-500 ${
+                    className={`flex h-16 w-[25%] grow items-center justify-center rounded-lg border bg-slate-50 p-2 hover:border-sky-500 ${
                       label.value === icon.path
                         ? "border-sky-500 ring-2 ring-sky-200"
                         : "border-slate-200"

@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseHostname = supabaseUrl ? new URL(supabaseUrl).hostname : "";
+
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     remotePatterns: [
       {
@@ -10,18 +12,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: process.env.NEXT_IMAGE_SUPABASE_URL!,
+        hostname: supabaseHostname,
+        pathname: "/storage/v1/object/public/**",
       },
     ],
   },
-  // webpack: (config, { isServer }) => {
-  //   config.ignoreWarnings = config.ignoreWarnings || [];
-  //   config.ignoreWarnings.push({
-  //     message:
-  //       /Critical dependency: the request of a dependency is an expression/,
-  //   });
-  //   return config;
-  // },
 };
 
 export default nextConfig;

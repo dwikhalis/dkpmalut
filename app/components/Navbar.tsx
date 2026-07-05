@@ -3,14 +3,41 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../Stores/authStores";
 import SpinnerLoading from "./SpinnerLoading";
 import AlertNotif from "./AlertNotif";
 import Button from "./Button";
+import {
+  getAppLabelComponent,
+  getImagePreviewUrl,
+} from "@/lib/supabase/supabaseHelper";
+import { useLocaleStore } from "../Stores/localeStore";
+
+type AppLabels = Record<string, string>;
+
+const navbarFallbackLabels: AppLabels = {
+  org_logo: "/assets/logo_malut.png",
+  org_name_main: "Dinas Kelautan dan Perikanan",
+  org_name_sub: "Provinsi Maluku Utara",
+
+  nav_menu_organization: "Organisasi",
+  nav_menu_news: "Berita",
+  nav_menu_gallery: "Galeri",
+  nav_menu_data: "Data",
+  nav_menu_contact: "Kontak",
+
+  nav_menu_login: "Masuk",
+  nav_menu_loggedin: "Akun",
+  nav_menu_profile: "Dashboard",
+  nav_menu_logout: "Keluar",
+};
 
 export default function Navbar() {
+  //! ===== LANGUAGE SELECTOR TOGGLE ACTIVE / INACTIVE =====
+  const localeIsActive = true;
+
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -20,13 +47,64 @@ export default function Navbar() {
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const [labels, setLabels] = useState<AppLabels>(navbarFallbackLabels);
+  const [localeLoading, setLocaleLoading] = useState(false);
 
   const role = useAuthStore((state) => state.role);
+  const locale = useLocaleStore((state) => state.locale);
+  const setLocale = useLocaleStore((state) => state.setLocale);
+
+  //! GET APP LABELS
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLabels() {
+      setLocaleLoading(true);
+
+      const result = await getAppLabelComponent("navbar", locale);
+
+      if (mounted) {
+        setLabels({
+          ...navbarFallbackLabels,
+          ...result,
+        });
+
+        setLocaleLoading(false);
+      }
+    }
+
+    loadLabels();
+
+    return () => {
+      mounted = false;
+    };
+  }, [locale]);
 
   //! Loading if new page hasn't load
   useEffect(() => {
     setDashboardLoading(false);
   }, [pathname]);
+
+  //! Dropdown "Summary Details" Close When Click Outside
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+
+      document
+        .querySelectorAll<HTMLDetailsElement>("[data-dropdown='true']")
+        .forEach((details) => {
+          if (!details.contains(target)) {
+            details.open = false;
+          }
+        });
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, []);
 
   //! Retractable Navbar
   useEffect(() => {
@@ -67,27 +145,6 @@ export default function Navbar() {
     }
   };
 
-  //! Handle close dropdown menu when click outside
-
-  const accountMenuRef = useRef<HTMLDetailsElement | null>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        accountMenuRef.current &&
-        !accountMenuRef.current.contains(event.target as Node)
-      ) {
-        accountMenuRef.current.open = false;
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   return (
     <>
       {/* //! DESKTOP */}
@@ -105,7 +162,7 @@ export default function Navbar() {
           >
             <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3">
               <Image
-                src="/assets/logo_malut.png"
+                src={getImagePreviewUrl(labels.org_logo)}
                 alt="Logo"
                 className="object-contain"
                 height={600}
@@ -114,9 +171,9 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col justify-center">
               <p className="font-bold md:text-xs lg:text-lg">
-                Dinas Kelautan dan Perikanan
+                {labels.org_name_main}
               </p>
-              <p className="md:text-xs lg:text-lg">Provinsi Maluku Utara</p>
+              <p className="md:text-xs lg:text-lg">{labels.org_name_sub}</p>
             </div>
           </Link>
 
@@ -126,41 +183,89 @@ export default function Navbar() {
               href="/organisasi"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
-              <h6>Organisasi</h6>
+              <h6>{labels.nav_menu_organization}</h6>
             </Link>
             <Link
               href="/berita"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
-              <h6>Berita</h6>
+              <h6>{labels.nav_menu_news}</h6>
             </Link>
             <Link
               href="/galeri"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
-              <h6>Galeri</h6>
+              <h6>{labels.nav_menu_gallery}</h6>
             </Link>
             <Link
               href="/data"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
-              <h6>Data</h6>
+              <h6>{labels.nav_menu_data}</h6>
             </Link>
             <Link
               href="/kontak"
               className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
             >
-              <h6>Kontak</h6>
+              <h6>{labels.nav_menu_contact}</h6>
             </Link>
+
+            {/* //! LANGUAGE SELECTOR */}
+
+            {localeIsActive && (
+              <details
+                data-dropdown="true"
+                className="relative flex items-center group"
+              >
+                <summary className="flex items-center cursor-pointer">
+                  <div className="flex items-center hover:bg-sky-200 text-white rounded-full hover:text-black cursor-pointer">
+                    {localeLoading ? (
+                      <SpinnerLoading size="sm" color="black" />
+                    ) : (
+                      <Image
+                        src={"/assets/icon_locale.png"}
+                        width={30}
+                        height={30}
+                        alt="locale"
+                      />
+                    )}
+                  </div>
+                </summary>
+
+                <div className="absolute top-full right-0 z-50 mt-2 flex min-w-[160px] flex-col rounded-lg border border-gray-300 bg-white shadow-lg p-2">
+                  <button
+                    className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={localeLoading || locale === "id"}
+                    onClick={(e) => {
+                      setLocale("id");
+                      e.currentTarget.closest("details")!.open = false;
+                    }}
+                  >
+                    Bahasa
+                  </button>
+
+                  <button
+                    className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={localeLoading || locale === "en"}
+                    onClick={(e) => {
+                      setLocale("en");
+                      e.currentTarget.closest("details")!.open = false;
+                    }}
+                  >
+                    English
+                  </button>
+                </div>
+              </details>
+            )}
 
             {isLoggedIn ? (
               <details
-                ref={accountMenuRef}
+                data-dropdown="true"
                 className="relative flex items-center group"
               >
                 <summary className="flex items-center cursor-pointer list-none">
                   <span className="flex items-center px-5 py-2 text-xs bg-sky-800 hover:bg-sky-200 text-white rounded-full hover:text-black cursor-pointer">
-                    Akun
+                    {labels.nav_menu_loggedin}
                   </span>
                 </summary>
 
@@ -169,9 +274,9 @@ export default function Navbar() {
                     <button
                       className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
                       disabled={dashboardLoading}
-                      onClick={() => {
+                      onClick={(e) => {
                         setDashboardLoading(true);
-                        accountMenuRef.current!.open = false;
+                        e.currentTarget.closest("details")!.open = false;
                         router.push("/profile");
                       }}
                     >
@@ -185,20 +290,21 @@ export default function Navbar() {
 
                   <button
                     className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.currentTarget.closest("details")!.open = false;
                       setLogoutConfirm([false, "flex"]);
                     }}
                   >
                     {loading ? (
                       <SpinnerLoading size="sm" color="white" />
                     ) : (
-                      "Keluar"
+                      labels.nav_menu_logout
                     )}
                   </button>
                 </div>
               </details>
             ) : (
-              <Button size="lg" text="Masuk" link="/masuk" />
+              <Button size="lg" text={labels.nav_menu_login} link="/masuk" />
             )}
           </div>
         </div>
@@ -217,7 +323,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center h-full ml-6">
             <div className="flex relative justify-center items-center h-[6vw] w-[6vw] mr-3">
               <Image
-                src="/assets/logo_malut.png"
+                src={getImagePreviewUrl(labels.org_logo)}
                 alt="Logo"
                 className="object-contain"
                 height={600}
@@ -225,10 +331,35 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col justify-center">
-              <h4 className="font-bold">Dinas Kelautan dan Perikanan</h4>
-              <h4>Provinsi Maluku Utara</h4>
+              <h4 className="font-bold">{labels.org_name_main}</h4>
+              <h4>{labels.org_name_sub}</h4>
             </div>
           </Link>
+
+          {localeIsActive && (
+            <div className="relative grow flex h-full justify-end items-center">
+              <select
+                value={locale}
+                onChange={(e) => setLocale(e.target.value as "id" | "en")}
+                className="absolute inset-0 h-full cursor-pointer opacity-0"
+              >
+                <option value="id">Bahasa</option>
+                <option value="en">English</option>
+              </select>
+
+              <div className="pointer-events-none flex items-center justify-center">
+                {localeLoading ? (
+                  <SpinnerLoading size="sm" color="black" />
+                ) : (
+                  <img
+                    src="/assets/icon_locale.png"
+                    alt="Language"
+                    className="h-6 w-6 object-contain"
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           {/* //! Burger Menu for Mobile */}
           <div
@@ -258,7 +389,7 @@ export default function Navbar() {
             onClick={() => setIsMenuOpen(false)}
           >
             <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
-              Organisasi
+              {labels.nav_menu_organization}
             </h4>
           </Link>
           <Link
@@ -266,28 +397,36 @@ export default function Navbar() {
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Berita</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
+              {labels.nav_menu_news}
+            </h4>
           </Link>
           <Link
             href="/galeri"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Galeri</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
+              {labels.nav_menu_gallery}
+            </h4>
           </Link>
           <Link
             href="/data"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Data</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
+              {labels.nav_menu_data}
+            </h4>
           </Link>
           <Link
             href="/kontak"
             className="text-center"
             onClick={() => setIsMenuOpen(false)}
           >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">Kontak</h4>
+            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
+              {labels.nav_menu_contact}
+            </h4>
           </Link>
           {isLoggedIn ? (
             <>
@@ -298,11 +437,11 @@ export default function Navbar() {
                   setIsMenuOpen(false);
                 }}
               >
-                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
+                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white cursor-pointer">
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
                   ) : (
-                    <h4>Akun</h4>
+                    <h4>{labels.nav_menu_loggedin}</h4>
                   )}
                 </div>
               </Link>
@@ -317,7 +456,7 @@ export default function Navbar() {
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
                   ) : (
-                    <h4>Keluar</h4>
+                    <h4>{labels.nav_menu_logout}</h4>
                   )}
                 </div>
               </div>
@@ -334,11 +473,12 @@ export default function Navbar() {
                 {loading ? (
                   <SpinnerLoading size={"sm"} color="white" />
                 ) : (
-                  <h4>Masuk</h4>
+                  <h4>{labels.nav_menu_login}</h4>
                 )}
               </div>
             </Link>
           )}
+
           {/* Outer Element, if Burger Menu = Open, then Menu will Off if Outer Element "Clicked"  */}
           <div
             className={`${isMenuOpen ? "flex" : "hidden"} h-[50vh] w-full`}

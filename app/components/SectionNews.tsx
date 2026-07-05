@@ -11,9 +11,20 @@ import {
   type PointerEvent,
 } from "react";
 import Card from "./Card";
-import { getNews } from "@/lib/supabase/supabaseHelper";
 import Button from "./Button";
 import Reveal from "./Reveal";
+import { useLocaleStore } from "../Stores/localeStore";
+import { getAppLabelComponent, getNews } from "@/lib/supabase/supabaseHelper";
+
+type AppLabels = Record<string, string>;
+
+const fallbackLabels: AppLabels = {
+  secthree_button_label: "Lainnya",
+  secthree_button_path: "/berita",
+  secthree_subtitle_1: "",
+  secthree_subtitle_2: "Kanal Informasi Kelautan dan Perikanan Maluku Utara",
+  secthree_title: "Berita Terkini",
+};
 
 interface NewsItem {
   id: string;
@@ -25,6 +36,39 @@ interface NewsItem {
 }
 
 type CardType = "container" | "container-sm" | "container-mobile";
+type NewsMode = "desktop" | "tablet" | "mobile";
+
+function getNewsMode(width: number): NewsMode {
+  if (width >= 1024) return "desktop";
+  if (width >= 768) return "tablet";
+  return "mobile";
+}
+
+function useNewsMode() {
+  const [mode, setMode] = useState<NewsMode>("mobile");
+
+  useEffect(() => {
+    const updateMode = () => {
+      setMode(getNewsMode(window.innerWidth));
+    };
+
+    updateMode();
+
+    window.addEventListener("resize", updateMode);
+
+    return () => {
+      window.removeEventListener("resize", updateMode);
+    };
+  }, []);
+
+  return mode;
+}
+
+function getCardType(mode: NewsMode): CardType {
+  if (mode === "desktop") return "container";
+  if (mode === "tablet") return "container-sm";
+  return "container-mobile";
+}
 
 function duplicateToMinimum<T>(items: T[], minimum: number) {
   if (items.length === 0) return [];
@@ -58,6 +102,23 @@ function normalizeTranslate(value: number, setWidth: number) {
   return nextValue;
 }
 
+function mergeLabelsWithFallback(
+  fallback: AppLabels,
+  result: Partial<AppLabels> | null | undefined,
+) {
+  const merged = { ...fallback };
+
+  Object.entries(result ?? {}).forEach(([key, value]) => {
+    const cleanValue = typeof value === "string" ? value.trim() : "";
+
+    if (cleanValue) {
+      merged[key] = cleanValue;
+    }
+  });
+
+  return merged;
+}
+
 function NewsMovingCarousel({
   items,
   allNews,
@@ -67,7 +128,7 @@ function NewsMovingCarousel({
   items: NewsItem[];
   allNews: NewsItem[];
   cardType: CardType;
-  mode: "desktop" | "tablet" | "mobile";
+  mode: NewsMode;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -101,7 +162,7 @@ function NewsMovingCarousel({
     },
     mobile: {
       minimumSlides: 8,
-      itemGap: 50,
+      itemGap: 42,
       autoSpeed: 55,
       centerOffset: 0,
     },
@@ -204,7 +265,7 @@ function NewsMovingCarousel({
       resizeObserver.disconnect();
       window.removeEventListener("resize", handleResize);
     };
-  }, [updateSetWidth, carouselItems.length]);
+  }, [updateSetWidth, carouselItems.length, mode, config.itemGap]);
 
   useEffect(() => {
     translateXRef.current = 0;
@@ -214,6 +275,7 @@ function NewsMovingCarousel({
     applyTrackTransform();
     updateSlideVisuals();
   }, [
+    mode,
     carouselItems.length,
     updateSetWidth,
     applyTrackTransform,
@@ -334,13 +396,13 @@ function NewsMovingCarousel({
   };
 
   if (items.length === 0) {
-    return <p>Tidak ada berita.</p>;
+    return <p className="w-full text-center">Tidak ada berita.</p>;
   }
 
   return (
     <div
       ref={viewportRef}
-      className="news-marquee w-full max-w-full pt-3 pb-20 mt-3"
+      className="news-marquee mt-2 w-full max-w-full pb-20 pt-3 md:mt-3 md:pb-24"
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
       onPointerDown={handlePointerDown}
@@ -388,6 +450,7 @@ function NewsMovingCarousel({
           cursor: grab;
           touch-action: pan-y;
           user-select: none;
+          overflow: visible;
         }
 
         .news-marquee-dragging {
@@ -466,19 +529,63 @@ export default function SectionNews() {
   const [news, setNews] = useState<NewsItem[] | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [labels, setLabels] = useState<AppLabels>(fallbackLabels);
+  const locale = useLocaleStore((state) => state.locale);
+  const mode = useNewsMode();
+
+  const cardType = useMemo(() => getCardType(mode), [mode]);
+  const buttonSize = mode === "mobile" ? "mobile-xl" : "xl";
+
   useEffect(() => {
-    const fetchNews = async () => {
+    let mounted = true;
+
+    async function loadLabels() {
+      try {
+        const result = await getAppLabelComponent("secthree", locale);
+
+        if (mounted) {
+          setLabels(mergeLabelsWithFallback(fallbackLabels, result));
+        }
+      } catch (error) {
+        console.error("Failed to load secthree labels:", error);
+
+        if (mounted) {
+          setLabels(fallbackLabels);
+        }
+      }
+    }
+
+    loadLabels();
+
+    return () => {
+      mounted = false;
+    };
+  }, [locale]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchNews() {
       try {
         const data = await getNews();
-        setNews(data);
+
+        if (mounted) {
+          setNews(data);
+        }
       } catch (err) {
         console.error("Error fetching news:", err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    };
+    }
 
     fetchNews();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const latestNews = useMemo(() => {
@@ -486,80 +593,27 @@ export default function SectionNews() {
   }, [news]);
 
   return (
-    <section>
-      {/* Desktop & Tablet */}
-      <Reveal animation="fade-up" className="hidden md:block pt-12">
-        <div className="relative flex flex-col gap-6 py-12 mx-12 2xl:mx-24 justify-center items-center bg-sky-100 rounded-4xl shadow-2xl overflow-hidden">
-          <Reveal animation="fade-up" delay={80}>
-            <h2 className="text-center">BERITA TERKINI</h2>
-            <h5 className="text-center">
-              Kanal Informasi Kelautan dan Perikanan Maluku Utara
-            </h5>
-          </Reveal>
-
-          {/* Desktop carousel */}
-          <div className="hidden lg:block w-full mb-6 overflow-hidden">
-            {loading ? (
-              <p className="text-center">Loading...</p>
-            ) : (
-              <Reveal
-                animation="scale-in"
-                delay={160}
-                className="overflow-visible"
-              >
-                <NewsMovingCarousel
-                  items={latestNews}
-                  allNews={news || []}
-                  cardType="container"
-                  mode="desktop"
-                />
-              </Reveal>
-            )}
-          </div>
-
-          {/* Tablet carousel */}
-          <div className="hidden md:block lg:hidden w-full mb-6 overflow-hidden">
-            {loading ? (
-              <p className="text-center">Loading...</p>
-            ) : (
-              <Reveal
-                animation="scale-in"
-                delay={160}
-                className="overflow-visible"
-              >
-                <NewsMovingCarousel
-                  items={latestNews}
-                  allNews={news || []}
-                  cardType="container-sm"
-                  mode="tablet"
-                />
-              </Reveal>
-            )}
-          </div>
-
+    <section className="pb-10 pt-0 md:pt-12">
+      <Reveal
+        animation="fade-up"
+        className="mx-6 rounded-4xl bg-sky-100 shadow-xl md:mx-12 md:shadow-2xl 2xl:mx-24"
+      >
+        <div className="relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-4xl px-4 py-6 md:gap-6 md:px-8 md:py-12">
           <Reveal
             animation="fade-up"
-            delay={300}
-            className="absolute bottom-15"
+            delay={80}
+            className="flex flex-col gap-2"
           >
-            <Button size="xl" text="Lainnya" link="/berita" />
-          </Reveal>
-        </div>
-      </Reveal>
-
-      {/* Mobile */}
-      <Reveal animation="fade-up" className="md:hidden block pb-10">
-        <div className="relative flex flex-col gap-3 py-6 mx-6 2xl:mx-24 justify-center items-center bg-sky-100 rounded-4xl shadow-xl ">
-          <Reveal animation="fade-up" delay={80}>
-            <h2 className="text-center">BERITA TERKINI</h2>
-            <h5 className="text-center mx-12">
-              Kanal Informasi Kelautan dan Perikanan Maluku Utara
-            </h5>
+            <h2 className="text-center">{labels.secthree_title}</h2>
+            <h4 className="mx-auto max-w-[520px] text-center font-bold leading-relaxed">
+              {labels.secthree_subtitle_1}
+            </h4>
+            <h4 className="font-light">{labels.secthree_subtitle_2}</h4>
           </Reveal>
 
-          <div className="flex w-full ">
+          <div className="w-full overflow-visible">
             {loading ? (
-              <p className="text-center w-full">Loading...</p>
+              <p className="w-full text-center">Loading...</p>
             ) : (
               <Reveal
                 animation="scale-in"
@@ -569,15 +623,23 @@ export default function SectionNews() {
                 <NewsMovingCarousel
                   items={latestNews}
                   allNews={news || []}
-                  cardType="container-mobile"
-                  mode="mobile"
+                  cardType={cardType}
+                  mode={mode}
                 />
               </Reveal>
             )}
           </div>
 
-          <Reveal animation="fade-up" delay={260} className="absolute bottom-8">
-            <Button size="mobile-xl" text="Lainnya" link="/berita" />
+          <Reveal
+            animation="fade-up"
+            delay={300}
+            className="absolute bottom-8 md:bottom-12 lg:bottom-15"
+          >
+            <Button
+              size={buttonSize}
+              text={labels.secthree_button_label}
+              link={labels.secthree_button_path}
+            />
           </Reveal>
         </div>
       </Reveal>

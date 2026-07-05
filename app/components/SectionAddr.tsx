@@ -1,130 +1,199 @@
+"use client";
+
+import { useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Reveal from "./Reveal";
+import Button from "./Button";
+import SpinnerLoading from "./SpinnerLoading";
+import { useLocaleStore } from "../Stores/localeStore";
+import {
+  getAppLabelComponent,
+  getImagePreviewUrl,
+} from "@/lib/supabase/supabaseHelper";
+
+type AppLabels = Record<string, string>;
+
+const fallbackLabels: AppLabels = {
+  secfive_button_label: "",
+  secfive_button_path: "",
+  secfive_subtitle_1:
+    "Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara",
+  secfive_subtitle_2:
+    "Kelurahan Sofifi, Kecamatan Oba Utara, Kota Tidore Kepulauan, Provinsi Maluku Utara, Indonesia",
+  secfive_title: "Kantor",
+  secfive_image_path: "/assets/pic_office.png",
+  secfive_map_path:
+    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.4869671137667!2d127.56658608966836!3d0.7384305905514934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x329cbf3b84025b89%3A0x204563a8ed194488!2sDinas%20Kelautan%20Dan%20Perikanan%20Maluku%20Utara!5e0!3m2!1sid!2sus!4v1758953632235!5m2!1sid!2sus",
+};
+
+function mergeLabelsWithFallback(
+  fallback: AppLabels,
+  result: Partial<AppLabels> | null | undefined,
+) {
+  const merged = { ...fallback };
+
+  Object.entries(result ?? {}).forEach(([key, value]) => {
+    const cleanValue = typeof value === "string" ? value.trim() : "";
+
+    if (cleanValue) {
+      merged[key] = cleanValue;
+    }
+  });
+
+  return merged;
+}
+
+function PreviewImage({
+  src,
+  fallbackSrc,
+  alt,
+  className,
+  priority = false,
+  style,
+}: {
+  src: string;
+  fallbackSrc: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+  style?: CSSProperties;
+}) {
+  const [imageSrc, setImageSrc] = useState(
+    getImagePreviewUrl(src) || fallbackSrc,
+  );
+
+  useEffect(() => {
+    setImageSrc(getImagePreviewUrl(src) || fallbackSrc);
+  }, [src, fallbackSrc]);
+
+  return (
+    <Image
+      alt={alt}
+      src={imageSrc}
+      width={800}
+      height={600}
+      className={className}
+      style={style}
+      priority={priority}
+      onError={() => setImageSrc(fallbackSrc)}
+    />
+  );
+}
 
 export default function SectionAddr() {
+  const [labels, setLabels] = useState<AppLabels>(fallbackLabels);
+  const [mapLoading, setMapLoading] = useState(true);
+
+  const locale = useLocaleStore((state) => state.locale);
+
+  const mapSrc = labels.secfive_map_path || fallbackLabels.secfive_map_path;
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLabels() {
+      try {
+        const result = await getAppLabelComponent("secfive", locale);
+
+        if (mounted) {
+          setLabels(mergeLabelsWithFallback(fallbackLabels, result));
+        }
+      } catch (error) {
+        console.error("Failed to load secfive labels:", error);
+
+        if (mounted) {
+          setLabels(fallbackLabels);
+        }
+      }
+    }
+
+    loadLabels();
+
+    return () => {
+      mounted = false;
+    };
+  }, [locale]);
+
+  useEffect(() => {
+    setMapLoading(true);
+  }, [mapSrc]);
+
+  const showButton =
+    labels.secfive_button_label.trim() && labels.secfive_button_path.trim();
+
   return (
-    <>
-      {/* Desktop */}
+    <section className="bg-gradient-to-r from-sky-700 to-sky-200 px-6 py-8 md:px-12 md:py-12 lg:px-24">
       <Reveal
         animation="fade-up"
-        className="hidden md:block bg-gradient-to-r from-sky-700 to-sky-200 pt-12 pb-12"
+        className="mx-auto max-w-7xl rounded-4xl bg-sky-100 px-4 py-8 shadow-xl md:px-8 md:py-12 lg:px-12 lg:shadow-2xl"
       >
-        <div className="flex flex-col gap-6 py-12 md:pb-6 mx-12 2xl:mx-24 2xl:pb-24 justify-center items-center bg-sky-100 rounded-4xl shadow-2xl">
+        <div className="flex flex-col items-center gap-6">
           <Reveal
             animation="fade-up"
             delay={80}
-            className="flex flex-col mb-3 gap-6"
+            className="flex max-w-3xl flex-col items-center gap-3 text-center md:gap-4"
           >
-            <h2 className="text-center">KANTOR</h2>
-            <h5 className="text-center font-bold">
-              Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara <br />
-              <span className="font-light">
-                Kelurahan Sofifi, Kecamatan Oba Utara, Kota Tidore Kepulauan,
-                Provinsi Maluku Utara, Indonesia
-              </span>
-            </h5>
+            <h2>{labels.secfive_title}</h2>
 
-            <div className="lg:flex md:hidden w-full gap-6 justify-center flex-wrap">
-              <Reveal animation="fade-right" delay={180}>
-                <Image
-                  alt="Gambar"
-                  src="/assets/pic_office.png"
-                  width={800}
-                  height={600}
-                  className="home-hover-lift w-[30vw] h-[20vw] object-cover"
-                />
-              </Reveal>
+            {labels.secfive_subtitle_1 && (
+              <h4 className="font-bold leading-relaxed">
+                {labels.secfive_subtitle_1}
+              </h4>
+            )}
 
-              <Reveal animation="fade-left" delay={260}>
-                <iframe
-                  title="Lokasi Kantor DKP Maluku Utara"
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.4869671137667!2d127.56658608966836!3d0.7384305905514934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x329cbf3b84025b89%3A0x204563a8ed194488!2sDinas%20Kelautan%20Dan%20Perikanan%20Maluku%20Utara!5e0!3m2!1sid!2sus!4v1758953632235!5m2!1sid!2sus"
-                  className="flex w-[30vw] h-[20vw]"
-                  loading="lazy"
-                />
-              </Reveal>
-            </div>
-
-            <div className="md:flex lg:hidden w-full gap-6 justify-center flex-wrap">
-              <Reveal
-                animation="fade-up"
-                delay={180}
-                className="home-hover-lift bg-white p-3 w-full mx-6 rounded-xl shadow-xl"
-              >
-                <Image
-                  alt="Gambar"
-                  src="/assets/pic_office.png"
-                  width={800}
-                  height={600}
-                  className="w-full h-[50vw] object-cover"
-                />
-              </Reveal>
-
-              <Reveal
-                animation="fade-up"
-                delay={260}
-                className="home-hover-lift bg-white p-3 w-full mx-6 rounded-xl shadow-xl"
-              >
-                <iframe
-                  title="Lokasi Kantor DKP Maluku Utara"
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.4869671137667!2d127.56658608966836!3d0.7384305905514934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x329cbf3b84025b89%3A0x204563a8ed194488!2sDinas%20Kelautan%20Dan%20Perikanan%20Maluku%20Utara!5e0!3m2!1sid!2sus!4v1758953632235!5m2!1sid!2sus"
-                  className="w-full h-[50vw]"
-                  loading="lazy"
-                />
-              </Reveal>
-            </div>
+            <h4 className="font-light leading-relaxed">
+              {labels.secfive_subtitle_2}
+            </h4>
           </Reveal>
+
+          <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
+            <Reveal
+              animation="fade-right"
+              delay={180}
+              className="home-hover-lift rounded-2xl bg-white p-3 shadow-xl lg:bg-transparent lg:p-0 lg:shadow-none"
+            >
+              <PreviewImage
+                alt="Gambar Kantor"
+                src={labels.secfive_image_path}
+                fallbackSrc={fallbackLabels.secfive_image_path}
+                priority
+                className="h-[55vw] w-full rounded-xl object-cover md:h-[42vw] lg:h-[22vw]"
+              />
+            </Reveal>
+
+            <Reveal
+              animation="fade-left"
+              delay={260}
+              className="home-hover-lift rounded-2xl bg-white p-3 shadow-xl lg:bg-transparent lg:p-0 lg:shadow-none"
+            >
+              <div className="relative h-[55vw] w-full overflow-hidden rounded-xl bg-white md:h-[42vw] lg:h-[22vw]">
+                {mapLoading && <SpinnerLoading size="md" color="black" />}
+
+                <iframe
+                  key={mapSrc}
+                  title="Lokasi Kantor DKP Maluku Utara"
+                  src={mapSrc}
+                  className={`h-full w-full rounded-xl transition-opacity ${
+                    mapLoading ? "opacity-0" : "opacity-100"
+                  }`}
+                  loading="lazy"
+                  onLoad={() => setMapLoading(false)}
+                />
+              </div>
+            </Reveal>
+          </div>
+
+          {showButton && (
+            <Reveal animation="fade-up" delay={320}>
+              <Button
+                size="xl"
+                text={labels.secfive_button_label}
+                link={labels.secfive_button_path}
+              />
+            </Reveal>
+          )}
         </div>
       </Reveal>
-
-      {/* Mobile */}
-      <Reveal animation="fade-up" className="md:hidden  pb-6">
-        <div className="flex flex-col gap-6 py-6 mx-6 pb-6 justify-center items-center bg-sky-100 rounded-4xl shadow-xl">
-          <Reveal
-            animation="fade-up"
-            delay={80}
-            className="flex flex-col mb-3 gap-6"
-          >
-            <h2 className="text-center">KANTOR</h2>
-            <h5 className="text-center font-bold mx-6">
-              Dinas Kelautan dan Perikanan (DKP) Provinsi Maluku Utara <br />
-            </h5>
-            <h5 className="text-center font-light mx-6">
-              Kelurahan Sofifi, Kecamatan Oba Utara, Kota Tidore Kepulauan,
-              Provinsi Maluku Utara, Indonesia
-            </h5>
-
-            <div className="flex w-full gap-6 justify-center flex-wrap">
-              <Reveal
-                animation="fade-up"
-                delay={180}
-                className="home-hover-lift bg-white p-3 w-full mx-6 rounded-xl shadow-xl"
-              >
-                <Image
-                  alt="Gambar"
-                  src="/assets/pic_office.png"
-                  width={800}
-                  height={600}
-                  className="w-full h-[50vw] object-cover"
-                />
-              </Reveal>
-
-              <Reveal
-                animation="fade-up"
-                delay={260}
-                className="home-hover-lift bg-white p-3 w-full mx-6 rounded-xl shadow-xl"
-              >
-                <iframe
-                  title="Lokasi Kantor DKP Maluku Utara"
-                  src="https://maps.google.com/maps?q=loc:0.73860,127.56906&z=12&output=embed&hl=id"
-                  className="w-full h-[50vw]"
-                  loading="lazy"
-                />
-              </Reveal>
-            </div>
-          </Reveal>
-        </div>
-      </Reveal>
-    </>
+    </section>
   );
 }

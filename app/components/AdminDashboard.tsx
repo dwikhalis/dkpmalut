@@ -104,7 +104,7 @@ export default function AdminDashboard() {
         ))}
         <Link
           href={"/profile/label-cms"}
-          className="flex grow p-6 m-3 shadow-xl rounded-2xl border-3 border-stone-100 min-w-30 min-h-30 md:min-w-[20vw] md:max-w-[30%] md:min-h-[15vw] cursor-pointer"
+          className="flex grow p-6 m-3 shadow-xl rounded-2xl border-3 border-stone-100 min-w-30 min-h-30 md:min-w-[20vw] md:min-h-[15vw] cursor-pointer"
         >
           <div className="flex flex-col justify-center items-center gap-2 w-full">
             <h1>{"App CMS"}</h1>

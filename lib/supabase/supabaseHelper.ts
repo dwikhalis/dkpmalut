@@ -490,7 +490,7 @@ export const saveMitraJsonbRows = async (
 
 //! ========== APP LABELS CMS ========== //
 
-export async function getAppLabels(component: string, locale = "id") {
+export async function getAppLabelComponent(component: string, locale = "id") {
   const { data, error } = await supabase
     .from("app_labels")
     .select("target, value")
@@ -571,4 +571,37 @@ async function listImagesRecursive(folderPath: string): Promise<IconImage[]> {
 
 export async function getIconImages(): Promise<IconImage[]> {
   return listImagesRecursive(ICON_FOLDER);
+}
+
+//! GET IMAGE URL
+
+export function getImagePreviewUrl(value: string) {
+  if (!value) return "";
+
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("/")
+  ) {
+    return value;
+  }
+
+  const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(value);
+  return data.publicUrl;
+}
+
+//! DATE FORMAT COVERTER FROM UNIX TO "MMDDYY_HHMMSS"
+
+export function getDateTimeStamp(date: Date | number = new Date()) {
+  const parsedDate = typeof date === "number" ? new Date(date) : date;
+
+  const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+  const day = String(parsedDate.getDate()).padStart(2, "0");
+  const year = String(parsedDate.getFullYear()).slice(-2);
+
+  const hour = String(parsedDate.getHours()).padStart(2, "0");
+  const minute = String(parsedDate.getMinutes()).padStart(2, "0");
+  const second = String(parsedDate.getSeconds()).padStart(2, "0");
+
+  return `${month}${day}${year}_${hour}${minute}${second}`;
 }
