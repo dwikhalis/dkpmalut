@@ -270,6 +270,7 @@ export default function LabelCMS() {
     Record<string, OriginalLabelValue>
   >({});
   const [componentFilter, setComponentFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [iconOptions, setIconOptions] = useState<IconImage[]>([]);
   const [openIconPicker, setOpenIconPicker] = useState<string | null>(null);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -408,6 +409,14 @@ export default function LabelCMS() {
         return a.localeCompare(b);
       },
     );
+  }, [labels]);
+
+  const typeOptions = useMemo(() => {
+    return Array.from(new Set(labels.map((item) => item.type))).sort((a, b) => {
+      const orderDiff = getComponentOrder(a) - getComponentOrder(b);
+      if (orderDiff !== 0) return orderDiff;
+      return a.localeCompare(b);
+    });
   }, [labels]);
 
   function getImagePreviewUrl(value: string) {
@@ -550,7 +559,10 @@ export default function LabelCMS() {
     const key = makeKey(label.component, label.target);
     const previewUrl = getImagePreviewUrl(label.value);
 
-    if (label.type === "image") {
+    if (
+      label.type === "image" &&
+      (typeFilter === "all" || typeFilter === "image")
+    ) {
       return (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-4">
@@ -603,7 +615,10 @@ export default function LabelCMS() {
       );
     }
 
-    if (label.type === "icon") {
+    if (
+      label.type === "icon" &&
+      (typeFilter === "all" || typeFilter === "icon")
+    ) {
       const isOpen = openIconPicker === key;
 
       return (
@@ -681,7 +696,10 @@ export default function LabelCMS() {
       );
     }
 
-    if (label.type === "textarea") {
+    if (
+      label.type === "textarea" &&
+      (typeFilter === "all" || typeFilter === "textarea")
+    ) {
       return (
         <textarea
           value={label.value}
@@ -695,7 +713,10 @@ export default function LabelCMS() {
       );
     }
 
-    if (label.type === "number") {
+    if (
+      label.type === "number" &&
+      (typeFilter === "all" || typeFilter === "number")
+    ) {
       return (
         <input
           type="number"
@@ -729,13 +750,16 @@ export default function LabelCMS() {
       const matchComponent =
         componentFilter === "all" || item.component === componentFilter;
 
+      const matchType = typeFilter === "all" || item.type === typeFilter;
+
       const matchSearch =
         !keyword ||
         item.component.toLowerCase().includes(keyword) ||
         item.target.toLowerCase().includes(keyword) ||
+        item.type.toLowerCase().includes(keyword) ||
         item.value.toLowerCase().includes(keyword);
 
-      return matchComponent && matchSearch;
+      return matchComponent && matchType && matchSearch;
     });
 
     const grouped = filtered.reduce<Record<string, AppLabel[]>>((acc, item) => {
@@ -749,11 +773,13 @@ export default function LabelCMS() {
     });
 
     return grouped;
-  }, [labels, search, componentFilter]);
+  }, [labels, search, componentFilter, typeFilter]);
 
   if (loading) {
     return <p>Loading labels...</p>;
   }
+
+  const localeSelect = true;
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -778,26 +804,30 @@ export default function LabelCMS() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 shadow-md md:grid-cols-[220px_220px_1fr]">
-        <div>
-          <label className="mb-1 block text-xs font-bold text-slate-500">
-            Bahasa
-          </label>
+      <div className="flex flex-wrap gap-3 rounded-2xl bg-white p-4 shadow-md md:grid-cols-[220px_220px_1fr]">
+        {/* //! FILTER LOCALE / LANGUAGE */}
+        {localeSelect && (
+          <div className="w-[25%]">
+            <label className="mb-1 block text-xs font-bold text-slate-500">
+              Bahasa
+            </label>
 
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
-          >
-            {locales.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as Locale)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
+            >
+              {locales.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <div>
+        {/* //! FILTER COMPONENT */}
+        <div className="grow">
           <label className="mb-1 block text-xs font-bold text-slate-500">
             Component
           </label>
@@ -817,7 +847,29 @@ export default function LabelCMS() {
           </select>
         </div>
 
-        <div>
+        {/* //! FILTER TYPE */}
+        <div className="grow">
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Type
+          </label>
+
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
+          >
+            <option value="all">Semua Type</option>
+
+            {typeOptions.map((type) => (
+              <option key={type} value={type}>
+                {formatComponentName(type)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* //! SEARCH LABEL */}
+        <div className="grow">
           <label className="mb-1 block text-xs font-bold text-slate-500">
             Cari Label
           </label>

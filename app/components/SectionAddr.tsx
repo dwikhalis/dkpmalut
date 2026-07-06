@@ -122,10 +122,10 @@ export default function SectionAddr() {
     labels.secfive_button_label.trim() && labels.secfive_button_path.trim();
 
   return (
-    <section className="bg-gradient-to-r from-sky-700 to-sky-200 px-6 py-8 md:px-12 md:py-12 lg:px-24">
+    <section className="mx-6 md:mx-12 py-6 pb-12">
       <Reveal
         animation="fade-up"
-        className="mx-auto max-w-7xl rounded-4xl bg-sky-100 px-4 py-8 shadow-xl md:px-8 md:py-12 lg:px-12 lg:shadow-2xl"
+        className="mx-auto max-w-7xl rounded-4xl bg-sky-100 px-4 py-8 shadow-xl md:px-12 md:py-12 lg:px-12 lg:shadow-2xl"
       >
         <div className="flex flex-col items-center gap-6">
           <Reveal

@@ -41,13 +41,16 @@ interface Props {
 
 export default function FormAdd({ type, signalAdded }: Props) {
   const [fileName, setFileName] = useState(
-    type === "staff" ? "Upload photo" : "Upload gambar"
+    type === "staff" ? "Upload photo" : "Upload gambar",
   );
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [alertImage, setAlertImage] = useState(false);
+  const [isCustomDivision, setIsCustomDivision] = useState(false);
+
+  const divisionOptions = ["PRL", "Penangkapan", "Budidaya", "PSDKP"];
 
   // Separate form states (component is mounted for a single type at a time)
   const [staffForm, setStaffForm] = useState<StaffForm>({
@@ -238,7 +241,7 @@ export default function FormAdd({ type, signalAdded }: Props) {
               } else {
                 setFile(null);
                 setFileName(
-                  type === "staff" ? "Upload photo" : "No file chosen"
+                  type === "staff" ? "Upload photo" : "No file chosen",
                 );
                 setPreview(null);
               }
@@ -314,22 +317,50 @@ export default function FormAdd({ type, signalAdded }: Props) {
             >
               Bidang
             </label>
+
             <select
-              className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-              value={staffForm.division}
-              onChange={(e) =>
-                setStaffForm({ ...staffForm, division: e.target.value })
-              }
+              id="division"
+              className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-3 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+              value={isCustomDivision ? "__custom__" : staffForm.division}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                if (value === "__custom__") {
+                  setIsCustomDivision(true);
+                  setStaffForm({ ...staffForm, division: "" });
+                  return;
+                }
+
+                setIsCustomDivision(false);
+                setStaffForm({ ...staffForm, division: value });
+              }}
               required
             >
               <option value="" disabled>
                 -- Pilih Bidang --
               </option>
-              <option value="PRL">PRL</option>
-              <option value="Penangkapan">Penangkapan</option>
-              <option value="Budidaya">Budidaya</option>
-              <option value="PSDKP">PSDKP</option>
+
+              {divisionOptions.map((division) => (
+                <option key={division} value={division}>
+                  {division}
+                </option>
+              ))}
+
+              <option value="__custom__">Tambah Bidang</option>
             </select>
+
+            {isCustomDivision && (
+              <input
+                type="text"
+                value={staffForm.division}
+                onChange={(e) =>
+                  setStaffForm({ ...staffForm, division: e.target.value })
+                }
+                placeholder="Masukkan bidang baru..."
+                className="w-full md:w-auto bg-stone-100 rounded-md md:mb-6 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
+                required
+              />
+            )}
           </>
         )}
 

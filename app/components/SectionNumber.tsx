@@ -165,7 +165,7 @@ export default function SectionNumber() {
   return (
     <Reveal
       animation="fade-up"
-      className="flex bg-sky-100 px-4 pb-10 pt-20 md:pt-10 rounded-b-4xl md:px-6"
+      className="flex bg-sky-100 px-4 pb-10 pt-20 md:pt-10 rounded-b-4xl md:px-6 md:pb-12 md:mb-6"
     >
       <div className="flex w-full mx-auto">
         <div className="flex w-full flex-wrap justify-center gap-y-20">

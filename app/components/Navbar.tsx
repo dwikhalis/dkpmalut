@@ -227,6 +227,7 @@ export default function Navbar() {
                         width={30}
                         height={30}
                         alt="locale"
+                        className="w-8 h-5"
                       />
                     )}
                   </div>

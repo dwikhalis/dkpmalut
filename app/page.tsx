@@ -55,20 +55,11 @@ export default function Page() {
       <Hero />
 
       {/* Shared background for SectionOrg + SectionNumber */}
-      <section className="bg-gradient-to-r from-sky-700 to-sky-200 md:block hidden">
-        <div className="mx-12 2xl:mx-24 bg-sky-100 rounded-4xl">
-          <SectionOrg />
-          <SectionNumber />
-        </div>
-      </section>
 
-      {/* Shared mobile background */}
-      <section className="md:hidden bg-sky-300 pb-10">
-        <div className="mx-6 bg-sky-100 rounded-4xl shadow-xl">
-          <SectionOrg />
-          <SectionNumber />
-        </div>
-      </section>
+      <div className="mx-6 md:mx-12 2xl:mx-24 bg-sky-100 rounded-4xl shadow-2xl mb-12">
+        <SectionOrg />
+        <SectionNumber />
+      </div>
 
       <SectionNews />
       <SectionGallery />

@@ -138,7 +138,7 @@ export default function SectionGallery() {
   }, []);
 
   return (
-    <section className="pb-10 pt-0 md:pt-12">
+    <section className="pb-10 pt-0 md:py-6">
       <Reveal
         animation="fade-up"
         className="mx-6 rounded-4xl bg-sky-100 shadow-xl md:mx-12 md:shadow-2xl 2xl:mx-24"
