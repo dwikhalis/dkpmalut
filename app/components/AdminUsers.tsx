@@ -362,6 +362,16 @@ export default function AdminUsers() {
     }
   };
 
+  const handleRoleConfirmation = (confirmation: boolean) => {
+    if (!confirmation) {
+      setAlertType(null);
+      setPendingRoleChange(null);
+      return;
+    }
+
+    handleConfirmRoleChange();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[70vh] w-full items-center justify-center">
@@ -564,7 +574,7 @@ export default function AdminUsers() {
           noText="Tidak"
           icon="warning"
           loading={savingRole}
-          confirm={handleConfirmRoleChange}
+          confirm={handleRoleConfirmation}
         />
       )}
 
