@@ -115,8 +115,7 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
   return (
     <>
       <Swiper
-        modules={[Navigation, Pagination, Autoplay]}
-        navigation
+        modules={[Pagination, Autoplay]}
         pagination={{ clickable: true }}
         autoplay={{
           delay: 5000,
