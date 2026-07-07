@@ -36,7 +36,7 @@ const navbarFallbackLabels: AppLabels = {
 
 export default function Navbar() {
   //! ===== LANGUAGE SELECTOR TOGGLE ACTIVE / INACTIVE =====
-  const localeIsActive = true;
+  const localeIsActive = false;
 
   const router = useRouter();
   const pathname = usePathname();

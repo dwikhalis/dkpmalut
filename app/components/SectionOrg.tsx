@@ -15,15 +15,13 @@ const fallbackLabels: AppLabels = {
   secone_right_title: "Maju Bersama Membangun Daerah",
   secone_left_title: "Kepala DKP Provinsi Maluku Utara",
   secone_right_button_label: "Struktur Organisasi",
-  secone_right_tab_subtitle_1:
-    "Kami memiliki Visi untuk mewujudkan: 1. Visi Pertama 2. Visi Kedua 3. Visi Ketiga",
+  secone_right_tab_subtitle_1: "",
   secone_right_button_path: "/organisasi",
-  secone_left_subtitle: "Fauzi Momole, S.Pi",
-  secone_right_tab_subtitle_2:
-    "Melalui program kerja Dinas Kelautan dan Perikanan 1. Misi Pertama 2. Misi Kedua 3. Misi Ketiga",
-  secone_right_tab_title_1: "Visi",
-  secone_right_tab_title_2: "Misi",
-  secone_left_image_path: "/assets/pic_kadis.png",
+  secone_left_subtitle: "Nama Kadis",
+  secone_right_tab_subtitle_2: "",
+  secone_right_tab_title_1: "",
+  secone_right_tab_title_2: "",
+  secone_left_image_path: "/assets/transparent_img_placeholder.png",
 };
 
 function mergeLabelsWithFallback(
@@ -110,26 +108,6 @@ export default function SectionOrg() {
     };
   }, [locale]);
 
-  const tabs = useMemo(
-    () => [
-      {
-        title: labels.secone_right_tab_title_1,
-        subtitle: labels.secone_right_tab_subtitle_1,
-        icon: "/assets/icon_vision.png",
-        alt: "Ikon Visi",
-        delay: 220,
-      },
-      {
-        title: labels.secone_right_tab_title_2,
-        subtitle: labels.secone_right_tab_subtitle_2,
-        icon: "/assets/icon_mission.png",
-        alt: "Ikon Misi",
-        delay: 340,
-      },
-    ],
-    [labels],
-  );
-
   return (
     <Reveal
       animation="fade-up"
@@ -139,7 +117,7 @@ export default function SectionOrg() {
         {/* Left Side */}
         <div className="flex w-full flex-col items-center text-center md:w-[45%]">
           <Reveal animation="scale-in" delay={120}>
-            <div className="relative flex w-full max-w-[360px] items-center justify-center md:max-w-none">
+            <div className="relative flex w-[80vw] md:w-[40vw] max-w-[360px] items-center justify-center md:max-w-none">
               <svg
                 viewBox="0 0 120 120"
                 className="absolute h-full w-full"
@@ -186,31 +164,56 @@ export default function SectionOrg() {
             </h2>
           </Reveal>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-10 lg:gap-12">
-            {tabs.map((tab) => (
+          <div className="flex flex-wrap md:flex-nowrap justify-start gap-6 md:grid-cols-2 md:gap-10 lg:gap-12">
+            {labels.secone_right_tab_title_1 && (
               <Reveal
-                key={tab.title}
                 animation="fade-up"
-                delay={tab.delay}
-                className="home-hover-lift rounded-2xl bg-white p-5 text-center shadow-xl md:bg-transparent md:p-0 md:text-left md:shadow-none"
+                delay={220}
+                className="home-hover-lift grow rounded-2xl bg-white p-5 text-center shadow-xl md:bg-transparent md:p-0 md:text-left md:shadow-none"
               >
                 <div className="flex justify-center md:justify-start">
                   <Image
-                    src={tab.icon}
+                    src={"/assets/icon_vision.png"}
                     width={800}
                     height={600}
                     className="h-12 w-12 object-contain pb-3 md:h-[5vw] md:w-[4vw] lg:h-16 lg:w-16"
-                    alt={tab.alt}
+                    alt="icon_1"
                   />
                 </div>
+                <div className="flex justify-center md:justify-start"></div>
 
-                <h3 className="font-bold">{tab.title}</h3>
+                <h3 className="font-bold">{labels.secone_right_tab_title_1}</h3>
 
                 <h5 className="mb-3 whitespace-pre-line leading-relaxed">
-                  {tab.subtitle}
+                  {labels.secone_right_tab_subtitle_1}
                 </h5>
               </Reveal>
-            ))}
+            )}
+
+            {labels.secone_right_tab_title_2 && (
+              <Reveal
+                animation="fade-up"
+                delay={340}
+                className="home-hover-lift grow rounded-2xl bg-white p-5 text-center shadow-xl md:bg-transparent md:p-0 md:text-left md:shadow-none"
+              >
+                <div className="flex justify-center md:justify-start">
+                  <Image
+                    src={"/assets/icon_mission.png"}
+                    width={800}
+                    height={600}
+                    className="h-12 w-12 object-contain pb-3 md:h-[5vw] md:w-[4vw] lg:h-16 lg:w-16"
+                    alt="icon_2"
+                  />
+                </div>
+                <div className="flex justify-center md:justify-start"></div>
+
+                <h3 className="font-bold">{labels.secone_right_tab_title_2}</h3>
+
+                <h5 className="mb-3 whitespace-pre-line leading-relaxed">
+                  {labels.secone_right_tab_subtitle_2}
+                </h5>
+              </Reveal>
+            )}
           </div>
         </div>
       </div>

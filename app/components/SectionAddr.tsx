@@ -122,16 +122,16 @@ export default function SectionAddr() {
     labels.secfive_button_label.trim() && labels.secfive_button_path.trim();
 
   return (
-    <section className="mx-6 md:mx-12 py-6 pb-12">
+    <section className="pb-10 pt-0 md:py-6 mb-12">
       <Reveal
         animation="fade-up"
-        className="mx-auto max-w-7xl rounded-4xl bg-sky-100 px-4 py-8 shadow-xl md:px-12 md:py-12 lg:px-12 lg:shadow-2xl"
+        className="mx-6 rounded-4xl bg-sky-100 shadow-xl md:mx-12 md:shadow-2xl 2xl:mx-24 md:px-12 md:py-12"
       >
         <div className="flex flex-col items-center gap-6">
           <Reveal
             animation="fade-up"
             delay={80}
-            className="flex max-w-3xl flex-col items-center gap-3 text-center md:gap-4"
+            className="flex flex-col items-center gap-3 text-center md:gap-4"
           >
             <h2>{labels.secfive_title}</h2>
 
@@ -146,11 +146,11 @@ export default function SectionAddr() {
             </h4>
           </Reveal>
 
-          <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="flex flex-wrap w-full gap-6 lg:grid-cols-2 p-3">
             <Reveal
               animation="fade-right"
               delay={180}
-              className="home-hover-lift rounded-2xl bg-white p-3 shadow-xl lg:bg-transparent lg:p-0 lg:shadow-none"
+              className="home-hover-lift grow rounded-2xl bg-white p-3 shadow-xl"
             >
               <PreviewImage
                 alt="Gambar Kantor"
@@ -164,7 +164,7 @@ export default function SectionAddr() {
             <Reveal
               animation="fade-left"
               delay={260}
-              className="home-hover-lift rounded-2xl bg-white p-3 shadow-xl lg:bg-transparent lg:p-0 lg:shadow-none"
+              className="home-hover-lift grow rounded-2xl bg-white p-3 shadow-xl"
             >
               <div className="relative h-[55vw] w-full overflow-hidden rounded-xl bg-white md:h-[42vw] lg:h-[22vw]">
                 {mapLoading && <SpinnerLoading size="md" color="black" />}
