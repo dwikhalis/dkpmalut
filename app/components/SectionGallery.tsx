@@ -168,7 +168,7 @@ export default function SectionGallery() {
             ) : pictures.length === 0 ? (
               <p className="w-full text-center">Tidak ada gambar.</p>
             ) : (
-              <Carousel type={carouselType} pictures={pictures} />
+              <Carousel pictures={pictures} />
             )}
           </Reveal>
 
