@@ -8,6 +8,8 @@ import AuthProvider from "./Auth/AuthProvider";
 import { Metadata } from "next";
 import AuthWatcher from "./Auth/AuthWatcher";
 
+import Script from "next/script"; //! FOR MIDTRANS
+
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"], // adjust weights as needed
@@ -25,6 +27,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
+
+  const snapUrl = isProduction
+    ? "https://app.midtrans.com/snap/snap.js"
+    : "https://app.sandbox.midtrans.com/snap/snap.js";
+
   return (
     <html
       lang="en"
@@ -39,6 +47,12 @@ export default function RootLayout({
             <Footer />
           </AuthProvider>
         </AuthWatcher>
+
+        <Script
+          src={snapUrl}
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
