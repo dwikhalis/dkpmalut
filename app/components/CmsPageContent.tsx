@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useLocaleStore } from "@/app/Stores/localeStore";
 import { getAppComponentConfig } from "@/lib/supabase/supabaseHelper";
 
 type CmsPageConfig = {
@@ -29,7 +28,6 @@ export function CmsPageProvider({
   component: string;
   children: ReactNode;
 }) {
-  const locale = useLocaleStore((state) => state.locale);
   const [config, setConfig] = useState<CmsPageConfig>({
     values: {},
     visibility: {},
@@ -45,14 +43,14 @@ export function CmsPageProvider({
   useEffect(() => {
     let mounted = true;
 
-    void getAppComponentConfig(component, locale).then((result) => {
+    void getAppComponentConfig(component).then((result) => {
       if (mounted) setConfig(result);
     });
 
     return () => {
       mounted = false;
     };
-  }, [component, locale]);
+  }, [component]);
 
   return (
     <CmsPageContext.Provider value={config}>

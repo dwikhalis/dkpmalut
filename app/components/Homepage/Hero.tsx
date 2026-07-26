@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Button from "../Button";
 import { useEffect, useState } from "react";
-import { useLocaleStore } from "@/app/Stores/localeStore";
 import {
   getAppComponentConfig,
   getImagePreviewUrl,
@@ -20,21 +19,20 @@ const fallbackLabels: AppLabels = {
   hero_button_path: "/data",
   hero_secondary_button_label: "Hubungi Kami",
   hero_secondary_button_path: "/kontak",
-  hero_image_desktop: "/assets/hero_1.png",
-  hero_image_mobile: "/assets/hero_1.png",
+  hero_image_desktop: "/assets/hero_mobile.svg",
+  hero_image_mobile: "/assets/hero_mobile.svg",
 };
 
 export default function Hero() {
   const [labels, setLabels] = useState<AppLabels>(fallbackLabels);
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
-  const locale = useLocaleStore((state) => state.locale);
 
   //! GET APP LABELS
   useEffect(() => {
     let mounted = true;
 
     async function loadLabels() {
-      const result = await getAppComponentConfig("hero", locale);
+      const result = await getAppComponentConfig("hero");
 
       if (mounted) {
         setLabels({
@@ -50,7 +48,7 @@ export default function Hero() {
     return () => {
       mounted = false;
     };
-  }, [locale]);
+  }, []);
 
   return (
     <section className="relative">

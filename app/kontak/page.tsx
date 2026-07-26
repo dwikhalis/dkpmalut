@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { useLocaleStore } from "@/app/Stores/localeStore";
 import AlertNotif from "../components/AlertNotif";
 import SpinnerLoading from "../components/SpinnerLoading";
 import {
@@ -29,7 +28,6 @@ function ContactPageContent() {
   const [submitting, setSubmitting] = useState(false);
   const [phoneCountryOpen, setPhoneCountryOpen] = useState(false);
   const { captureRateLimit, rateLimitMessage } = useRateLimitCountdown();
-  const locale = useLocaleStore((state) => state.locale);
   const title = useCmsText("page_contact_title", "Kontak Kami");
   const subtitle = useCmsText(
     "page_contact_subtitle",
@@ -57,10 +55,9 @@ function ContactPageContent() {
     "Ketik pesan anda",
   );
   const submitLabel = useCmsText("page_contact_submit_label", "Kirim");
-  const successMessage = locale === "en" ? "Message sent" : "Pesan terkirim";
-  const failedMessage =
-    locale === "en" ? "Failed to send message" : "Pesan gagal dikirim";
-  const confirmLabel = locale === "en" ? "OK" : "Oke";
+  const successMessage = "Pesan terkirim";
+  const failedMessage = "Pesan gagal dikirim";
+  const confirmLabel = "Oke";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -91,11 +88,7 @@ function ContactPageContent() {
     e.preventDefault();
 
     if (!turnstileSiteKey || !turnstileToken) {
-      setFailureDetail(
-        locale === "en"
-          ? "Complete the security verification first."
-          : "Selesaikan verifikasi keamanan terlebih dahulu.",
-      );
+      setFailureDetail("Selesaikan verifikasi keamanan terlebih dahulu.");
       setShowAlert("failed");
       return;
     }
@@ -145,7 +138,7 @@ function ContactPageContent() {
   return (
     <main className="mx-auto min-h-[70vh] w-full max-w-7xl p-6 md:p-10">
       <PageHeader
-        eyebrow={locale === "en" ? "Get in Touch" : "Hubungi Kami"}
+        eyebrow="Hubungi Kami"
         title={title}
         subtitle={subtitle}
       />
@@ -153,7 +146,7 @@ function ContactPageContent() {
       <div className="mt-8 grid gap-7 lg:grid-cols-2">
         <section className="flex flex-col justify-center rounded-3xl bg-sky-50 p-7 shadow-lg ring-1 ring-sky-100 md:p-10">
           <h2 className="text-2xl font-bold text-sky-950">
-            {locale === "en" ? "Office Address" : "Alamat Kantor"}
+            Alamat Kantor
           </h2>
           {address && (
             <p className="mt-4 text-base leading-8 text-stone-600 md:text-lg">
@@ -216,9 +209,7 @@ function ContactPageContent() {
             <div className="relative shrink-0" ref={phoneCountryRef}>
               <button
                 type="button"
-                aria-label={
-                  locale === "en" ? "Country calling code" : "Kode negara"
-                }
+                aria-label="Kode negara"
                 aria-expanded={phoneCountryOpen}
                 className="flex min-h-10 w-12 items-center justify-center rounded-l-xl bg-sky-800 px-2 text-sm font-semibold text-white"
                 onClick={() => setPhoneCountryOpen((open) => !open)}
@@ -306,6 +297,11 @@ function ContactPageContent() {
                 onSuccess={setTurnstileToken}
                 onExpire={() => setTurnstileToken("")}
                 onError={() => setTurnstileToken("")}
+                options={{
+                  action: "turnstile-spin-v2",
+                  language: "id",
+                  theme: "auto",
+                }}
               />
             </div>
           ) : (

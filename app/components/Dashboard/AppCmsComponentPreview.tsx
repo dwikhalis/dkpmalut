@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import Footer from "../Footer";
 import Navbar from "../Navbar";
 import Hero from "../Homepage/Hero";
-import SectionAddr from "../Homepage/SectionAddr";
-import SectionNumber from "../Homepage/SectionNumber";
 import { getAppComponentConfig } from "@/lib/supabase/supabaseHelper";
 
 function PageComponentPreview({ component }: { component: string }) {
@@ -43,14 +41,6 @@ export default function AppCmsComponentPreview({
 }) {
   if (component === "navbar") return <Navbar previewMode />;
   if (component === "hero") return <Hero />;
-  if (component === "sectwo") {
-    return (
-      <div className="bg-sky-100">
-        <SectionNumber />
-      </div>
-    );
-  }
-  if (component === "secfive") return <SectionAddr previewMode />;
   if (component === "footer") return <Footer previewMode />;
   if (component.startsWith("page_")) {
     return <PageComponentPreview component={component} />;

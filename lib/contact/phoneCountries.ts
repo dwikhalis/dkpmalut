@@ -20,7 +20,7 @@ export const contactPhoneCountries = worldCountries
   .sort((first, second) => {
     if (first.id === "ID") return -1;
     if (second.id === "ID") return 1;
-    return first.name.localeCompare(second.name, "en");
+    return first.name.localeCompare(second.name, "id");
   });
 
 export const DEFAULT_CONTACT_COUNTRY_ID = "ID";

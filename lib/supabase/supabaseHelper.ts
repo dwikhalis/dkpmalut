@@ -513,7 +513,6 @@ export const saveDatasetJsonbRows = async (
 export const APP_CMS_PREVIEW_STORAGE_KEY = "app-cms-preview-draft";
 
 type AppCmsPreviewDraft = {
-  locale: string;
   labels: Array<{
     component: string;
     target: string;
@@ -533,20 +532,17 @@ function getAppCmsPreviewDraft(component: string) {
     if (!stored) return null;
 
     const draft = JSON.parse(stored) as AppCmsPreviewDraft;
-    return {
-      locale: draft.locale,
-      labels: draft.labels.filter((item) => item.component === component),
-    };
+    return draft.labels.filter((item) => item.component === component);
   } catch {
     return null;
   }
 }
 
-export async function getAppLabelComponent(component: string, locale = "id") {
+export async function getAppLabelComponent(component: string) {
   const preview = getAppCmsPreviewDraft(component);
 
   if (preview) {
-    return preview.labels.reduce<Record<string, string>>((acc, item) => {
+    return preview.reduce<Record<string, string>>((acc, item) => {
       if (item.is_active) acc[item.target] = item.value || "";
       return acc;
     }, {});
@@ -556,7 +552,6 @@ export async function getAppLabelComponent(component: string, locale = "id") {
     .from("app_cms")
     .select("target, value")
     .eq("component", component)
-    .eq("locale", locale)
     .eq("is_active", true);
 
   if (error) {
@@ -570,11 +565,11 @@ export async function getAppLabelComponent(component: string, locale = "id") {
   }, {});
 }
 
-export async function getAppComponentConfig(component: string, locale = "id") {
+export async function getAppComponentConfig(component: string) {
   const preview = getAppCmsPreviewDraft(component);
 
   if (preview) {
-    return preview.labels.reduce(
+    return preview.reduce(
       (config, item) => {
         config.values[item.target] = item.value || "";
         config.visibility[item.target] = item.is_active !== false;
@@ -591,8 +586,7 @@ export async function getAppComponentConfig(component: string, locale = "id") {
   const { data, error } = await supabase
     .from("app_cms")
     .select("target, value, is_active")
-    .eq("component", component)
-    .eq("locale", locale);
+    .eq("component", component);
 
   if (error) {
     console.error(error.message);

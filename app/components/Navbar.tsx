@@ -13,7 +13,6 @@ import {
   getAppComponentConfig,
   getImagePreviewUrl,
 } from "@/lib/supabase/supabaseHelper";
-import { useLocaleStore } from "../Stores/localeStore";
 
 type AppLabels = Record<string, string>;
 
@@ -36,7 +35,6 @@ export default function Navbar({
 }: {
   previewMode?: boolean;
 }) {
-  //! ===== LANGUAGE SELECTOR TOGGLE ACTIVE / INACTIVE =====
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -50,21 +48,15 @@ export default function Navbar({
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const [labels, setLabels] = useState<AppLabels>(navbarFallbackLabels);
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
-  const [localeLoading, setLocaleLoading] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
 
   const role = useAuthStore((state) => state.role);
-  const locale = useLocaleStore((state) => state.locale);
-  const setLocale = useLocaleStore((state) => state.setLocale);
-
   //! GET APP LABELS
   useEffect(() => {
     let mounted = true;
 
     async function loadLabels() {
-      setLocaleLoading(true);
-
-      const result = await getAppComponentConfig("navbar", locale);
+      const result = await getAppComponentConfig("navbar");
 
       if (mounted) {
         setLabels({
@@ -72,8 +64,6 @@ export default function Navbar({
           ...result.values,
         });
         setVisibility(result.visibility);
-
-        setLocaleLoading(false);
       }
     }
 
@@ -82,7 +72,7 @@ export default function Navbar({
     return () => {
       mounted = false;
     };
-  }, [locale, configVersion]);
+  }, [configVersion]);
 
   useEffect(() => {
     const refreshNavbarConfig = () => setConfigVersion((value) => value + 1);
@@ -92,14 +82,6 @@ export default function Navbar({
   }, []);
 
   const isVisible = (target: string) => visibility[target] ?? true;
-  const localeSelectorVisible = visibility.nav_locale ?? true;
-
-  useEffect(() => {
-    if (!localeLoading && !localeSelectorVisible && locale !== "id") {
-      setLocale("id");
-    }
-  }, [locale, localeLoading, localeSelectorVisible, setLocale]);
-
   //! Loading if new page hasn't load
   useEffect(() => {
     setDashboardLoading(false);
@@ -243,55 +225,6 @@ export default function Navbar({
               </Link>
             )}
 
-            {/* //! LANGUAGE SELECTOR */}
-
-            {isVisible("nav_locale") && (
-              <details
-                data-dropdown="true"
-                className="relative flex items-center group"
-              >
-                <summary className="flex items-center cursor-pointer">
-                  <div className="flex items-center hover:bg-sky-200 text-white rounded-full hover:text-black cursor-pointer">
-                    {localeLoading ? (
-                      <SpinnerLoading size="sm" color="black" />
-                    ) : (
-                      <Image
-                        src={"/assets/icon_locale.png"}
-                        width={30}
-                        height={30}
-                        alt="locale"
-                        className="w-8 h-5"
-                      />
-                    )}
-                  </div>
-                </summary>
-
-                <div className="absolute top-full right-0 z-50 mt-2 flex min-w-[160px] flex-col rounded-lg border border-gray-300 bg-white shadow-lg p-2">
-                  <button
-                    className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px] disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={localeLoading || locale === "id"}
-                    onClick={(e) => {
-                      setLocale("id");
-                      e.currentTarget.closest("details")!.open = false;
-                    }}
-                  >
-                    Bahasa
-                  </button>
-
-                  <button
-                    className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px] disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={localeLoading || locale === "en"}
-                    onClick={(e) => {
-                      setLocale("en");
-                      e.currentTarget.closest("details")!.open = false;
-                    }}
-                  >
-                    English
-                  </button>
-                </div>
-              </details>
-            )}
-
             {isVisible("nav_menu_login") &&
               (isLoggedIn ? (
                 <details
@@ -405,34 +338,6 @@ export default function Navbar({
                 )}
               </div>
             </Link>
-          )}
-
-          {isVisible("nav_locale") && (
-            <div className="flex grow items-center justify-end">
-              <div className="relative h-6 w-6 shrink-0">
-                <select
-                  aria-label="Language"
-                  value={locale}
-                  onChange={(e) => setLocale(e.target.value as "id" | "en")}
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                >
-                  <option value="id">Bahasa</option>
-                  <option value="en">English</option>
-                </select>
-
-                <div className="pointer-events-none flex h-full w-full items-center justify-center">
-                  {localeLoading ? (
-                    <SpinnerLoading size="sm" color="black" />
-                  ) : (
-                    <img
-                      src="/assets/icon_locale.png"
-                      alt="Language"
-                      className="h-6 w-6 object-contain"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
           )}
 
           {/* //! Burger Menu for Mobile */}

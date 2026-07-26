@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="antialiased">
+    <html lang="id" className="antialiased">
       <body>
         <SpeedInsights />
         <Analytics />

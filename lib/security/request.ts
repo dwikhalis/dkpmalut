@@ -88,19 +88,25 @@ type TurnstileResult = {
 };
 
 export async function verifyTurnstile(request: Request, token: string) {
-  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
+  const secret = process.env.TURNSTILE_SECRET?.trim();
 
   if (!secret || !token) return false;
 
-  const form = new FormData();
-  form.set("secret", secret);
-  form.set("response", token);
+  const form = new URLSearchParams({
+    secret,
+    response: token,
+  });
   const address = getClientAddress(request);
   if (address !== "unknown") form.set("remoteip", address);
 
   const response = await fetch(
     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-    { method: "POST", body: form, cache: "no-store" },
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form,
+      cache: "no-store",
+    },
   );
 
   if (!response.ok) return false;
@@ -125,13 +131,15 @@ export async function verifyTurnstile(request: Request, token: string) {
     process.env.NODE_ENV !== "production" ||
     !expectedHostname ||
     allowedHostnames.has(result.hostname?.toLowerCase() || "");
+  const actionMatches = result.action === "turnstile-spin-v2";
 
-  if (result.success !== true || !hostnameMatches) {
+  if (result.success !== true || !hostnameMatches || !actionMatches) {
     console.warn("Turnstile verification rejected:", {
       errors: result["error-codes"] ?? [],
       hostnameMatches,
+      actionMatches,
     });
   }
 
-  return result.success === true && hostnameMatches;
+  return result.success === true && hostnameMatches && actionMatches;
 }

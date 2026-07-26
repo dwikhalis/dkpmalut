@@ -331,7 +331,7 @@ export default function Page() {
           theme: "auto",
           language: "id",
           size: "flexible",
-          action: mode === "signin" ? "login" : "forgot_password",
+          action: "turnstile-spin-v2",
           refreshExpired: "auto",
         }}
         className="flex min-h-[65px] w-full justify-center"

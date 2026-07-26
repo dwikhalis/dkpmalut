@@ -327,11 +327,6 @@ export default function DashActivityLog() {
                           .join(" / ")}
                       </span>
                     )}
-                    {metadataText(log.metadata, "locale") && (
-                      <span className="mt-1 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium uppercase text-sky-800">
-                        {metadataText(log.metadata, "locale")}
-                      </span>
-                    )}
                     {changedFields(log.metadata).length > 0 && (
                       <span className="block text-xs text-stone-500">
                         Kolom: {changedFields(log.metadata).join(", ")}

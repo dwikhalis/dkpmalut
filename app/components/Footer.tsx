@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import { FaFacebook, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
-import { useLocaleStore } from "@/app/Stores/localeStore";
 import {
   getAppComponentConfig,
   getImagePreviewUrl,
@@ -15,8 +14,7 @@ import {
 
 type AppLabels = Record<string, string>;
 
-const fallbackByLocale: Record<"id" | "en", AppLabels> = {
-  id: {
+const fallbackLabels: AppLabels = {
     footer_org_logo: "/assets/logo_malut.png",
     footer_org_name_main: "Dinas Kelautan dan Perikanan",
     footer_org_name_sub: "Provinsi Maluku Utara",
@@ -28,20 +26,6 @@ const fallbackByLocale: Record<"id" | "en", AppLabels> = {
     footer_tab_label_1_1_path: "/data",
     footer_tab_label_1_2: "Kontak",
     footer_tab_label_1_2_path: "/kontak",
-  },
-  en: {
-    footer_org_logo: "/assets/logo_malut.png",
-    footer_org_name_main: "Department of Marine Affairs and Fisheries",
-    footer_org_name_sub: "North Maluku Province",
-    footer_copyright_title: "© 2025 DKP Malut. All rights reserved.",
-    footer_copyright_subtitle: "Designed and built by Khalis",
-    footer_copyright_subtitle_path: "https://www.linkedin.com/in/khalisdwih/",
-    footer_tab_title_1: "Services",
-    footer_tab_label_1_1: "Data",
-    footer_tab_label_1_1_path: "/data",
-    footer_tab_label_1_2: "Contact",
-    footer_tab_label_1_2_path: "/kontak",
-  },
 };
 
 function cleanValue(value: string | undefined) {
@@ -81,16 +65,15 @@ export default function Footer({
   previewMode?: boolean;
 }) {
   const pathname = usePathname();
-  const locale = useLocaleStore((state) => state.locale);
-  const [labels, setLabels] = useState<AppLabels>(fallbackByLocale[locale]);
+  const [labels, setLabels] = useState<AppLabels>(fallbackLabels);
 
   useEffect(() => {
     let mounted = true;
-    const fallback = fallbackByLocale[locale];
+    const fallback = fallbackLabels;
 
     async function loadLabels() {
       try {
-        const footerResult = await getAppComponentConfig("footer", locale);
+        const footerResult = await getAppComponentConfig("footer");
         if (!mounted) return;
 
         const mergedLabels = {
@@ -115,7 +98,7 @@ export default function Footer({
     return () => {
       mounted = false;
     };
-  }, [locale]);
+  }, []);
 
   const columns = useMemo(
     () =>
