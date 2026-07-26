@@ -339,11 +339,30 @@ export default function Dataset({
 
   const defaultSortKey = filters[0]?.key ?? columns[0]?.key ?? "";
 
+  const dataUrlToBlob = (dataUrl: string) => {
+    const separatorIndex = dataUrl.indexOf(",");
+
+    if (separatorIndex === -1) {
+      throw new Error("Format snapshot grafik tidak valid.");
+    }
+
+    const metadata = dataUrl.slice(0, separatorIndex);
+    const encodedData = dataUrl.slice(separatorIndex + 1);
+    const mimeType =
+      metadata.match(/^data:([^;,]+)/i)?.[1] ?? "application/octet-stream";
+    const bytes = metadata.includes(";base64")
+      ? Uint8Array.from(atob(encodedData), (character) =>
+          character.charCodeAt(0),
+        )
+      : new TextEncoder().encode(decodeURIComponent(encodedData));
+
+    return new Blob([bytes], { type: mimeType });
+  };
+
   const uploadChartSnapshot = async (snapshotDataUrl: string | null) => {
     if (!snapshotDataUrl) return publicationImagePath;
 
-    const response = await fetch(snapshotDataUrl);
-    const blob = await response.blob();
+    const blob = dataUrlToBlob(snapshotDataUrl);
     const fileNameBase = toSlug(
       publicationTitle || originalLabel || datasetId,
     );
