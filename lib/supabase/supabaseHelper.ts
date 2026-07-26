@@ -1,7 +1,114 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 // import Router from "next/navigation";
 
-export const getNews = async () => {
+export type Locale = "id" | "en";
+
+type ContentRow = {
+  id?: string;
+  [key: string]: unknown;
+};
+
+async function getContentTableRows(table: string) {
+  const { data, error } = await supabase.from(table).select("*");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as ContentRow[];
+}
+
+function mapNewsRows(data: ContentRow[]) {
+  return (data || []).map((item) => ({
+    id: String(item.id ?? ""),
+    slug: String(item.slug ?? item.id ?? ""),
+    image: String(item.image ?? ""),
+    tag: String(item.tag ?? ""),
+    tag_long: String(item.tag_long ?? item.tag ?? ""),
+    date: String(item.date ?? ""),
+    title: String(item.title ?? ""),
+    content: String(item.content ?? ""),
+    source: String(item.source ?? ""),
+  }));
+}
+
+function mapGalleryRows(data: ContentRow[]) {
+  return (data || []).map((item) => ({
+    id: String(item.id ?? ""),
+    slug: String(item.slug ?? item.id ?? ""),
+    image: String(item.image ?? ""),
+    tag: String(item.tag ?? ""),
+    tag_long: String(item.tag_long ?? item.tag ?? ""),
+    title: String(item.title ?? ""),
+    date: String(item.date ?? ""),
+    description: String(item.description ?? ""),
+  }));
+}
+
+function mapStaffRows(data: ContentRow[]) {
+  return (data || []).map((item) => ({
+    id: String(item.id ?? ""),
+    name: String(item.name ?? ""),
+    position: String(item.position ?? ""),
+    division: String(item.division ?? ""),
+    division_long: String(item.division_long ?? item.division ?? ""),
+    photo: String(item.photo ?? ""),
+    gender: String(item.gender ?? ""),
+  }));
+}
+
+export const getNews = async (locale: Locale = "id") => {
+  void locale;
+  const data = await getContentTableRows("news");
+
+  if (!data) {
+    return [];
+  }
+
+  return mapNewsRows(data);
+};
+
+export const getGallery = async (locale: Locale = "id") => {
+  void locale;
+  const data = await getContentTableRows("gallery");
+
+  if (!data) {
+    return [];
+  }
+
+  return mapGalleryRows(data);
+};
+
+export const getStaff = async (locale: Locale = "id") => {
+  void locale;
+  const data = await getContentTableRows("staff");
+
+  if (!data) {
+    return [];
+  }
+
+  return mapStaffRows(data);
+};
+
+export const getNewsStrictLocale = async (locale: Locale = "id") => {
+  void locale;
+  const data = await getContentTableRows("news");
+  return mapNewsRows(data);
+};
+
+export const getGalleryStrictLocale = async (locale: Locale = "id") => {
+  void locale;
+  const data = await getContentTableRows("gallery");
+  return mapGalleryRows(data);
+};
+
+export const getStaffStrictLocale = async (locale: Locale = "id") => {
+  void locale;
+  const data = await getContentTableRows("staff");
+  return mapStaffRows(data);
+};
+
+export const getNewsLegacy = async () => {
   const { data, error } = await supabase.from("news").select("*");
   if (error) {
     alert("Get News Gagal!");
@@ -14,16 +121,16 @@ export const getNews = async () => {
     image: item.image ?? "",
     tag: item.tag ?? "",
     date: item.date ?? "",
-    title: item.title ?? "",
+    position: item.position ?? "",
     content: item.content ?? "",
     source: item.source ?? "",
   }));
 };
 
-export const getGallery = async () => {
+export const getGalleryLegacy = async () => {
   const { data, error } = await supabase.from("gallery").select("*");
   if (error) {
-    alert("Get gallery Gagal!");
+    alert("Get galleries Gagal!");
     console.error(error);
     throw error;
   }
@@ -38,11 +145,11 @@ export const getGallery = async () => {
   }));
 };
 
-export const getStaff = async () => {
+export const getStaffLegacy = async () => {
   const { data, error } = await supabase.from("staff").select("*");
 
   if (error) {
-    alert("Get staff Gagal!");
+    alert("Get staffs Gagal!");
     console.error(error);
     throw error;
   }
@@ -109,7 +216,7 @@ export const deleteData = async (table: string, id: string) => {
   const { error } = await supabase.from(table).delete().eq("id", id);
 
   if (error) {
-    alert("Delete staff Gagal!");
+    alert(`Delete ${table} Gagal!`);
     console.error(error);
     throw error;
   }
@@ -125,7 +232,7 @@ export const updateData = async (
   const { error } = await supabase.from(table).update(newData).eq("id", id);
 
   if (error) {
-    alert("Update staff Gagal!");
+    alert(`Update ${table} Gagal!`);
     console.error(error);
     throw error;
   }
@@ -138,43 +245,113 @@ type NeqFilter = {
   value: string | number | boolean;
 };
 
-export const getNumOf = async (dataset: string, filters: NeqFilter[] = []) => {
-  let query = supabase
-    .from(dataset)
-    .select("id", { count: "exact", head: true });
+type CountFilter = NeqFilter & { operator: "eq" | "neq" };
 
-  filters.forEach((filter) => {
-    query = query.neq(filter.column, filter.value);
-  });
+function isTransientCountError(error: {
+  message?: string;
+  code?: string;
+  details?: string;
+}) {
+  const message = error.message?.trim().toLowerCase() ?? "";
+  return (
+    !message ||
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("abort") ||
+    error.code === "PGRST000"
+  );
+}
 
-  const { count, error } = await query;
+async function countRows(table: string, filters: CountFilter[] = []) {
+  const maxAttempts = 2;
 
-  if (error) {
-    alert("Fetching numOf Data failed");
-    console.error(error);
-    throw error;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let query = supabase
+      .from(table)
+      .select("id", { count: "exact", head: true });
+
+    filters.forEach((filter) => {
+      query =
+        filter.operator === "eq"
+          ? query.eq(filter.column, filter.value)
+          : query.neq(filter.column, filter.value);
+    });
+
+    const { count, error } = await query;
+    if (!error) return count ?? 0;
+
+    const transient = isTransientCountError(error);
+    if (transient && attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      continue;
+    }
+
+    const diagnostic = {
+      message: error.message || "Request count gagal tanpa pesan dari server.",
+      code: error.code || null,
+      details: error.details || null,
+      hint: error.hint || null,
+    };
+
+    if (transient) {
+      console.warn(`Fetching count for ${table} temporarily failed:`, diagnostic);
+    } else {
+      console.error(`Fetching count for ${table} failed:`, diagnostic);
+    }
+    return 0;
   }
 
-  return count ?? 0;
+  return 0;
+}
+
+export const getNumOf = async (
+  dataset: string,
+  filters: NeqFilter[] = [],
+): Promise<number> => {
+  return countRows(
+    dataset,
+    filters.map((filter) => ({ ...filter, operator: "neq" })),
+  );
 };
 
-export const getNumNewMessage = async () => {
-  const { count, error } = await supabase
-    .from("message")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "baru");
+export const getNumNewMessage = async (): Promise<number> => {
+  const maxAttempts = 2;
 
-  if (error) {
-    alert("Fetching numOf New Message failed");
-    console.error(error);
-    throw error;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const { data, error } = await supabase.from("messages").select("status");
+
+    if (!error) {
+      return (data ?? []).filter(
+        (message) => message.status?.trim().toLowerCase() === "new",
+      ).length;
+    }
+
+    const transient = isTransientCountError(error);
+    if (transient && attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      continue;
+    }
+
+    const diagnostic = {
+      message: error.message || "Request pesan gagal tanpa pesan dari server.",
+      code: error.code || null,
+      details: error.details || null,
+      hint: error.hint || null,
+    };
+
+    if (transient) {
+      console.warn("Fetching new messages temporarily failed:", diagnostic);
+    } else {
+      console.error("Fetching new messages failed:", diagnostic);
+    }
+    return 0;
   }
 
-  return count ?? 0;
+  return 0;
 };
 
 export const getMessage = async () => {
-  const { data, error } = await supabase.from("message").select("*");
+  const { data, error } = await supabase.from("messages").select("*");
 
   if (error) {
     alert("Fetching messages failed");
@@ -189,6 +366,9 @@ export const getMessage = async () => {
     phone: item.phone ?? "",
     message: item.message ?? "",
     status: item.status ?? "",
+    email_delivery_status: item.email_delivery_status ?? "not_attempted",
+    email_sent_at: item.email_sent_at ?? "",
+    email_delivery_error: item.email_delivery_error ?? "",
     created_at: item.created_at ?? "",
   }));
 };
@@ -255,39 +435,44 @@ export const getDataset = async (dataset: string) => {
   return data || [];
 };
 
-//! GET INTERNAL DATASET PAGES
-export const getInternalDatasetPages = async () => {
-  const { data, error } = await supabase
-    .from("datasets")
-    .select("id, name, table")
-    .order("name", { ascending: true });
-
-  if (error) {
-    alert(`Get dataset Internal Gagal!`);
-    console.error(error);
-    throw error;
-  }
-
-  return data || [];
-};
-
-//! GET INTERNAL DATASET PAGES
-export const getMitraDatasetPages = async (mitraId: string | "all") => {
+//! GET DATASET PAGES
+export const getDatasetPages = async (ownerId: string | "all") => {
   let query = supabase
-    .from("data_mitra")
-    .select("id, label, mitra_id")
+    .from("datasets")
+    .select("id, label, user_id, published, import_status, draft_expires_at")
     .order("label", { ascending: true });
 
-  if (mitraId !== "all") {
-    query = query.eq("mitra_id", mitraId);
+  if (ownerId !== "all") {
+    query = query.eq("user_id", ownerId);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    alert("Get dataset Mitra Gagal!");
-    console.error(error);
-    throw error;
+    console.warn("Dataset draft columns unavailable, using legacy query:", error);
+
+    let fallbackQuery = supabase
+      .from("datasets")
+      .select("id, label, user_id, published")
+      .order("label", { ascending: true });
+
+    if (ownerId !== "all") {
+      fallbackQuery = fallbackQuery.eq("user_id", ownerId);
+    }
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+
+    if (fallbackError) {
+      alert("Get dataset gagal!");
+      console.error(fallbackError);
+      throw fallbackError;
+    }
+
+    return (fallbackData || []).map((row) => ({
+      ...row,
+      import_status: "ready",
+      draft_expires_at: null,
+    }));
   }
 
   return data || [];
@@ -331,8 +516,6 @@ export const addDataRows = async (
     console.error("Insert data failed:", error);
     throw error;
   }
-
-  console.log(data);
 
   return data;
 };
@@ -443,7 +626,7 @@ const createRowId = () => {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
-function normalizeMitraRows(value: unknown): JsonbDatasetRow[] {
+function normalizeDatasetRows(value: unknown): JsonbDatasetRow[] {
   const rows = Array.isArray(value) ? value : [];
 
   return rows
@@ -456,43 +639,84 @@ function normalizeMitraRows(value: unknown): JsonbDatasetRow[] {
     }));
 }
 
-export const getMitraJsonbRows = async (dataMitraId: string) => {
+export const getDatasetJsonbRows = async (datasetId: string) => {
   const { data, error } = await supabase
-    .from("data_mitra")
+    .from("datasets")
     .select("id, data")
-    .eq("id", dataMitraId)
+    .eq("id", datasetId)
     .maybeSingle();
 
   if (error) {
-    console.error("Get mitra JSONB rows failed:", error);
+    console.error("Get dataset JSONB rows failed:", error);
     throw error;
   }
 
-  return normalizeMitraRows(data?.data);
+  return normalizeDatasetRows(data?.data);
 };
 
-export const saveMitraJsonbRows = async (
-  dataMitraId: string,
+export const saveDatasetJsonbRows = async (
+  datasetId: string,
   rows: JsonbDatasetRow[],
 ) => {
   const { error } = await supabase
-    .from("data_mitra")
+    .from("datasets")
     .update({
       data: rows,
     })
-    .eq("id", dataMitraId);
+    .eq("id", datasetId);
 
   if (error) {
-    console.error("Save mitra JSONB rows failed:", error);
+    console.error("Save dataset JSONB rows failed:", error);
     throw error;
   }
 };
 
-//! ========== APP LABELS CMS ========== //
+//! ========== APP CMS ========== //
+
+export const APP_CMS_PREVIEW_STORAGE_KEY = "app-cms-preview-draft";
+
+type AppCmsPreviewDraft = {
+  locale: string;
+  labels: Array<{
+    component: string;
+    target: string;
+    value: string;
+    is_active: boolean;
+  }>;
+};
+
+function getAppCmsPreviewDraft(component: string) {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("cmsPreview") !== "1") return null;
+
+  try {
+    const stored = sessionStorage.getItem(APP_CMS_PREVIEW_STORAGE_KEY);
+    if (!stored) return null;
+
+    const draft = JSON.parse(stored) as AppCmsPreviewDraft;
+    return {
+      locale: draft.locale,
+      labels: draft.labels.filter((item) => item.component === component),
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function getAppLabelComponent(component: string, locale = "id") {
+  const preview = getAppCmsPreviewDraft(component);
+
+  if (preview) {
+    return preview.labels.reduce<Record<string, string>>((acc, item) => {
+      if (item.is_active) acc[item.target] = item.value || "";
+      return acc;
+    }, {});
+  }
+
   const { data, error } = await supabase
-    .from("app_labels")
+    .from("app_cms")
     .select("target, value")
     .eq("component", component)
     .eq("locale", locale)
@@ -507,6 +731,55 @@ export async function getAppLabelComponent(component: string, locale = "id") {
     acc[item.target] = item.value || "";
     return acc;
   }, {});
+}
+
+export async function getAppComponentConfig(component: string, locale = "id") {
+  const preview = getAppCmsPreviewDraft(component);
+
+  if (preview) {
+    return preview.labels.reduce(
+      (config, item) => {
+        config.values[item.target] = item.value || "";
+        config.visibility[item.target] = item.is_active !== false;
+        return config;
+      },
+      { values: {}, visibility: {} } as {
+        values: Record<string, string>;
+        visibility: Record<string, boolean>;
+        error?: string | null;
+      },
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("app_cms")
+    .select("target, value, is_active")
+    .eq("component", component)
+    .eq("locale", locale);
+
+  if (error) {
+    console.error(error.message);
+    return { values: {}, visibility: {}, error: error.message } as {
+      values: Record<string, string>;
+      visibility: Record<string, boolean>;
+      error: string | null;
+    };
+  }
+
+  const config = (data || []).reduce(
+    (config, item) => {
+      config.values[item.target] = item.value || "";
+      config.visibility[item.target] = item.is_active !== false;
+      return config;
+    },
+    { values: {}, visibility: {} } as {
+      values: Record<string, string>;
+      visibility: Record<string, boolean>;
+      error?: string | null;
+    },
+  );
+
+  return { ...config, error: null };
 }
 
 // ! ICON PICKER
@@ -576,17 +849,25 @@ export async function getIconImages(): Promise<IconImage[]> {
 //! GET IMAGE URL
 
 export function getImagePreviewUrl(value: string) {
-  if (!value) return "";
+  const normalizedValue = value?.trim();
+  if (!normalizedValue) return "";
 
   if (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("/")
+    normalizedValue.startsWith("http://") ||
+    normalizedValue.startsWith("https://")
   ) {
-    return value;
+    try {
+      return new URL(normalizedValue).toString();
+    } catch {
+      return "";
+    }
   }
 
-  const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(value);
+  if (normalizedValue.startsWith("/")) return normalizedValue;
+
+  const { data } = supabase.storage
+    .from(IMAGE_BUCKET)
+    .getPublicUrl(normalizedValue);
   return data.publicUrl;
 }
 

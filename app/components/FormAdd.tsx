@@ -6,79 +6,68 @@ import TextareaAutosize from "react-textarea-autosize";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import SpinnerLoading from "./SpinnerLoading";
 import AlertNotif from "./AlertNotif";
+import { getTableConfig, type ConfigItem } from "@/lib/tableConfig";
+import {
+  emptyGalleryDraft,
+  emptyNewsDraft,
+  emptyStaffDraft,
+  useAdminContentStore,
+  type AdminGalleryDraft,
+  type AdminNewsDraft,
+  type AdminStaffDraft,
+} from "@/app/Stores/adminContentStore";
 
 type AdminAddType = "news" | "gallery" | "staff";
+type Locale = "id" | "en";
 
-type StaffForm = {
-  name: string;
-  title: string;
-  division: string;
-  gender: string;
-  photo?: string;
-};
+type StaffForm = AdminStaffDraft;
+type NewsForm = AdminNewsDraft;
+type GalleryForm = AdminGalleryDraft;
 
-type NewsForm = {
-  tag: "" | "Berita" | "Artikel" | "Peraturan";
-  date: string;
-  title: string;
-  content: string;
-  source: string;
-  image?: string;
-};
+function createSlug(value: string) {
+  const base =
+    value
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "konten";
 
-type GalleryForm = {
-  tag: "" | "Kegiatan" | "Alam" | "Lainnya";
-  title: string;
-  date: string;
-  description: string;
-  image?: string;
-};
+  return `${base}-${Date.now().toString(36)}`;
+}
 
 interface Props {
   type: AdminAddType;
+  locale?: Locale;
   signalAdded: (added: string) => void;
 }
 
-export default function FormAdd({ type, signalAdded }: Props) {
+export default function FormAdd({ type, locale = "id", signalAdded }: Props) {
+  const setDraft = useAdminContentStore((state) => state.setDraft);
+  const clearDraft = useAdminContentStore((state) => state.clearDraft);
+
   const [fileName, setFileName] = useState(
     type === "staff" ? "Upload photo" : "Upload gambar",
   );
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [draggingImage, setDraggingImage] = useState(false);
   const [loadingImage, setLoadingImage] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [alertImage, setAlertImage] = useState(false);
-  const [isCustomDivision, setIsCustomDivision] = useState(false);
-
-  const divisionOptions = ["PRL", "Penangkapan", "Budidaya", "PSDKP"];
+  const [options, setOptions] = useState<Record<string, ConfigItem[]>>({});
 
   // Separate form states (component is mounted for a single type at a time)
-  const [staffForm, setStaffForm] = useState<StaffForm>({
-    name: "",
-    title: "",
-    division: "",
-    gender: "",
-    photo: "",
-  });
-  const [newsForm, setNewsForm] = useState<NewsForm>({
-    tag: "",
-    date: "",
-    title: "",
-    content: "",
-    source: "",
-    image: "",
-  });
-  const [galleryForm, setGalleryForm] = useState<GalleryForm>({
-    tag: "",
-    title: "",
-    date: "",
-    description: "",
-    image: "",
-  });
+  const [staffForm, setStaffForm] = useState<StaffForm>(emptyStaffDraft);
+  const [newsForm, setNewsForm] = useState<NewsForm>(emptyNewsDraft);
+  const [galleryForm, setGalleryForm] =
+    useState<GalleryForm>(emptyGalleryDraft);
 
   const storageFolder =
     type === "news" ? "news" : type === "gallery" ? "gallery" : "staff";
-  const tableName = type;
+  const tableName =
+    type === "news" ? "news" : type === "gallery" ? "gallery" : "staff";
 
   const uploadToStorage = async (): Promise<string | undefined> => {
     if (!file) return undefined;
@@ -96,24 +85,46 @@ export default function FormAdd({ type, signalAdded }: Props) {
     setFile(null);
     setPreview(null);
     setFileName(type === "staff" ? "Upload photo" : "Upload gambar");
-    setStaffForm({ name: "", title: "", division: "", gender: "", photo: "" });
-    setNewsForm({
-      tag: "",
-      date: "",
-      title: "",
-      content: "",
-      source: "",
-      image: "",
-    });
-    setGalleryForm({
-      tag: "",
-      title: "",
-      date: "",
-      description: "",
-      image: "",
-    });
+    setStaffForm(emptyStaffDraft);
+    setNewsForm(emptyNewsDraft);
+    setGalleryForm(emptyGalleryDraft);
     setLoadingSubmit(false);
+    clearDraft(type, locale);
   };
+
+  useEffect(() => {
+    const savedDraft = useAdminContentStore.getState().getDraft(type, locale);
+    setStaffForm(savedDraft.staffForm);
+    setNewsForm(savedDraft.newsForm);
+    setGalleryForm(savedDraft.galleryForm);
+  }, [type, locale]);
+
+  useEffect(() => {
+    setDraft(type, locale, {
+      staffForm,
+      newsForm,
+      galleryForm,
+    });
+  }, [
+    type,
+    locale,
+    staffForm,
+    newsForm,
+    galleryForm,
+    setDraft,
+  ]);
+
+  useEffect(() => {
+    void getTableConfig(type).then((config) => {
+      if (!config) return;
+      if (type === "staff") {
+        const staff = config as Awaited<ReturnType<typeof getTableConfig<"staff">>>;
+        setOptions({ division: staff?.division_items ?? [], position: staff?.position_items ?? [], gender: staff?.gender_items ?? [] });
+      } else {
+        setOptions({ tag: (config as { tag_items?: ConfigItem[] }).tag_items ?? [] });
+      }
+    });
+  }, [type]);
 
   // ! Image Loading
   useEffect(() => {
@@ -137,8 +148,10 @@ export default function FormAdd({ type, signalAdded }: Props) {
         const insertData = [
           {
             tag: newsForm.tag,
+            tag_long: newsForm.tag,
             date: newsForm.date,
             title: newsForm.title,
+            slug: createSlug(newsForm.title),
             content: newsForm.content,
             source: newsForm.source,
             image: url,
@@ -160,7 +173,9 @@ export default function FormAdd({ type, signalAdded }: Props) {
           {
             image: url,
             tag: galleryForm.tag,
+            tag_long: galleryForm.tag,
             title: galleryForm.title,
+            slug: createSlug(galleryForm.title),
             date: galleryForm.date,
             description: galleryForm.description,
           },
@@ -176,7 +191,7 @@ export default function FormAdd({ type, signalAdded }: Props) {
         const insertData = [
           {
             name: staffForm.name,
-            title: staffForm.title,
+            position: staffForm.position,
             division: staffForm.division,
             gender: staffForm.gender || null,
             photo: url ?? null,
@@ -199,54 +214,75 @@ export default function FormAdd({ type, signalAdded }: Props) {
       ? "/assets/icon_profile_u.png"
       : "/assets/image_placeholder.png";
 
+  const selectImage = (selectedFile?: File) => {
+    if (!selectedFile) return;
+    if (!selectedFile.type.startsWith("image/")) {
+      setAlertImage(true);
+      return;
+    }
+
+    setAlertImage(false);
+    setFile(selectedFile);
+    setFileName(selectedFile.name);
+    setPreview(URL.createObjectURL(selectedFile));
+  };
+
   return (
     <>
       <form
-        className="flex flex-col w-full p-6 shadow-xl md:p-10 border-1 border-stone-200 rounded-2xl"
+        className="flex w-full flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-xl md:p-10"
         onSubmit={handleSubmit}
       >
         {/* IMAGE UPLOAD */}
-        <div className="flex flex-col gap-3">
+        <div className="mb-3 flex flex-col gap-3 md:mb-6">
           <label
             htmlFor="image"
-            className="flex flex-col w-full p-3 mb-3 border rounded-md cursor-pointer md:mb-6 hover:bg-stone-200"
+            onDragEnter={(event) => { event.preventDefault(); setDraggingImage(true); }}
+            onDragOver={(event) => { event.preventDefault(); setDraggingImage(true); }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDraggingImage(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDraggingImage(false);
+              selectImage(event.dataTransfer.files?.[0]);
+            }}
+            className={`flex min-h-48 w-full cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border-2 border-dashed p-4 text-center transition ${
+              draggingImage
+                ? "border-sky-500 bg-sky-50"
+                : "border-stone-300 bg-white hover:bg-stone-50"
+            }`}
           >
+            <input
+              id="image"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => {
+                selectImage(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
             <Image
               src={preview || placeholderSrc}
               alt="Preview"
-              className={`mt-3 max-h-60 object-contain h-full w-full ${
+              className={`h-full max-h-48 w-full object-contain ${
                 loadingImage ? "hidden" : "flex"
               }`}
               width={800}
               height={600}
               onLoad={() => setLoadingImage(false)}
             />
-            <div className={loadingImage ? "flex" : "hidden"}>
+            <div className={loadingImage ? "flex min-h-32 items-center" : "hidden"}>
               <SpinnerLoading size="sm" color="black" />
             </div>
-            <span className="mt-2 text-center">{fileName}</span>
+            <div>
+              <p className="text-sm font-semibold text-stone-700">
+                {preview ? "Tarik gambar baru ke sini atau klik untuk mengganti" : "Tarik gambar ke sini atau klik untuk memilih"}
+              </p>
+              <p className="mt-1 text-xs text-stone-500">{fileName}</p>
+            </div>
           </label>
-
-          <input
-            id="image"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) {
-                setFile(f);
-                setFileName(f.name);
-                setPreview(URL.createObjectURL(f));
-              } else {
-                setFile(null);
-                setFileName(
-                  type === "staff" ? "Upload photo" : "No file chosen",
-                );
-                setPreview(null);
-              }
-            }}
-          />
         </div>
 
         {/* STAFF FORM */}
@@ -288,28 +324,19 @@ export default function FormAdd({ type, signalAdded }: Props) {
               <option value="" disabled>
                 -- Pilih Gender --
               </option>
-              <option value="Male">Laki-laki</option>
-              <option value="Female">Perempuan</option>
+              {(options.gender ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
             </select>
 
             <label
               className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-              htmlFor="title"
+              htmlFor="position"
             >
               Jabatan
             </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              placeholder="Jabatan Staff"
-              className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
-              value={staffForm.title}
-              onChange={(e) =>
-                setStaffForm({ ...staffForm, title: e.target.value })
-              }
-              required
-            />
+            <select id="position" className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]" value={staffForm.position} onChange={(e) => setStaffForm({ ...staffForm, position: e.target.value })} required>
+              <option value="" disabled>-- Pilih Jabatan --</option>
+              {(options.position ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
+            </select>
 
             <label
               className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -321,17 +348,9 @@ export default function FormAdd({ type, signalAdded }: Props) {
             <select
               id="division"
               className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-3 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-              value={isCustomDivision ? "__custom__" : staffForm.division}
+              value={staffForm.division}
               onChange={(e) => {
                 const value = e.target.value;
-
-                if (value === "__custom__") {
-                  setIsCustomDivision(true);
-                  setStaffForm({ ...staffForm, division: "" });
-                  return;
-                }
-
-                setIsCustomDivision(false);
                 setStaffForm({ ...staffForm, division: value });
               }}
               required
@@ -340,27 +359,12 @@ export default function FormAdd({ type, signalAdded }: Props) {
                 -- Pilih Bidang --
               </option>
 
-              {divisionOptions.map((division) => (
-                <option key={division} value={division}>
-                  {division}
+              {(options.division ?? []).map((division) => (
+                <option key={division.key} value={division.key}>
+                  {division.short.id}
                 </option>
               ))}
-
-              <option value="__custom__">Tambah Bidang</option>
             </select>
-
-            {isCustomDivision && (
-              <input
-                type="text"
-                value={staffForm.division}
-                onChange={(e) =>
-                  setStaffForm({ ...staffForm, division: e.target.value })
-                }
-                placeholder="Masukkan bidang baru..."
-                className="w-full md:w-auto bg-stone-100 rounded-md md:mb-6 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-                required
-              />
-            )}
           </>
         )}
 
@@ -387,9 +391,7 @@ export default function FormAdd({ type, signalAdded }: Props) {
               <option value="" disabled>
                 -- Pilih Tag --
               </option>
-              <option value="Berita">Berita</option>
-              <option value="Artikel">Artikel</option>
-              <option value="Peraturan">Peraturan</option>
+              {(options.tag ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
             </select>
 
             <label
@@ -490,9 +492,7 @@ export default function FormAdd({ type, signalAdded }: Props) {
               <option value="" disabled>
                 -- Pilih Tag --
               </option>
-              <option value="Kegiatan">Kegiatan</option>
-              <option value="Alam">Alam</option>
-              <option value="Lainnya">Lainnya</option>
+              {(options.tag ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
             </select>
 
             <label

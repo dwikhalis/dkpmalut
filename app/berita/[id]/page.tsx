@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { UUID } from "crypto";
+import TableConfigValue from "@/app/components/TableConfigValue";
 
 interface Props {
   //! In Next 15, these APIs have been made asynchronous.
@@ -12,6 +13,7 @@ interface Props {
 
 interface News {
   id: UUID;
+  slug?: string | null;
   image: string;
   tag: string;
   date: string;
@@ -20,45 +22,50 @@ interface News {
   source: string;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
 export default async function page({ params }: Props) {
   const { id } = await params;
 
-  const { data, error } = await supabase
-    .from("news")
-    .select("*")
-    .eq("id", id)
-    .single<News>();
+  const query = supabase.from("news").select("*");
+  const { data, error } = isUuid(id)
+    ? await query.eq("id", id).single<News>()
+    : await query.eq("slug", id).single<News>();
 
   if (error || !data) {
     console.error(error);
     redirect("/404");
   } else {
     return (
-      <>
-        <div className="flex flex-col gap-6 2xl:mx-24 2xl:my-24 2xl:gap-12 md:mx-12 mx-8 md:mt-12 mt-8 mb-12">
-          <h2>{data.title}</h2>
-          <h5>
-            {`${data.tag.charAt(0).toUpperCase() + data.tag.slice(1)} /
+      <main className="mx-auto flex min-h-[70vh] w-full max-w-5xl flex-col gap-6 p-6 md:p-10">
+        <h1>{data.title}</h1>
+        <p className="text-lg leading-relaxed md:text-xl">
+          <TableConfigValue table="news" field="tag" value={data.tag} /> {` /
             ${new Date(data.date).toLocaleDateString("id-ID", {
               day: "numeric",
               month: "long",
               year: "numeric",
             })}`}
-          </h5>
-          <div className="flex flex-col mb-6 gap-2">
-            <Image
-              alt="Gambar"
-              src={data.image}
-              width={800}
-              height={600}
-              className="h-[100vh] w-full object-cover"
-              quality={100}
-            />
-            <h6 className="text-right">{data.source}</h6>
-          </div>
-          <h5 className="whitespace-pre-wrap">{data.content}</h5>
+        </p>
+        <div className="flex flex-col mb-6 gap-2">
+          <Image
+            alt="Gambar"
+            src={data.image}
+            width={800}
+            height={600}
+            className="h-[100vh] w-full object-cover"
+            quality={100}
+          />
+          <p className="text-right text-sm">{data.source}</p>
         </div>
-      </>
+        <div className="whitespace-pre-wrap text-base leading-8 md:text-lg">
+          {data.content}
+        </div>
+      </main>
     );
   }
 }

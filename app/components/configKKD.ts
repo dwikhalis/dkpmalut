@@ -206,7 +206,7 @@ export const KKD_OPTIONS: KkdOption[] = [
     zoom: 11,
     downloads: {
       map: "/maps/map_rao_dehegila.jpg",
-      rpz: "/documents/rpz_rao_dehegila.pdf",
+      rpz: "/documents/rpz_morotai.pdf",
       decree: "/documents/kepmenkp_rao_dehegila.pdf",
     },
     data_link:
@@ -214,7 +214,7 @@ export const KKD_OPTIONS: KkdOption[] = [
   },
   {
     id: "sula",
-    label: "Kepulauan Sula",
+    label: "TP Kepulauan Sula",
     layers: ["sula"],
     center: [-2.134340277999968, 126.15313500200011],
     zoom: 9,

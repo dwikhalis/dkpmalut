@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/Stores/authStores";
+import SpinnerLoading from "../components/SpinnerLoading";
 
 export default function AuthAdminAccess({
   children,
@@ -21,7 +22,11 @@ export default function AuthAdminAccess({
   }, [loading, role, router]);
 
   if (loading) {
-    return <div className="p-10 text-center text-lg h-[70vh]">Loading...</div>;
+    return (
+      <div className="flex h-[70vh] items-center justify-center p-10">
+        <SpinnerLoading size="sm" color="black" />
+      </div>
+    );
   }
 
   if (role !== "admin") return null;

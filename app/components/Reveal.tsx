@@ -12,6 +12,7 @@ interface Props {
   animation?: RevealAnimation;
   delay?: number;
   once?: boolean;
+  disabled?: boolean;
 }
 
 export default function Reveal({
@@ -20,11 +21,14 @@ export default function Reveal({
   animation = "fade-up",
   delay = 0,
   once = true,
+  disabled = false,
 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (disabled) return;
+
     const element = ref.current;
 
     if (!element) return;
@@ -57,7 +61,11 @@ export default function Reveal({
     return () => {
       observer.disconnect();
     };
-  }, [once]);
+  }, [disabled, once]);
+
+  if (disabled) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <div

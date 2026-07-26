@@ -3,7 +3,7 @@
 type DeleteRow = {
   id: string;
   label: string;
-  mitraName: string;
+  ownerName: string;
   dataCount: number;
 };
 
@@ -40,7 +40,7 @@ export default function DatasetConfigDelete({
                 Label
               </th>
               <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                Mitra
+                Pemilik
               </th>
               <th className="border border-gray-300 bg-sky-100 px-3 py-2">
                 Jumlah Data
@@ -64,7 +64,7 @@ export default function DatasetConfigDelete({
                 </td>
 
                 <td className="border border-gray-300 px-3 py-2">
-                  {row.mitraName}
+                  {row.ownerName}
                 </td>
 
                 <td className="border border-gray-300 px-3 py-2 text-right">

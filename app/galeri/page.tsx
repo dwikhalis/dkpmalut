@@ -1,38 +1,53 @@
-import React from "react";
+import { Suspense } from "react";
 import Gallery from "../components/Gallery";
+import SpinnerLoading from "../components/SpinnerLoading";
 import { getGallery } from "@/lib/supabase/supabaseHelper";
+import { PageHeader } from "../components/CmsPageContent";
 
-export default async function Page() {
+export const revalidate = 0;
+
+async function GalleryList() {
   const images = await getGallery();
+
+  if (!images || images.length === 0) {
+    return <p className="mt-10">Belum ada data terdaftar</p>;
+  }
 
   return (
     <>
-      <section className="lg:mx-12 2xl:mx-24 mx-8 lg:my-12 2xl:my-24 my-8 min-h-[70vh]">
-        <div className="flex flex-col gap-3">
-          <h2>Galeri Kelautan Perikanan</h2>
-          <h5>
-            Galeri Foto dan Video seputar dunia Kelautan dan Perikanan Provinsi
-            Maluku Utara
-          </h5>
-        </div>
-        {/* //! DESKTOP */}
-        <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          {images.map((e, idx) => {
-            return (
-              <div className="w-[30%] hover:cursor-pointer" key={idx}>
-                <Gallery type="regular" data={images} id={e.id} />
-              </div>
-            );
-          })}
-        </div>
+      {/* DESKTOP */}
+      <div className="hidden w-full flex-wrap gap-6 md:flex lg:gap-10">
+        {images.map((image) => (
+          <div className="w-[30%] hover:cursor-pointer" key={image.id}>
+            <Gallery type="regular" data={images} id={image.id} />
+          </div>
+        ))}
+      </div>
 
-        {/* //! MOBILE */}
-        <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          {images.map((e, idx) => {
-            return <Gallery type="regular" data={images} id={e.id} key={idx} />;
-          })}
-        </div>
-      </section>
+      {/* MOBILE */}
+      <div className="flex w-full flex-col gap-6 md:hidden lg:gap-10">
+        {images.map((image) => (
+          <Gallery type="regular" data={images} id={image.id} key={image.id} />
+        ))}
+      </div>
     </>
+  );
+}
+
+export default function Page() {
+  return (
+    <main className="mx-auto min-h-[70vh] w-full max-w-7xl p-6 md:p-10">
+      <PageHeader
+        eyebrow="Dokumentasi"
+        title="Galeri Kelautan Perikanan"
+        subtitle="Galeri foto dan video seputar dunia Kelautan dan Perikanan Provinsi Maluku Utara."
+      />
+
+      <div className="mt-8">
+        <Suspense fallback={<SpinnerLoading size="sm" color="black" />}>
+          <GalleryList />
+        </Suspense>
+      </div>
+    </main>
   );
 }

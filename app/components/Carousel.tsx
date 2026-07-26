@@ -98,9 +98,9 @@ export default function Carousel({ pictures }: ImageCarouselProps) {
                       </div>
 
                       {src[1] && (
-                        <h6 className="mt-4 max-w-[92vw] text-center text-sm text-white md:max-w-[70vw] md:text-base">
+                        <p className="mt-4 max-w-[92vw] text-center text-sm text-white md:max-w-[70vw] md:text-base">
                           {src[1]}
-                        </h6>
+                        </p>
                       )}
                     </div>
                   </SwiperSlide>

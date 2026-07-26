@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import AdminDashboard from "../components/AdminDashboard";
-import AdminSideMenu from "../components/AdminSideMenu";
+import DashStats from "../components/Dashboard/DashStats";
+import DashSideMenu from "../components/Dashboard/DashSideMenu";
 import { useAuthStore } from "@/app/Stores/authStores";
-import ProfileAccount from "../components/ProfileAccount";
+import DashProfile from "../components/Dashboard/DashProfile";
 import { useRouter } from "next/navigation";
 import AuthAdminAccess from "../Auth/AuthAdminAccess";
+import SpinnerLoading from "../components/SpinnerLoading";
 
 export default function Page() {
   const router = useRouter();
@@ -16,40 +17,31 @@ export default function Page() {
   const role = useAuthStore((state) => state.role);
 
   useEffect(() => {
-    if (!loading && role === "user") {
+    if (!loading && role === null) {
       router.replace("/404");
     }
   }, [loading, role, router]);
 
   if (loading) {
-    return <div className="p-10 text-center">Loading...</div>;
-  }
-
-  if (!userId) {
-    return null;
-  }
-
-  //! Prevent role="user" from seeing this page while redirecting
-  if (role === "user") {
-    return null;
-  }
-
-  //! Optional safety guard
-  if (role !== "admin" && role !== "partner") {
-    return null;
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center p-10">
+        <SpinnerLoading size="sm" color="black" />
+      </div>
+    );
   }
 
   return (
     <div className="flex">
-      <AdminSideMenu slug="home" userRole={role} />
+      <DashSideMenu slug="home" userRole={role} />
 
       <div className="flex h-full w-full lg:mx-12 mx-8 min-h-[70vh]">
         {role === "admin" && (
           <AuthAdminAccess>
-            <AdminDashboard />
+            <DashStats />
           </AuthAdminAccess>
         )}
-        {role === "partner" && <ProfileAccount />}
+        {role === "partner" && <DashProfile />}
+        {role === "user" && <DashProfile />}
       </div>
     </div>
   );

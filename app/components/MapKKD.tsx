@@ -391,9 +391,9 @@ export default function MapKKD({ legend, kkd, geoData, loadStatus }: Props) {
     >
       {showCtrlNotif && (
         <div className="absolute top-3 z-[1000] hidden h-8 w-100 items-center justify-center rounded-xl bg-black/40 text-white md:flex">
-          <h5>
+          <p className="text-sm">
             Tekan <kbd>Ctrl</kbd> + Scroll untuk Zoom
-          </h5>
+          </p>
         </div>
       )}
 

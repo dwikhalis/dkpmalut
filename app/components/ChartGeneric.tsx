@@ -3,25 +3,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import DataPublishTable, {
-  type ColumnConfig,
-  type FilterConfig,
-} from "./DataPublishTable";
+import {
+  createFiltersFromColumns,
+  normalizeChartConfig,
+  normalizeTableConfig,
+  parsePublishedConfig,
+  type PublishedConfig,
+} from "@/lib/utils/publishedConfig";
+import type { ColumnConfig } from "./DataPublishTable";
 import DataPublishChart from "./DataPublishChart";
 import DataPageDropdown from "./DataPageDropdown";
 import AlertNotif from "./AlertNotif";
+import SpinnerLoading from "./SpinnerLoading";
 import { useAuthStore } from "../Stores/authStores";
+import { VerticalThreeDot } from "@/public/icons/iconSets";
 
 type DataRow = Record<string, unknown>;
 
-type DataMitraPublishedRow = {
+type DatasetPublishedRow = {
   id: string;
   label: string | null;
   data: DataRow[] | string | null;
   column_config: ColumnConfig[] | string | null;
-  filter_config: FilterConfig[] | string | null;
-  main_column_config: string[] | string | null;
+  published_config: PublishedConfig | string | null;
   published?: "approved" | "requested" | "rejected" | null;
+  description: string | null;
 };
 
 type Props = {
@@ -96,8 +102,21 @@ export default function ChartGeneric({ slug, pages }: Props) {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   const [loading, setLoading] = useState(true);
-  const [dataset, setDataset] = useState<DataMitraPublishedRow | null>(null);
-  const [alertType, setAlertType] = useState<null | "login-required">(null);
+  const [dataset, setDataset] = useState<DatasetPublishedRow | null>(null);
+  const [alertType, setAlertType] = useState<
+    null | "download-login-required" | "table-login-required"
+  >(null);
+  const [publicFiltersState, setPublicFiltersState] = useState<
+    Record<string, string>
+  >({});
+  const [publicSortBy, setPublicSortBy] = useState("");
+  const [publicCsvData, setPublicCsvData] = useState<{
+    headers: string[];
+    rows: Array<Array<string | number>>;
+  }>({
+    headers: [],
+    rows: [],
+  });
 
   useEffect(() => {
     const fetchPublishedDataset = async () => {
@@ -105,16 +124,16 @@ export default function ChartGeneric({ slug, pages }: Props) {
 
       try {
         const { data, error } = await supabase
-          .from("data_mitra")
+          .from("datasets")
           .select(
-            "id, label, data, column_config, filter_config, main_column_config, published",
+            "id, label, data, column_config, published_config, published, description",
           )
           .eq("published", "approved")
           .order("label", { ascending: true });
 
         if (error) throw error;
 
-        const rows = (data ?? []) as DataMitraPublishedRow[];
+        const rows = (data ?? []) as DatasetPublishedRow[];
 
         const matchedDataset =
           rows.find((row) => toSlug(row.label ?? "") === slug) ?? null;
@@ -136,29 +155,50 @@ export default function ChartGeneric({ slug, pages }: Props) {
   }, [dataset]);
 
   const filters = useMemo(() => {
-    return parseJsonArray<FilterConfig>(dataset?.filter_config);
+    return createFiltersFromColumns(columns);
+  }, [columns]);
+
+  const publishedConfig = useMemo(() => {
+    return parsePublishedConfig(dataset?.published_config);
   }, [dataset]);
 
-  const mainColumnKeys = useMemo(() => {
-    return parseJsonArray<string>(dataset?.main_column_config);
-  }, [dataset]);
+  const tableConfig = useMemo(() => {
+    return normalizeTableConfig(publishedConfig.table, columns, filters);
+  }, [columns, filters, publishedConfig.table]);
+
+  const chartConfig = useMemo(() => {
+    return normalizeChartConfig(publishedConfig.chart, columns, tableConfig);
+  }, [columns, publishedConfig.chart, tableConfig]);
+
+  const publicColumns = useMemo(() => {
+    return columns.filter((column) =>
+      tableConfig.visibleColumnKeys.includes(column.key),
+    );
+  }, [columns, tableConfig.visibleColumnKeys]);
+  const canDownloadCsv = publicCsvData.headers.length > 0;
 
   const tableRows = useMemo(() => {
     return parseJsonArray<DataRow>(dataset?.data);
   }, [dataset]);
 
-  const defaultSortKey = mainColumnKeys[0] ?? columns[0]?.key ?? "";
+  const defaultSortKey = tableConfig.sortKey || (publicColumns[0]?.key ?? "");
+
+  useEffect(() => {
+    setPublicFiltersState({});
+    setPublicSortBy(defaultSortKey);
+  }, [dataset?.id, defaultSortKey]);
+
+  const updatePublicFilter = (key: string, value: string) => {
+    setPublicFiltersState((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   const downloadCsv = () => {
-    if (!dataset || tableRows.length === 0 || columns.length === 0) return;
+    if (!dataset || !canDownloadCsv) return;
 
-    const header = columns.map((column) => column.label || column.key);
-
-    const body = tableRows.map((row) => {
-      return columns.map((column) => row[column.key]);
-    });
-
-    const csv = toCsv(header, body);
+    const csv = toCsv(publicCsvData.headers, publicCsvData.rows);
     const blob = new Blob(["\uFEFF", csv], {
       type: "text/csv;charset=utf-8;",
     });
@@ -177,14 +217,18 @@ export default function ChartGeneric({ slug, pages }: Props) {
   };
 
   const handleCsvClick = () => {
-    if (tableRows.length === 0 || columns.length === 0) return;
+    if (!canDownloadCsv) return;
 
     if (!isLoggedIn) {
-      setAlertType("login-required");
+      setAlertType("download-login-required");
       return;
     }
 
     downloadCsv();
+  };
+
+  const requestTableLogin = () => {
+    setAlertType("table-login-required");
   };
 
   const handleLoginRedirect = () => {
@@ -195,10 +239,7 @@ export default function ChartGeneric({ slug, pages }: Props) {
   if (loading) {
     return (
       <section className="flex min-h-[80vh] w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-sky-600" />
-          <p className="text-sm text-gray-500">Loading data...</p>
-        </div>
+        <SpinnerLoading size="sm" color="black" />
       </section>
     );
   }
@@ -216,7 +257,7 @@ export default function ChartGeneric({ slug, pages }: Props) {
     );
   }
 
-  if (columns.length === 0) {
+  if (publicColumns.length === 0) {
     return (
       <section className="flex min-h-[80vh] w-full items-center justify-center px-6 text-center">
         <div>
@@ -230,51 +271,78 @@ export default function ChartGeneric({ slug, pages }: Props) {
   }
 
   return (
-    <section className="flex min-h-[100vh] w-full flex-col px-8 md:px-10 lg:px-16">
+    <section className="flex min-h-[100vh] w-full flex-col px-6 pb-12 md:px-12">
       <DataPageDropdown pages={pages} />
 
-      <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="font-bold">{dataset.label ?? "Dataset"}</h2>
-        </div>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h2 className="min-w-0 font-bold">{dataset.label ?? "Dataset"}</h2>
 
-        <div className="flex w-full flex-col md:w-auto">
-          <label className="mb-1 block font-medium text-[2.8vw] md:text-[1.5vw] lg:text-sm">
-            Download
-          </label>
+        <div className="shrink-0">
+          <details three-dot-menu="true" className="group relative">
+            <summary className="list-none cursor-pointer rounded-sm border-2 border-white bg-white px-1 py-1 text-xs hover:border-black group-open:border-2 group-open:border-black">
+              <VerticalThreeDot className="size-6" />
+            </summary>
 
-          <button
-            type="button"
-            className={`w-full rounded border px-3 py-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm ${
-              tableRows.length === 0
-                ? "cursor-not-allowed opacity-50"
-                : "bg-sky-600 text-white hover:bg-sky-500"
-            }`}
-            onClick={handleCsvClick}
-            disabled={tableRows.length === 0}
-          >
-            CSV
-          </button>
+            <div className="absolute right-0 z-30 mt-2 flex flex-col rounded-lg border border-gray-400 bg-white p-2 shadow-lg">
+              <button
+                type="button"
+                className={`whitespace-nowrap px-2 p-2 text-left text-sm ${
+                  canDownloadCsv
+                    ? "hover:bg-sky-200"
+                    : "cursor-not-allowed text-gray-400"
+                }`}
+                onClick={handleCsvClick}
+                disabled={!canDownloadCsv}
+              >
+                Download CSV
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 
-      <DataPublishChart dataMitraId={dataset.id} columns={columns} />
+      <div className="flex flex-col gap-6">
+        <DataPublishChart
+          datasetId={dataset.id}
+          columns={columns}
+          filters={filters}
+          tableConfig={tableConfig}
+          chartConfig={chartConfig}
+          selectedFilters={publicFiltersState}
+          sortBy={publicSortBy || defaultSortKey}
+          onFilterChange={updatePublicFilter}
+          onSortChange={setPublicSortBy}
+          isLoggedIn={isLoggedIn}
+          onLoginRequired={requestTableLogin}
+          onCsvDataChange={setPublicCsvData}
+        />
 
-      <DataPublishTable
-        dataMitraId={dataset.id}
-        columns={columns}
-        filters={filters}
-        defaultSortKey={defaultSortKey}
-      />
+        {dataset.description && (
+          <p className="max-w-3xl text-sm text-stone-600">
+            {dataset.description}
+          </p>
+        )}
+      </div>
 
-      {alertType === "login-required" && (
+      {alertType && (
         <AlertNotif
           type="double"
-          msg="Log In terlebih dahulu untuk download data"
-          yesText="Log In"
-          noText="Batal"
+          msg={
+            alertType === "download-login-required"
+              ? "Masuk untuk mendownload data, atau hubungi Admin. Masuk sekarang ?"
+              : "Masuk untuk melihat data secara utuh, atau hubungi Admin. Masuk sekarang ?"
+          }
+          yesText="Ya"
+          noText="Tidak"
           icon="warning"
-          confirm={handleLoginRedirect}
+          confirm={(confirmation) => {
+            if (confirmation) {
+              handleLoginRedirect();
+              return;
+            }
+
+            setAlertType(null);
+          }}
         />
       )}
     </section>

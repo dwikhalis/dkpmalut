@@ -1,12 +1,12 @@
 "use client";
 
-export const revalidate = 0;
-
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { deleteData, getMessage } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Delete, Switch } from "@/public/icons/iconSets";
 import AlertNotif from "./AlertNotif";
+import SpinnerLoading from "./SpinnerLoading";
+import MessageEmailStatus from "./MessageEmailStatus";
 
 type MessageAction = "read" | "unread" | "switch";
 
@@ -14,7 +14,7 @@ interface Prop {
   admin: boolean;
   sendToParent?: (
     sendData: DataTypes,
-    action: MessageAction
+    action: MessageAction,
   ) => void | Promise<void>;
 }
 
@@ -25,17 +25,20 @@ interface DataTypes {
   phone?: string;
   message?: string;
   status?: string;
+  email_delivery_status?: "sent" | "pending" | "failed" | "not_attempted";
+  email_sent_at?: string;
+  email_delivery_error?: string;
   created_at?: string;
 }
 
 const typeConfig = {
   message: {
     fetch: getMessage,
-    table: "message",
+    table: "messages",
     groupKey: "status",
     labels: {
-      lama: "Pesan Lama",
-      baru: "Pesan Baru",
+      old: "Pesan Lama",
+      new: "Pesan Baru",
     },
     titleField: "name",
     subtitleField: "email",
@@ -48,6 +51,17 @@ const getTimeSafe = (v: unknown): number => {
   const d = v instanceof Date ? v : new Date(String(v));
   return isNaN(d.getTime()) ? 0 : d.getTime();
 };
+
+const MESSAGE_TIME_ZONE = "Asia/Jayapura";
+
+function formatMessageTime(value: string) {
+  return `${new Date(value).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: MESSAGE_TIME_ZONE,
+  })} WIT`;
+}
 
 export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
   const [data, setData] = useState<DataTypes[]>([]);
@@ -82,7 +96,7 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        fetchData
+        fetchData,
       )
       .subscribe();
 
@@ -98,14 +112,45 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
       acc[key].push(item);
       return acc;
     },
-    {} as Record<string, DataTypes[]>
+    {} as Record<string, DataTypes[]>,
   );
+
+  async function handleMessageAction(item: DataTypes, action: MessageAction) {
+    const previousStatus = item.status;
+    const nextStatus =
+      action === "read"
+        ? "old"
+        : action === "unread"
+          ? "new"
+          : item.status === "new"
+            ? "old"
+            : "new";
+
+    setData((current) =>
+      current.map((message) =>
+        message.id === item.id ? { ...message, status: nextStatus } : message,
+      ),
+    );
+
+    try {
+      await sendToParent(item, action);
+    } catch (error) {
+      setData((current) =>
+        current.map((message) =>
+          message.id === item.id
+            ? { ...message, status: previousStatus }
+            : message,
+        ),
+      );
+      console.error("Update status pesan gagal:", error);
+    }
+  }
 
   async function actionConfirmed(confirmation: boolean) {
     const dataId = confirmAction[1];
     if (confirmation) {
       setLoadingAction(true);
-      const executed = await deleteData("message", dataId);
+      const executed = await deleteData("messages", dataId);
       if (executed) {
         setLoadingAction(false);
         setConfirmAction([true, ""]);
@@ -117,146 +162,143 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
     }
   }
 
-  if (loading) return <p>Loading...</p>;
-  if (!data.length) return <p>Belum ada pesan masuk</p>;
+  if (loading) {
+    return (
+      <div className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white p-4 shadow-md">
+        <SpinnerLoading size="sm" color="black" />
+      </div>
+    );
+  }
+
+  if (!data.length) {
+    return (
+      <p className="w-full rounded-2xl border border-stone-200 bg-white p-4 text-[2.8vw] shadow-md md:text-[1.5vw] lg:text-sm">
+        Belum ada pesan masuk
+      </p>
+    );
+  }
 
   return (
-    <div className="flex flex-col md:gap-12 gap-6 w-full">
-      {Object.entries(groupedData)
-        .sort(([a], [b]) =>
-          a.localeCompare(b, undefined, { sensitivity: "base" })
-        )
-        .map(([key, items]) => (
-          <div key={key} className="mb-6">
-            {/* Title Desktop */}
-            <h4 className="hidden md:block font-bold mb-3 md:mb-3">
-              {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
-            </h4>
+    <>
+      {admin && (
+        <div className="flex flex-col gap-6 w-full">
+          {Object.entries(groupedData)
+            .sort(([a], [b]) =>
+              a.localeCompare(b, undefined, { sensitivity: "base" }),
+            )
+            .map(([key, items]) => (
+              <div key={key} className="flex flex-col mb-6 gap-3">
+                <h2 className="mb-3 text-xl font-bold">
+                  {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
+                </h2>
 
-            {/* Title Mobile */}
-            <h3 className="block md:hidden font-bold mb-3 md:mb-3">
-              {labels[key as keyof typeof labels] ?? "Tidak Terdata"}
-            </h3>
-
-            {items
-              .sort((a, b) => {
-                const tA = getTimeSafe(a[dateField as keyof DataTypes]);
-                const tB = getTimeSafe(b[dateField as keyof DataTypes]);
-                if (tA !== tB) return tB - tA; // newest first
-                // tie-breaker by title to keep order stable
-                return (a[titleField] ?? "").localeCompare(
-                  b[titleField] ?? "",
-                  undefined,
-                  {
-                    sensitivity: "base",
-                  }
-                );
-              })
-              .map((e, idx) => (
-                <div
-                  className="flex justify-center items-center gap-3"
-                  key={idx}
-                >
-                  <div className="flex w-full justify-between items-center bg-white rounded-xl shadow-xl px-3 md:px-10 py-3 my-3 cursor-pointer hover:bg-stone-200 border border-stone-200">
-                    {/* //! Desktop */}
+                {items
+                  .sort((a, b) => {
+                    const tA = getTimeSafe(a[dateField as keyof DataTypes]);
+                    const tB = getTimeSafe(b[dateField as keyof DataTypes]);
+                    if (tA !== tB) return tB - tA; // newest first
+                    // tie-breaker by title to keep order stable
+                    return (a[titleField] ?? "").localeCompare(
+                      b[titleField] ?? "",
+                      undefined,
+                      {
+                        sensitivity: "base",
+                      },
+                    );
+                  })
+                  .map((e) => (
                     <div
-                      className="flex w-full justify-between items-center"
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-3 md:p-6 shadow-xl transition-colors hover:bg-stone-200"
+                      key={e.id}
                       onClick={() => {
-                        sendToParent(e, "read");
+                        void handleMessageAction(e, "read");
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                     >
-                      <h5 className="hidden md:flex text-sm font-bold break-words w-[30%]">
-                        {e[titleField] as string}
-                      </h5>
-
-                      {/* === Message Only === */}
-                      <h5 className="md:flex hidden text-sm break-words w-[30%]">
-                        {(e[dateField as keyof DataTypes] &&
-                          new Date(
-                            e[dateField as keyof DataTypes] as string
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "long",
-                            year: "numeric",
-                          })) ||
-                          ""}
-                      </h5>
-
-                      <h5 className="hidden md:flex text-sm break-words w-[30%]">
-                        {e[subtitleField] as string}
-                      </h5>
-
-                      {/* //! Mobile */}
-                      <div className="flex md:hidden flex-col w-full gap-1 px-2">
-                        <h6 className="text-sm font-bold break-words">
+                      <div className="relative flex flex-col md:flex-row items-start w-full">
+                        {/* //! SENDER NAME */}
+                        <span className="min-w-0 break-words text-sm font-bold w-[40%]">
                           {e[titleField] as string}
-                        </h6>
+                        </span>
 
-                        <h6 className="flex md:hidden text-sm break-words w-full">
-                          {(e[dateField as keyof DataTypes] &&
-                            new Date(
-                              e[dateField as keyof DataTypes] as string
-                            ).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })) ||
-                            ""}
-                        </h6>
-
-                        <h6 className="text-sm break-words">
-                          {e[subtitleField] as string}
-                        </h6>
+                        {/* //! SENDER DETAILS */}
+                        <span className="flex min-w-0 flex-col items-start gap-1 break-words text-sm md:gap-2 w-[60%]">
+                          <span className="min-w-0 break-words text-xs md:text-sm">
+                            {e[subtitleField] as string}
+                          </span>
+                          {e[dateField as keyof DataTypes] && (
+                            <>
+                              <span className="text-xs md:text-sm">
+                                {new Date(
+                                  e[dateField as keyof DataTypes] as string,
+                                ).toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "long",
+                                  year: "numeric",
+                                  timeZone: MESSAGE_TIME_ZONE,
+                                })}
+                                {" / "}
+                                {formatMessageTime(
+                                  e[dateField as keyof DataTypes] as string,
+                                )}
+                              </span>
+                            </>
+                          )}
+                          <MessageEmailStatus
+                            status={e.email_delivery_status}
+                          />
+                        </span>
                       </div>
-                    </div>
 
-                    {/* Admin Buttons */}
-                    {admin && (
-                      <div className="flex gap-2">
-                        <div
-                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-10 2xl:h-10 bg-sky-500 rounded-lg justify-center items-center cursor-pointer"
-                          onClick={() => sendToParent(e, "switch")}
+                      {/* //! ACTION BUTTON */}
+                      <div className="flex flex-col md:flex-row shrink-0 gap-2">
+                        <button
+                          type="button"
+                          aria-label="Ubah status pesan"
+                          className="flex size-7 items-center justify-center rounded-lg bg-sky-500 transition-colors hover:bg-sky-600 lg:size-8 xl:size-10"
+                          onClick={() => void handleMessageAction(e, "switch")}
                         >
-                          <Switch className="size-5 md:size-4 xl:size-6 2xl:size-6 text-white" />
-                        </div>
-                        <div
-                          className="flex w-7 h-7 lg:w-8 lg:h-8 xl:w-10 xl:h-10 2xl:w-10 2xl:h-10 bg-rose-500 rounded-lg justify-center items-center cursor-pointer"
+                          <Switch className="size-5 text-white md:size-4 xl:size-6" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Hapus pesan"
+                          className="flex size-7 items-center justify-center rounded-lg bg-rose-500 transition-colors hover:bg-rose-600 lg:size-8 xl:size-10"
                           onClick={() => setConfirmAction([false, e.id])}
                         >
-                          <Delete className="size-5 md:size-4 xl:size-6 2xl:size-6 text-white" />
-                        </div>
+                          <Delete className="size-5 text-white md:size-4 xl:size-6" />
+                        </button>
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-          </div>
-        ))}
+                    </div>
+                  ))}
+              </div>
+            ))}
 
-      {/* Confirm Delete */}
-      {confirmAction[1] && (
-        <AlertNotif
-          type="double"
-          yesText="Ya"
-          noText="Tidak"
-          msg="Hapus data ini?"
-          icon="warning"
-          loading={loadingAction}
-          confirm={actionConfirmed}
-        />
-      )}
+          {/* Confirm Delete */}
+          {confirmAction[1] && (
+            <AlertNotif
+              type="double"
+              yesText="Ya"
+              noText="Tidak"
+              msg="Hapus data ini?"
+              icon="warning"
+              loading={loadingAction}
+              confirm={actionConfirmed}
+            />
+          )}
 
-      {/* Delete Success */}
-      {confirmAction[0] && (
-        <AlertNotif
-          type="single"
-          yesText="Ok"
-          msg="Data telah dihapus"
-          icon="success"
-          confirm={(res) => res && setConfirmAction([false, ""])}
-        />
+          {/* Delete Success */}
+          {confirmAction[0] && (
+            <AlertNotif
+              type="single"
+              yesText="Ok"
+              msg="Data telah dihapus"
+              icon="success"
+              confirm={(res) => res && setConfirmAction([false, ""])}
+            />
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }

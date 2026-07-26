@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { ColumnConfig, FilterConfig } from "./DataTableMitra";
+import type { ColumnConfig } from "./DatasetTable";
 
 type EditOption = {
   id: string;
@@ -18,28 +18,12 @@ type Props = {
   setEditName: Dispatch<SetStateAction<string>>;
 
   editColumns: ColumnConfig[];
-  editFilters: FilterConfig[];
-  setEditFilters: Dispatch<SetStateAction<FilterConfig[]>>;
-
-  editMainKeys: string[];
-  setEditMainKeys: Dispatch<SetStateAction<string[]>>;
+  selectedKind?: "dataset" | "map";
 
   updateColumn: (
     index: number,
     field: keyof ColumnConfig,
     value: string | boolean,
-  ) => void;
-
-  toggleFilter: (
-    column: ColumnConfig,
-    currentFilters: FilterConfig[],
-    setCurrentFilters: Dispatch<SetStateAction<FilterConfig[]>>,
-  ) => void;
-
-  toggleMainKey: (
-    key: string,
-    currentKeys: string[],
-    setCurrentKeys: Dispatch<SetStateAction<string[]>>,
   ) => void;
 };
 
@@ -50,19 +34,14 @@ export default function DatasetConfigEdit({
   editName,
   setEditName,
   editColumns,
-  editFilters,
-  setEditFilters,
-  editMainKeys,
-  setEditMainKeys,
+  selectedKind = "dataset",
   updateColumn,
-  toggleFilter,
-  toggleMainKey,
 }: Props) {
   return (
     <div className="space-y-5">
       <div className="flex w-full">
         <label className="flex w-full flex-col text-sm">
-          <span className="font-medium">Dataset</span>
+          <span className="font-medium">Dataset / Peta</span>
 
           <select
             value={selectedEditId}
@@ -79,7 +58,9 @@ export default function DatasetConfigEdit({
       </div>
 
       <label className="flex w-full flex-col text-sm">
-        <span className="text-sm font-medium">Judul Dataset</span>
+        <span className="text-sm font-medium">
+          {selectedKind === "map" ? "Judul Peta" : "Judul Dataset"}
+        </span>
 
         <input
           value={editName}
@@ -88,6 +69,7 @@ export default function DatasetConfigEdit({
         />
       </label>
 
+      {selectedKind === "dataset" && (
       <div className="overflow-x-auto rounded-md border border-gray-300">
         <table className="min-w-full text-sm">
           <thead>
@@ -103,12 +85,6 @@ export default function DatasetConfigEdit({
               </th>
               <th className="border border-gray-300 bg-sky-100 px-3 py-2">
                 Align
-              </th>
-              <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                Filter
-              </th>
-              <th className="border border-gray-300 bg-sky-100 px-3 py-2">
-                Main
               </th>
             </tr>
           </thead>
@@ -157,36 +133,12 @@ export default function DatasetConfigEdit({
                   </select>
                 </td>
 
-                <td className="border border-gray-300 px-3 py-2 text-center">
-                  <input
-                    type="checkbox"
-                    checked={editFilters.some(
-                      (filter) => filter.key === column.key,
-                    )}
-                    onChange={() =>
-                      toggleFilter(column, editFilters, setEditFilters)
-                    }
-                  />
-                </td>
-
-                <td className="border border-gray-300 px-3 py-2 text-center">
-                  <input
-                    type="checkbox"
-                    checked={editMainKeys.includes(column.key)}
-                    onChange={() =>
-                      toggleMainKey(
-                        column.key,
-                        editMainKeys,
-                        setEditMainKeys,
-                      )
-                    }
-                  />
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

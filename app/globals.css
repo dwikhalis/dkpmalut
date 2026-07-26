@@ -9,8 +9,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-poppins);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,32 +45,212 @@ body {
   font-family: "Poppins", Arial, Helvetica, sans-serif;
 }
 
-h1 {
-  font-size: 5vw;
-  font-weight: 600;
-  line-height: 0.8;
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
 }
 
-h2 {
-  font-size: 3vw;
-  font-weight: 600;
-  line-height: 1.2;
+.leaflet-container {
+  contain: layout paint;
+  overflow: hidden;
 }
 
-h3 {
-  font-size: 2vw;
+.leaflet-control-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-h4 {
-  font-size: 1.8vw;
+.leaflet-control-container .leaflet-control {
+  pointer-events: auto;
 }
 
-h5 {
-  font-size: 1.2vw;
-}
+@layer base {
+  tbody {
+    background-color: #ffffff !important;
+  }
 
-h6 {
-  font-size: 1vw;
+  :where(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="month"],
+    input[type="week"],
+    textarea,
+    select
+  ) {
+    min-height: 2.5rem !important;
+    border: 1px solid #d6d3d1 !important;
+    border-radius: 0.5rem !important;
+    background-color: #ffffff !important;
+    padding: 0.5rem 0.75rem !important;
+    color: #1c1917 !important;
+    font-family: inherit !important;
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+    line-height: 1.25rem !important;
+    outline: none !important;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease !important;
+  }
+
+  :where(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="month"],
+    input[type="week"],
+    textarea,
+    select
+  ):focus {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgb(14 165 233 / 0.18) !important;
+  }
+
+  :where(
+    input:not([type]),
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="month"],
+    input[type="week"],
+    textarea,
+    select
+  ):disabled {
+    cursor: not-allowed !important;
+    background-color: #f5f5f4 !important;
+    color: #78716c !important;
+    opacity: 0.75 !important;
+  }
+
+  :where(input, textarea)::placeholder {
+    color: #a8a29e;
+    opacity: 1;
+  }
+
+  input[data-contact-phone="true"] {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+
+  input[type="checkbox"] {
+    width: 1rem !important;
+    height: 1rem !important;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: #0369a1;
+  }
+
+  input[type="checkbox"]:focus-visible {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+  }
+
+  input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  :where(
+      details[data-chart-dropdown="true"],
+      details[data-table-menu-root],
+      details[data-field-dropdown="true"]
+    )
+    > summary {
+    display: list-item !important;
+    min-height: 2.5rem !important;
+    align-items: center !important;
+    border: 1px solid #d6d3d1 !important;
+    border-radius: 0.5rem !important;
+    background-color: #ffffff !important;
+    padding: 0.5rem 0.75rem !important;
+    color: #1c1917 !important;
+    font-family: inherit !important;
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+    line-height: 1.25rem !important;
+    list-style-position: inside !important;
+    outline: none !important;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease !important;
+  }
+
+  :where(
+      details[data-chart-dropdown="true"],
+      details[data-table-menu-root],
+      details[data-field-dropdown="true"]
+    )
+    > summary:focus-visible,
+  :where(
+      details[data-chart-dropdown="true"],
+      details[data-table-menu-root],
+      details[data-field-dropdown="true"]
+    )[open]
+    > summary {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgb(14 165 233 / 0.18) !important;
+  }
+
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  h2 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    line-height: 1.4;
+  }
+
+  h5 {
+    font-size: 1.125rem;
+    line-height: 1.5;
+  }
+
+  h6 {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
 }
 
 .swiper-button-next::after,
@@ -89,58 +268,31 @@ h6 {
   opacity: 0;
 }
 
-@media (max-width: 1440px) {
-  h5 {
-    font-size: 1.3vw;
-  }
+@media (min-width: 768px) {
+  @layer base {
+    h1 {
+      font-size: 3rem;
+    }
 
-  h6 {
-    font-size: 1.5vw;
-  }
-}
+    h2 {
+      font-size: 2.25rem;
+    }
 
-@media (max-width: 769px) {
-  h4 {
-    font-size: 1.8vw;
-  }
+    h3 {
+      font-size: 1.875rem;
+    }
 
-  h5 {
-    font-size: 1.4vw;
-  }
+    h4 {
+      font-size: 1.5rem;
+    }
 
-  h6 {
-    font-size: 1.4vw;
+    h5 {
+      font-size: 1.25rem;
+    }
   }
 }
 
 @media (max-width: 450px) {
-  h1 {
-    font-size: 12vw;
-    line-height: 1.2;
-  }
-
-  h2 {
-    font-size: 6vw;
-    font-weight: 600;
-    line-height: 1.2;
-  }
-
-  h3 {
-    font-size: 4vw;
-  }
-
-  h4 {
-    font-size: 3vw;
-  }
-
-  h5 {
-    font-size: 3vw;
-  }
-
-  h6 {
-    font-size: 2.8vw;
-  }
-
   .swiper-button-next::after,
   .swiper-button-prev::after {
     color: #00000020;
@@ -212,6 +364,24 @@ h6 {
     }
   }
 
+  @keyframes homeWaveDrift {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  @keyframes homeWaveDriftReverse {
+    from {
+      transform: translate3d(-50%, 0, 0);
+    }
+    to {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
   .home-animate {
     opacity: 0;
     will-change: opacity, transform;
@@ -253,6 +423,16 @@ h6 {
     animation: homeFloat 4.5s ease-in-out infinite;
   }
 
+  .home-wave-track {
+    animation: homeWaveDrift 14s linear infinite;
+    will-change: transform;
+  }
+
+  .home-wave-track-reverse {
+    animation: homeWaveDriftReverse 20s linear infinite;
+    will-change: transform;
+  }
+
   .home-hover-lift {
     transition:
       transform 250ms ease,
@@ -269,11 +449,51 @@ h6 {
     .home-animate-in,
     .home-soft-zoom,
     .home-float,
+    .home-wave-track,
+    .home-wave-track-reverse,
     .home-hover-lift {
       opacity: 1 !important;
       transform: none !important;
       animation: none !important;
       transition: none !important;
     }
+  }
+}
+
+@keyframes bottomMenuExpand {
+  from {
+    opacity: 0;
+    translate: 0 1.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes bottomMenuCollapse {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 1.5rem;
+  }
+}
+
+.bottom-menu-expand {
+  animation: bottomMenuExpand 70ms ease-out both;
+}
+
+.bottom-menu-collapse {
+  pointer-events: none !important;
+  animation: bottomMenuCollapse 60ms ease-in both !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-menu-expand,
+  .bottom-menu-collapse {
+    animation: none;
   }
 }

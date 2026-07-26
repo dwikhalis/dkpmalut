@@ -1,41 +1,53 @@
-//! Force page to load fresh data each render
+import { Suspense } from "react";
+import Card from "../components/Card";
+import SpinnerLoading from "../components/SpinnerLoading";
+import { getNews } from "@/lib/supabase/supabaseHelper";
+import { PageHeader } from "../components/CmsPageContent";
+
 export const revalidate = 0;
 
-import Card from "../components/Card";
-import { getNews } from "@/lib/supabase/supabaseHelper";
-
-const page = async () => {
+async function NewsList() {
   const fetchedData = await getNews();
+
+  if (fetchedData.length === 0) {
+    return <p>Belum ada data terdaftar</p>;
+  }
 
   return (
     <>
-      <section className="lg:mx-12 2xl:mx-24 mx-8 lg:my-12 2xl:my-24 my-8 min-h-[70vh]">
-        <div className="flex flex-col gap-3">
-          <h2>Kabar Kelautan Perikanan</h2>
-          <h5>
-            Informasi seputar dunia Kelautan dan Perikanan Provinsi Maluku Utara
-          </h5>
-        </div>
-        {/* //! DESKTOP */}
-        <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full mt-12">
-          {fetchedData.map((e, idx) => {
-            return (
-              <div className="w-[30%]" key={idx}>
-                <Card type="open" data={fetchedData} id={e.id} />
-              </div>
-            );
-          })}
-        </div>
+      {/* DESKTOP */}
+      <div className="hidden md:flex flex-wrap lg:gap-10 gap-6 w-full">
+        {fetchedData.map((news) => (
+          <div className="w-[30%]" key={news.id}>
+            <Card type="open" data={fetchedData} id={news.id} />
+          </div>
+        ))}
+      </div>
 
-        {/* //! MOBILE */}
-        <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full mt-10">
-          {fetchedData.map((e, idx) => {
-            return <Card type="open" data={fetchedData} id={e.id} key={idx} />;
-          })}
-        </div>
-      </section>
+      {/* MOBILE */}
+      <div className="md:hidden flex flex-col lg:gap-10 gap-6 w-full">
+        {fetchedData.map((news) => (
+          <Card type="open" data={fetchedData} id={news.id} key={news.id} />
+        ))}
+      </div>
     </>
   );
-};
+}
 
-export default page;
+export default function Page() {
+  return (
+    <main className="mx-auto min-h-[70vh] w-full max-w-7xl p-6 md:p-10">
+      <PageHeader
+        eyebrow="Informasi Publik"
+        title="Kabar Kelautan Perikanan"
+        subtitle="Informasi seputar dunia Kelautan dan Perikanan Provinsi Maluku Utara."
+      />
+
+      <div className="mt-8">
+        <Suspense fallback={<SpinnerLoading size="sm" color="black" />}>
+          <NewsList />
+        </Suspense>
+      </div>
+    </main>
+  );
+}

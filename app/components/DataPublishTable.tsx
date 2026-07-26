@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { HTMLInputTypeAttribute } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import { useUrlTableState } from "@/lib/hooks/useUrlTableState";
 import { LeftChevron, RightChevron } from "@/public/icons/iconSets";
+import SpinnerLoading from "./SpinnerLoading";
 
 type DatasetValue = string | number | boolean | null | undefined;
 
@@ -28,17 +30,23 @@ export type FilterConfig = {
   sort?: "text-asc" | "number-asc" | "number-desc";
 };
 
-type DataMitraDbRow = {
+type DatasetDbRow = {
   id: string;
   data: unknown;
 };
 
 interface Props {
-  dataMitraId: string;
+  datasetId: string;
   columns: ColumnConfig[];
   filters?: FilterConfig[];
   defaultSortKey?: string;
   pageSize?: number;
+  hideControls?: boolean;
+  externalSelectedFilters?: Record<string, string>;
+  externalSortBy?: string;
+  embedded?: boolean;
+  isLoggedIn?: boolean;
+  onLoginRequired?: () => void;
 }
 
 const isMissingValue = (value: DatasetValue) => {
@@ -48,6 +56,16 @@ const isMissingValue = (value: DatasetValue) => {
 const displayValue = (value: DatasetValue) => {
   return isMissingValue(value) ? "N/A" : String(value);
 };
+
+function toTitleCase(value: string) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\w\S*/g, (word) => {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+}
 
 const createRowId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -90,34 +108,47 @@ const normalizeJsonbRows = (value: unknown): DatasetRow[] => {
 };
 
 export default function DataPublishTable({
-  dataMitraId,
+  datasetId,
   columns,
   filters = [],
   defaultSortKey,
   pageSize = 50,
+  hideControls = false,
+  externalSelectedFilters,
+  externalSortBy,
+  embedded = false,
+  isLoggedIn = true,
+  onLoginRequired,
 }: Props) {
   const [allRows, setAllRows] = useState<DatasetRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [selectedFilters, setSelectedFilters] = useState<
-    Record<string, string>
-  >({});
-
-  const [sortBy, setSortBy] = useState(defaultSortKey ?? columns[0]?.key ?? "");
-  const [page, setPage] = useState(0);
+  const {
+    sortBy,
+    setSortBy,
+    updateSortBy,
+    selectedFilters,
+    updateFilter,
+    page,
+    setPage,
+    updatePage,
+  } = useUrlTableState({
+    columns,
+    filters,
+    defaultSortKey,
+  });
 
   const sortColumn = useMemo(() => {
-    return columns.find((column) => column.key === sortBy);
-  }, [columns, sortBy]);
+    return columns.find((column) => column.key === (externalSortBy ?? sortBy));
+  }, [columns, externalSortBy, sortBy]);
 
   const shouldSortDesc = useMemo(() => {
     return (
       sortColumn?.inputType === "number" ||
-      sortBy === "year" ||
-      sortBy === "tahun" ||
-      sortBy === "tahun_ops"
+      (externalSortBy ?? sortBy) === "year" ||
+      (externalSortBy ?? sortBy) === "tahun" ||
+      (externalSortBy ?? sortBy) === "tahun_ops"
     );
-  }, [sortColumn, sortBy]);
+  }, [sortColumn, externalSortBy, sortBy]);
 
   const filterOptions = useMemo(() => {
     const options: Record<string, string[]> = {};
@@ -148,17 +179,19 @@ export default function DataPublishTable({
 
   const filteredSortedRows = useMemo(() => {
     let result = [...allRows];
+    const activeFilters = externalSelectedFilters ?? selectedFilters;
+    const activeSortBy = externalSortBy ?? sortBy;
 
-    Object.entries(selectedFilters).forEach(([key, value]) => {
+    Object.entries(activeFilters).forEach(([key, value]) => {
       if (!value || value === "all") return;
 
       result = result.filter((row) => String(row[key]) === String(value));
     });
 
-    if (sortBy) {
+    if (activeSortBy) {
       result.sort((a, b) => {
-        const aValue = a[sortBy];
-        const bValue = b[sortBy];
+        const aValue = a[activeSortBy];
+        const bValue = b[activeSortBy];
 
         if (shouldSortDesc) {
           return Number(bValue ?? 0) - Number(aValue ?? 0);
@@ -169,17 +202,18 @@ export default function DataPublishTable({
     }
 
     return result;
-  }, [allRows, selectedFilters, sortBy, shouldSortDesc]);
+  }, [allRows, externalSelectedFilters, externalSortBy, selectedFilters, sortBy, shouldSortDesc]);
 
+  const effectivePageSize = Math.min(pageSize, 20);
   const totalRows = filteredSortedRows.length;
-  const totalPages = Math.max(Math.ceil(totalRows / pageSize), 1);
+  const totalPages = Math.max(Math.ceil(totalRows / effectivePageSize), 1);
 
   const dataset = useMemo(() => {
-    const from = page * pageSize;
-    const to = from + pageSize;
+    const from = page * effectivePageSize;
+    const to = from + effectivePageSize;
 
     return filteredSortedRows.slice(from, to);
-  }, [filteredSortedRows, page, pageSize]);
+  }, [filteredSortedRows, page, effectivePageSize]);
 
   useEffect(() => {
     const nextSortKey =
@@ -198,7 +232,7 @@ export default function DataPublishTable({
 
   useEffect(() => {
     setPage(0);
-  }, [dataMitraId, selectedFilters, sortBy]);
+  }, [datasetId, setPage]);
 
   useEffect(() => {
     if (page > totalPages - 1) {
@@ -207,24 +241,24 @@ export default function DataPublishTable({
   }, [page, totalPages]);
 
   useEffect(() => {
-    const fetchDataMitraRows = async () => {
+    const fetchDatasetRows = async () => {
       setLoading(true);
 
       try {
-        if (!dataMitraId) {
+        if (!datasetId) {
           setAllRows([]);
           return;
         }
 
         const { data, error } = await supabase
-          .from("data_mitra")
+          .from("datasets")
           .select("id, data")
-          .eq("id", dataMitraId)
+          .eq("id", datasetId)
           .maybeSingle();
 
         if (error) throw error;
 
-        const dbRow = data as DataMitraDbRow | null;
+        const dbRow = data as DatasetDbRow | null;
         const rows = normalizeJsonbRows(dbRow?.data);
 
         setAllRows(rows);
@@ -236,61 +270,79 @@ export default function DataPublishTable({
       }
     };
 
-    fetchDataMitraRows();
-  }, [dataMitraId]);
+    fetchDatasetRows();
+  }, [datasetId]);
 
   if (loading) {
     return (
       <div className="flex w-full items-center justify-center py-16">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-sky-600" />
-          <p className="text-sm text-gray-500">Loading data...</p>
-        </div>
+        <SpinnerLoading size="sm" color="black" />
       </div>
     );
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col">
-      <div className="mb-4 flex flex-wrap gap-3">
-        <select
-          value={sortBy}
-          onChange={(event) => setSortBy(event.target.value)}
-          className="grow rounded border border-gray-400 px-3 py-2 text-xs"
-        >
-          {columns.map((column) => (
-            <option key={column.key} value={column.key}>
-              Urutkan: {column.label}
-            </option>
-          ))}
-        </select>
+    <div
+      className={
+        embedded
+          ? "flex w-full min-w-0 flex-col"
+          : "flex w-full min-w-0 flex-col rounded-lg border border-stone-200 bg-white p-3 shadow-md"
+      }
+    >
+      {!hideControls && (
+      <div className="mb-4 flex min-w-0 flex-wrap gap-3">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs">
+          <span className="font-semibold text-gray-700">Urutan</span>
 
-        {filters.map((filter) => (
           <select
-            key={filter.key}
-            value={selectedFilters[filter.key] ?? "all"}
+            value={sortBy}
             onChange={(event) => {
-              setSelectedFilters((prev) => ({
-                ...prev,
-                [filter.key]: event.target.value,
-              }));
+              updateSortBy(event.target.value);
             }}
-            className="min-w-0 grow truncate overflow-hidden whitespace-nowrap rounded border border-gray-400 px-3 py-2 text-xs"
+            className="min-w-0 truncate rounded border border-gray-400 px-3 py-2 text-xs"
           >
-            <option value="all">
-              {filter.allLabel ?? `Semua ${filter.label}`}
-            </option>
-
-            {(filterOptions[filter.key] ?? []).map((option) => (
-              <option key={option} value={option}>
-                {option}
+            {columns.map((column) => (
+              <option key={column.key} value={column.key}>
+                {toTitleCase(column.label)}
               </option>
             ))}
           </select>
+        </label>
+
+        {filters.map((filter) => (
+          <label
+            key={filter.key}
+            className="flex min-w-0 flex-1 flex-col gap-1 text-xs"
+          >
+            <span className="font-semibold text-gray-700">
+              {toTitleCase(filter.label)}
+            </span>
+
+            <select
+              value={selectedFilters[filter.key] ?? "all"}
+              onChange={(event) => {
+                updateFilter(filter.key, event.target.value);
+              }}
+              className="min-w-0 truncate overflow-hidden whitespace-nowrap rounded border border-gray-400 px-3 py-2 text-xs"
+            >
+              <option value="all">
+                {filter.allLabel
+                  ? toTitleCase(filter.allLabel)
+                  : `Semua ${toTitleCase(filter.label)}`}
+              </option>
+
+              {(filterOptions[filter.key] ?? []).map((option) => (
+                <option key={option} value={option}>
+                  {toTitleCase(option)}
+                </option>
+              ))}
+            </select>
+          </label>
         ))}
       </div>
+      )}
 
-      <div className="mb-6 w-full overflow-x-auto rounded-sm border border-gray-950/20">
+      <div className="w-full overflow-x-auto rounded-sm border border-gray-950/20">
         <table className="min-w-full border text-[2vw] md:text-[1.5vw] lg:text-sm">
           <thead>
             <tr>
@@ -344,10 +396,14 @@ export default function DataPublishTable({
         </table>
       </div>
 
-      <div className="mb-20 flex items-center justify-between gap-3 text-sm">
+      <div className="mt-6 flex items-center justify-between gap-3 text-sm">
         <button
           disabled={page === 0}
-          onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+          onClick={() => {
+            const nextPage = Math.max(page - 1, 0);
+
+            updatePage(nextPage);
+          }}
           className="rounded bg-gray-600 px-4 py-2 text-white disabled:opacity-40"
         >
           <LeftChevron className="size-6" />
@@ -360,8 +416,17 @@ export default function DataPublishTable({
         </p>
 
         <button
-          disabled={(page + 1) * pageSize >= totalRows}
-          onClick={() => setPage((prev) => prev + 1)}
+          disabled={(page + 1) * effectivePageSize >= totalRows}
+          onClick={() => {
+            if (!isLoggedIn) {
+              onLoginRequired?.();
+              return;
+            }
+
+            const nextPage = page + 1;
+
+            updatePage(nextPage);
+          }}
           className="rounded bg-sky-600 px-4 py-2 text-white disabled:opacity-40"
         >
           <RightChevron className="size-6" />

@@ -7,6 +7,7 @@ import Footer from "./components/Footer";
 import AuthProvider from "./Auth/AuthProvider";
 import { Metadata } from "next";
 import AuthWatcher from "./Auth/AuthWatcher";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import Script from "next/script"; //! FOR MIDTRANS
 
@@ -28,6 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
+  const midtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
 
   const snapUrl = isProduction
     ? "https://app.midtrans.com/snap/snap.js"
@@ -39,18 +41,21 @@ export default function RootLayout({
       className={`${poppins.variable} ${poppins.variable} antialiased`}
     >
       <body>
+        <SpeedInsights />
         <Analytics />
         <AuthWatcher>
           <AuthProvider>
             <Navbar />
-            {children}
+            <div className="min-h-[70vh] bg-gradient-to-br from-sky-50 via-stone-50 to-sky-100">
+              {children}
+            </div>
             <Footer />
           </AuthProvider>
         </AuthWatcher>
 
         <Script
           src={snapUrl}
-          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          data-client-key={midtransClientKey}
           strategy="afterInteractive"
         />
       </body>

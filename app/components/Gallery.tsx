@@ -2,6 +2,8 @@
 
 import React, { useRef, useState } from "react";
 import Image from "next/image";
+import SpinnerLoading from "./SpinnerLoading";
+import TableConfigValue from "./TableConfigValue";
 
 interface DataItem {
   id: string;
@@ -55,7 +57,7 @@ export default function Gallery({ type, data, id, loading }: Props) {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
-        <p>Loading...</p>
+        <SpinnerLoading size="sm" color="black" />
       </div>
     );
   }
@@ -69,22 +71,24 @@ export default function Gallery({ type, data, id, loading }: Props) {
     const { tag, title, image, date, description } = select;
     return (
       <>
-        <div className="w-full">
-          <div className="flex justify-center items-center h-50 mb-3 overflow-hidden">
+        <article className="h-full w-full overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-stone-200 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+          <div className="flex h-50 items-center justify-center overflow-hidden bg-stone-100">
             <Image
               src={image || "/assets/image_placeholder.png"}
-              alt="Gambar"
+              alt={title}
               width={800}
               height={600}
-              className="object-cover w-full h-full"
+              className="h-full w-full object-cover transition duration-300 hover:scale-105"
               onClick={() => setShowImage("fixed")}
             />
           </div>
-          <h6 className="text-stone-500 mb-1">
-            {tag} / {date}
-          </h6>
-          <h5 className="font-bold">{title}</h5>
-        </div>
+          <div className="p-5">
+            <p className="mb-2 text-sm text-stone-500">
+              <TableConfigValue table="gallery" field="tag" value={tag} /> / {date}
+            </p>
+            <h3 className="text-lg font-bold leading-snug text-stone-900">{title}</h3>
+          </div>
+        </article>
 
         {/* Popup */}
         <div
@@ -110,8 +114,10 @@ export default function Gallery({ type, data, id, loading }: Props) {
               draggable={false}
               onDragStart={(e) => e.preventDefault()}
             />
-            <h6 className="text-white mx-3 pt-3 w-full">{title}</h6>
-            <h6 className="text-white mx-3 pt-3 w-full">{description}</h6>
+            <h2 className="mx-3 w-full pt-3 text-xl text-white">{title}</h2>
+            <p className="mx-3 w-full pt-3 text-base text-white">
+              {description}
+            </p>
           </div>
         </div>
       </>

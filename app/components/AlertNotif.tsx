@@ -23,8 +23,8 @@ export default function AlertNotif({
   confirm = () => {},
 }: Props) {
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center bg-black/50 w-[100vw] h-[100vh]">
-      <div className="flex flex-col justify-center items-center rounded-2xl bg-stone-100 md:p-12 2xl:p-20 p-8">
+    <div className="flex fixed inset-0 z-[2000] justify-center items-center bg-black/50 w-[100vw] h-[100vh]">
+      <div className="mx-4 flex max-w-[calc(100vw-2rem)] flex-col items-center justify-center rounded-2xl bg-stone-100 p-8 md:mx-24 md:max-w-[calc(100vw-12rem)] md:p-12 2xl:p-20">
         {icon === "warning" ? (
           <div className="h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
             <Warning className="stroke-2 text-amber-600" />
@@ -38,7 +38,9 @@ export default function AlertNotif({
             <Failed className="size-12 stroke-2 text-rose-600" />
           </div>
         ) : null}
-        <h3 className="text-center mb-6">{msg}</h3>
+        <h3 className="mb-6 text-center text-xl font-semibold md:text-2xl">
+          {msg}
+        </h3>
         <div className="flex md:gap-12 gap-3 justify-center object-center">
           {/* //! DOUBLE */}
           {type === "double" ? (
@@ -50,7 +52,7 @@ export default function AlertNotif({
                   confirm(true);
                 }}
               >
-                <h3 className={loading ? "hidden" : "flex"}>{yesText}</h3>
+                <span className={loading ? "hidden" : "flex"}>{yesText}</span>
                 <div className={loading ? "flex" : "hidden"}>
                   <SpinnerLoading size="sm" color="white" />
                 </div>
@@ -63,7 +65,7 @@ export default function AlertNotif({
                   confirm(false);
                 }}
               >
-                <h3>{noText}</h3>
+                <span>{noText}</span>
               </button>
             </>
           ) : //! SINGLE
@@ -74,7 +76,7 @@ export default function AlertNotif({
                 confirm(true);
               }}
             >
-              <h3>{yesText}</h3>
+              <span>{yesText}</span>
             </button>
           ) : null}
         </div>

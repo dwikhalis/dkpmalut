@@ -18,6 +18,7 @@ import {
 } from "./configKKD";
 import DataPageDropdown from "./DataPageDropdown";
 import Image from "next/image";
+import SpinnerLoading from "./SpinnerLoading";
 import Link from "next/link";
 import AlertNotif from "./AlertNotif";
 import { useRouter } from "next/navigation";
@@ -26,7 +27,9 @@ import { useAuthStore } from "../Stores/authStores";
 type Pages = { title: string; slug: string }[];
 
 interface Props {
-  pages: Pages;
+  pages?: Pages;
+  initialKkd?: Exclude<SelectedKkdId, "" | "all">;
+  showDataNavigation?: boolean;
 }
 
 type AvailableDownloads = {
@@ -87,14 +90,18 @@ function getZonaLabel(zona: string) {
   return `Zona ${normalizedZona}`;
 }
 
-export default function ChartKKD({ pages }: Props) {
+export default function ChartKKD({
+  pages = [],
+  initialKkd = undefined,
+  showDataNavigation = true,
+}: Props) {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   const [alertType, setAlertType] = useState<null | "login-required">(null);
 
   const [legend, setLegend] = useState<LegendValue>("All");
-  const [kkd, setKkd] = useState<SelectedKkdId>("");
+  const [kkd, setKkd] = useState<SelectedKkdId>(initialKkd ?? "");
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [mapLoad, setMapLoad] = useState(true);
   const [geoData, setGeoData] = useState<GeoDataMap>({});
@@ -306,7 +313,7 @@ export default function ChartKKD({ pages }: Props) {
 
               {hasDownloads && (
                 <div className="flex flex-col gap-2">
-                  <h5 className="mt-6 font-bold">Download</h5>
+                  <h3 className="mt-6 text-lg font-bold">Download</h3>
 
                   <div className="flex flex-wrap w-full items-center justify-between gap-2">
                     {availableDownloads.map && (
@@ -392,10 +399,12 @@ export default function ChartKKD({ pages }: Props) {
 
       <div className="mx-8 flex w-full flex-col lg:mx-12">
         {/* //! HEAD DROPDOWN */}
-        <DataPageDropdown pages={pages} />
+        {showDataNavigation && <DataPageDropdown pages={pages} />}
 
         {/* //! MAIN TITLE */}
-        <h2 className="mb-3">Kawasan Konservasi Daerah</h2>
+        <h2 className="mb-3">
+          {selectedKkd ? `Peta Interaktif ${selectedKkd.label}` : "Kawasan Konservasi Daerah"}
+        </h2>
 
         <div className="flex justify-between mb-6">
           <form className="w-full">
@@ -427,8 +436,7 @@ export default function ChartKKD({ pages }: Props) {
         <div className="relative z-0 min-h-[70vh]">
           {mapLoad && (
             <div className="absolute inset-0 z-[1000] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-slate-300 border-t-transparent" />
-              <p className="mt-3 text-sm text-gray-600">Loading map...</p>
+              <SpinnerLoading size="sm" color="black" />
             </div>
           )}
 

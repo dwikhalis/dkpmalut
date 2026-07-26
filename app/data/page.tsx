@@ -1,19 +1,43 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
 import CardData from "../components/CardData";
+import DatasetSelect from "../components/DatasetSelect";
+import SpinnerLoading from "../components/SpinnerLoading";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import { getImagePreviewUrl } from "@/lib/supabase/supabaseHelper";
+import { PageHeader } from "../components/CmsPageContent";
+
+export const revalidate = 0;
 
 export type DataPageOption = {
+  id?: string;
   title: string;
   slug: string;
+  image: string;
+  tag: string | null;
 };
 
-export type PublishedMitraDataset = {
+type PublishedMitraDataset = {
   id: string;
   label: string | null;
+  image_path: string;
+  tag: string | null;
 };
+
+type PublishedMapDataset = {
+  id: string;
+  label: string | null;
+  image_path: string | null;
+  tag: string[] | string | null;
+};
+
+const STATIC_PAGES: DataPageOption[] = [
+  {
+    title: "Kawasan Konservasi Daerah",
+    slug: "kawasan-konservasi-daerah",
+    tag: "konservasi",
+    image: "charts/pic_data_kkd.png",
+  },
+];
 
 function toSlug(value: string) {
   return value
@@ -26,164 +50,124 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export default function Page() {
-  const router = useRouter();
+async function DatasetContent() {
+  const { data, error } = await supabase
+    .from("datasets")
+    .select("id, label, image_path, tag")
+    .eq("published", "approved")
+    .order("label", { ascending: true });
 
-  const [publishedDatasets, setPublishedDatasets] = useState<DataPageOption[]>(
-    [],
-  );
+  if (error) {
+    console.error("Failed to fetch published datasets:", error);
 
-  const title: DataPageOption[] = useMemo(
-    () => [
-      { title: "Home", slug: "home" },
-      {
-        title: "Produksi Perikanan Tangkap dan Budidaya per Kabupaten",
-        slug: "produksi-perikanan-kabupaten",
-      },
-      {
-        title: "Produksi Perikanan Tangkap per Komoditas",
-        slug: "produksi-komoditas",
-      },
-      {
-        title: "Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara",
-        slug: "perikanan-budidaya-maluku-utara",
-      },
-      {
-        title: "Infrastruktur Rantai Dingin",
-        slug: "infrastruktur-rantai-dingin",
-      },
-      {
-        title: "Kawasan Konservasi Daerah",
-        slug: "kawasan-konservasi-daerah",
-      },
-    ],
-    [],
-  );
-
-  useEffect(() => {
-    const fetchPublishedDatasets = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("data_mitra")
-          .select("id, label")
-          .eq("published", "approved")
-          .order("label", { ascending: true });
-
-        if (error) throw error;
-
-        const rows = (data ?? []) as PublishedMitraDataset[];
-
-        const parsedRows = rows
-          .filter((row) => row.label && row.label.trim() !== "")
-          .map((row) => ({
-            title: row.label ?? "",
-            slug: toSlug(row.label ?? ""),
-          }));
-
-        setPublishedDatasets(parsedRows);
-      } catch (error) {
-        console.error("Failed to fetch published datasets:", error);
-        setPublishedDatasets([]);
-      }
-    };
-
-    fetchPublishedDatasets();
-  }, []);
-
-  const dropdownOptions = useMemo(() => {
-    const staticSlugs = new Set(title.map((item) => item.slug));
-
-    const uniquePublishedDatasets = publishedDatasets.filter(
-      (item) => !staticSlugs.has(item.slug),
+    return (
+      <p className="mt-10 text-red-600">
+        Data gagal dimuat. Silakan coba kembali.
+      </p>
     );
+  }
 
-    return [...title, ...uniquePublishedDatasets];
-  }, [title, publishedDatasets]);
+  const rows = (data ?? []) as PublishedMitraDataset[];
+
+  const { data: mapData, error: mapError } = await supabase
+    .from("map_datasets")
+    .select("id, label, image_path, tag")
+    .eq("published", "approved")
+    .order("label", { ascending: true });
+
+  if (mapError) {
+    console.error("Failed to fetch published map datasets:", mapError);
+  }
+
+  const publishedDatasets: DataPageOption[] = rows
+    .filter(
+      (
+        row,
+      ): row is PublishedMitraDataset & {
+        label: string;
+      } => Boolean(row.label?.trim()),
+    )
+    .map((row) => ({
+      id: row.id,
+      title: row.label,
+      slug: toSlug(row.label),
+      image: row.image_path,
+      tag: row.tag,
+    }));
+
+  const publishedMaps: DataPageOption[] = (
+    (mapData ?? []) as PublishedMapDataset[]
+  )
+    .filter((row) => Boolean(row.label?.trim()))
+    .map((row) => ({
+      id: row.id,
+      title: row.label ?? "",
+      slug: toSlug(row.label ?? ""),
+      image: row.image_path || "charts/pic_data_kkd.png",
+      tag: Array.isArray(row.tag) ? (row.tag[0] ?? null) : row.tag,
+    }));
+
+  function mergePages(
+    staticPages: DataPageOption[],
+    dynamicPages: DataPageOption[],
+  ) {
+    const pageMap = new Map<string, DataPageOption>();
+
+    [...staticPages, ...dynamicPages].forEach((page) => {
+      if (!pageMap.has(page.slug)) {
+        pageMap.set(page.slug, page);
+      }
+    });
+
+    return Array.from(pageMap.values());
+  }
+
+  const pages = mergePages(STATIC_PAGES, [
+    ...publishedDatasets,
+    ...publishedMaps,
+  ]);
+
+  if (publishedDatasets.length === 0 && publishedMaps.length === 0) {
+    return <p className="mt-10">Belum ada data terpublikasi.</p>;
+  }
 
   return (
-    <section className="flex min-h-[100vh] flex-col">
-      <div className="flex flex-col lg:mx-12 2xl:mx-24 mx-8 lg:my-12 my-8">
-        <div>
-          <h2>Data Kelautan Perikanan</h2>
-          <h5>Data seputar Kelautan dan Perikanan di Provinsi Maluku Utara</h5>
-        </div>
+    <>
+      <DatasetSelect datasets={pages} />
 
-        {/* Regular Dropdown */}
-        <div className="mt-6 w-full">
-          <select
-            defaultValue=""
-            onChange={(event) => {
-              const slug = event.target.value;
-
-              if (!slug) return;
-
-              router.push(`/data/${slug}`);
-            }}
-            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm shadow-sm"
+      <div className="mt-12 flex w-full flex-col gap-6 md:flex-row md:flex-wrap lg:gap-10">
+        {pages.map((dataset, idx) => (
+          <div
+            className="min-w-0 w-full md:flex-[1_1_calc(50%-0.75rem)] lg:flex-[1_1_calc(33.333%-1.667rem)]"
+            key={idx}
           >
-            <option value="" disabled>
-              Pilih Dataset
-            </option>
-
-            {dropdownOptions.map((item) => {
-              if (item.title === "Home") return null;
-
-              return (
-                <option key={item.slug} value={item.slug}>
-                  {item.title}
-                </option>
-              );
-            })}
-          </select>
-        </div>
-
-        <div className="mt-12 flex w-full flex-wrap justify-between gap-6 md:justify-start lg:gap-10">
-          <div className="w-[45%] md:w-[30%]">
             <CardData
-              tag="Tangkap, Budidaya"
-              title="Produksi Perikanan Tangkap dan Budidaya per Kabupaten"
-              image="/assets/pic_data_perikanan_kabupaten.png"
-              link="/data/produksi-perikanan-kabupaten"
+              tag={dataset.tag}
+              title={dataset.title}
+              image={getImagePreviewUrl(dataset.image) ?? ""}
+              link={`/data/${dataset.slug}`}
             />
           </div>
-
-          <div className="w-[45%] md:w-[30%]">
-            <CardData
-              tag="Tangkap"
-              title="Produksi Perikanan Tangkap per Komoditas"
-              image="/assets/pic_data_perikanan_kelas.png"
-              link="/data/produksi-komoditas"
-            />
-          </div>
-
-          <div className="w-[45%] md:w-[30%]">
-            <CardData
-              tag="Budidaya"
-              title="Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara"
-              image="/assets/pic_data_perikanan_budidaya.png"
-              link="/data/perikanan-budidaya-maluku-utara"
-            />
-          </div>
-
-          <div className="w-[45%] md:w-[30%]">
-            <CardData
-              tag="Infrastruktur"
-              title="Infrastruktur Rantai Dingin"
-              image="/assets/pic_data_rantai_dingin.png"
-              link="/data/infrastruktur-rantai-dingin"
-            />
-          </div>
-
-          <div className="w-[45%] md:w-[30%]">
-            <CardData
-              tag="Ruang Laut"
-              title="Kawasan Konervasi Perairan Daerah"
-              image="/assets/pic_data_kkd.png"
-              link="/data/kawasan-konservasi-daerah"
-            />
-          </div>
-        </div>
+        ))}
       </div>
-    </section>
+    </>
+  );
+}
+
+export default function Page() {
+  return (
+    <main className="mx-auto min-h-[70vh] w-full max-w-7xl p-6 md:p-10">
+      <PageHeader
+        eyebrow="Data Publik"
+        title="Data Kelautan Perikanan"
+        subtitle="Data seputar Kelautan dan Perikanan di Provinsi Maluku Utara."
+      />
+
+      <div className="mt-8">
+        <Suspense fallback={<SpinnerLoading size="sm" color="black" />}>
+          <DatasetContent />
+        </Suspense>
+      </div>
+    </main>
   );
 }

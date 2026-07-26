@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import type { ColumnConfig, FilterConfig } from "./DataTableMitra";
+import type { ColumnConfig } from "./DatasetTable";
 
 type DataValue = string | number | boolean | null;
 
@@ -38,25 +38,8 @@ type DatasetConfigAddProps = {
   updateImportColumnLabel: (key: string, label: string) => void;
 
   newColumns: ColumnConfig[];
-  newFilters: FilterConfig[];
-  setNewFilters: Dispatch<SetStateAction<FilterConfig[]>>;
-
-  newMainKeys: string[];
-  setNewMainKeys: Dispatch<SetStateAction<string[]>>;
 
   newDataRows: DataJsonRow[];
-
-  toggleFilter: (
-    column: ColumnConfig,
-    currentFilters: FilterConfig[],
-    setCurrentFilters: Dispatch<SetStateAction<FilterConfig[]>>,
-  ) => void;
-
-  toggleMainKey: (
-    key: string,
-    currentKeys: string[],
-    setCurrentKeys: Dispatch<SetStateAction<string[]>>,
-  ) => void;
 };
 
 export default function DatasetConfigAdd({
@@ -74,13 +57,7 @@ export default function DatasetConfigAdd({
   toggleImportColumn,
   updateImportColumnLabel,
   newColumns,
-  newFilters,
-  setNewFilters,
-  newMainKeys,
-  setNewMainKeys,
   newDataRows,
-  toggleFilter,
-  toggleMainKey,
 }: DatasetConfigAddProps) {
   return (
     <div className="space-y-5">
@@ -251,56 +228,6 @@ export default function DatasetConfigAdd({
 
           {newColumns.length > 0 && (
             <>
-              <div className="rounded-md border border-gray-300 bg-white p-3">
-                <h3 className="mb-2 text-sm font-semibold">Filter Config</h3>
-
-                <div className="grid gap-2 md:grid-cols-3">
-                  {newColumns.map((column) => (
-                    <label
-                      key={column.key}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={newFilters.some(
-                          (filter) => filter.key === column.key,
-                        )}
-                        onChange={() =>
-                          toggleFilter(column, newFilters, setNewFilters)
-                        }
-                      />
-
-                      <span>{column.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-gray-300 bg-white p-3">
-                <h3 className="mb-2 text-sm font-semibold">
-                  Main Column Config
-                </h3>
-
-                <div className="grid gap-2 md:grid-cols-3">
-                  {newColumns.map((column) => (
-                    <label
-                      key={column.key}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={newMainKeys.includes(column.key)}
-                        onChange={() =>
-                          toggleMainKey(column.key, newMainKeys, setNewMainKeys)
-                        }
-                      />
-
-                      <span>{column.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
               <div className="overflow-x-auto rounded-md border border-gray-300">
                 <table className="min-w-full text-sm">
                   <thead>

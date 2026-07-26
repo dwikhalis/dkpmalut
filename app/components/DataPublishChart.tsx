@@ -1,280 +1,59 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase/supabaseClient";
-import BarCharts from "./BarCharts";
-import type { ColumnConfig } from "./DataPublishTable";
-
-type DatasetValue = string | number | boolean | null | undefined;
-
-type DatasetRow = {
-  id?: string;
-  [key: string]: DatasetValue;
-};
-
-type DataMitraChartRow = {
-  data: unknown;
-};
+import type {
+  PublishedChartConfig,
+  PublishedTableConfig,
+} from "@/lib/utils/publishedConfig";
+import DataChart from "./DataChart";
+import type { ColumnConfig, FilterConfig } from "./DataPublishTable";
 
 type Props = {
-  dataMitraId: string;
+  datasetId: string;
   columns: ColumnConfig[];
+  filters?: FilterConfig[];
+  tableConfig?: PublishedTableConfig;
+  chartConfig?: Partial<PublishedChartConfig>;
+  selectedFilters?: Record<string, string>;
+  sortBy?: string;
+  onFilterChange?: (key: string, value: string) => void;
+  onSortChange?: (value: string) => void;
+  isLoggedIn?: boolean;
+  onLoginRequired?: () => void;
+  onCsvDataChange?: (data: {
+    headers: string[];
+    rows: Array<Array<string | number>>;
+  }) => void;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function parseRows(value: unknown): DatasetRow[] {
-  if (!value) return [];
-
-  let parsed = value;
-
-  if (typeof value === "string") {
-    try {
-      parsed = JSON.parse(value);
-    } catch {
-      return [];
-    }
-  }
-
-  if (Array.isArray(parsed)) {
-    return parsed.filter(isRecord) as DatasetRow[];
-  }
-
-  if (isRecord(parsed) && Array.isArray(parsed.rows)) {
-    return parsed.rows.filter(isRecord) as DatasetRow[];
-  }
-
-  if (isRecord(parsed) && Array.isArray(parsed.data)) {
-    return parsed.data.filter(isRecord) as DatasetRow[];
-  }
-
-  return [];
-}
-
-function toNumber(value: DatasetValue) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === "string") {
-    const cleaned = value.replace(/,/g, "").trim();
-    const numberValue = Number(cleaned);
-
-    return Number.isFinite(numberValue) ? numberValue : 0;
-  }
-
-  return 0;
-}
-
-export default function DataPublishChart({ dataMitraId, columns }: Props) {
-  const [rows, setRows] = useState<DatasetRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-
-  const [labelKey, setLabelKey] = useState("");
-  const [valueKey, setValueKey] = useState("");
-  const [limit, setLimit] = useState("20");
-
-  const categoryColumns = useMemo(() => {
-    return columns.filter((column) => column.inputType !== "number");
-  }, [columns]);
-
-  const numericColumns = useMemo(() => {
-    return columns.filter((column) => column.inputType === "number");
-  }, [columns]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchRows = async () => {
-      setLoading(true);
-      setErr(null);
-
-      try {
-        if (!dataMitraId) {
-          setRows([]);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("data_mitra")
-          .select("data")
-          .eq("id", dataMitraId)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        const dbRow = data as DataMitraChartRow | null;
-        const parsedRows = parseRows(dbRow?.data);
-
-        if (!cancelled) {
-          setRows(parsedRows);
-        }
-      } catch (error) {
-        console.error("Failed to fetch published chart data:", error);
-
-        if (!cancelled) {
-          setErr("Gagal memuat data grafik.");
-          setRows([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchRows();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [dataMitraId]);
-
-  useEffect(() => {
-    const firstCategoryKey = categoryColumns[0]?.key ?? columns[0]?.key ?? "";
-    const firstNumericKey = numericColumns[0]?.key ?? "";
-
-    if (!labelKey || !columns.some((column) => column.key === labelKey)) {
-      setLabelKey(firstCategoryKey);
-    }
-
-    if (!valueKey || !columns.some((column) => column.key === valueKey)) {
-      setValueKey(firstNumericKey);
-    }
-  }, [columns, categoryColumns, numericColumns, labelKey, valueKey]);
-
-  const chartResult = useMemo(() => {
-    if (!labelKey || !valueKey) {
-      return {
-        labels: [],
-        values: [],
-      };
-    }
-
-    const grouped = new Map<string, number>();
-
-    rows.forEach((row) => {
-      const rawLabel = row[labelKey];
-
-      const label =
-        rawLabel === null || rawLabel === undefined || rawLabel === ""
-          ? "N/A"
-          : String(rawLabel);
-
-      grouped.set(label, (grouped.get(label) ?? 0) + toNumber(row[valueKey]));
-    });
-
-    const sorted = Array.from(grouped.entries()).sort((a, b) => b[1] - a[1]);
-
-    const maxItems = Number(limit);
-
-    const finalRows =
-      Number.isFinite(maxItems) && maxItems > 0
-        ? sorted.slice(0, maxItems)
-        : sorted;
-
-    return {
-      labels: finalRows.map(([label]) => label),
-      values: finalRows.map(([, value]) => value),
-    };
-  }, [rows, labelKey, valueKey, limit]);
-
-  const labelColumn = columns.find((column) => column.key === labelKey);
-  const valueColumn = columns.find((column) => column.key === valueKey);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-40 w-full items-center justify-center rounded border border-gray-200 bg-white">
-        <div className="h-6 w-6 animate-spin rounded-full border-4 border-slate-300 border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (err) {
-    return (
-      <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-        {err}
-      </div>
-    );
-  }
-
-  if (rows.length === 0) {
-    return (
-      <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
-        Data grafik belum tersedia.
-      </div>
-    );
-  }
-
-  if (numericColumns.length === 0) {
-    return (
-      <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
-        Grafik membutuhkan minimal satu kolom angka. Pastikan column_config
-        memiliki inputType: "number".
-      </div>
-    );
-  }
-
+export default function DataPublishChart({
+  datasetId,
+  columns,
+  filters = [],
+  tableConfig,
+  chartConfig,
+  selectedFilters,
+  sortBy,
+  onFilterChange,
+  onSortChange,
+  isLoggedIn,
+  onLoginRequired,
+  onCsvDataChange,
+}: Props) {
   return (
-    <div className="w-full min-w-0 space-y-3">
-      <div className="grid gap-3 md:grid-cols-3">
-        <select
-          value={labelKey}
-          onChange={(event) => setLabelKey(event.target.value)}
-          className="w-full rounded border border-gray-400 px-3 py-2 text-xs"
-        >
-          {categoryColumns.map((column) => (
-            <option key={column.key} value={column.key}>
-              Label: {column.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={valueKey}
-          onChange={(event) => setValueKey(event.target.value)}
-          className="w-full rounded border border-gray-400 px-3 py-2 text-xs"
-        >
-          {numericColumns.map((column) => (
-            <option key={column.key} value={column.key}>
-              Nilai: {column.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={limit}
-          onChange={(event) => setLimit(event.target.value)}
-          className="w-full rounded border border-gray-400 px-3 py-2 text-xs"
-        >
-          <option value="10">Top 10</option>
-          <option value="20">Top 20</option>
-          <option value="50">Top 50</option>
-          <option value="0">Semua Data</option>
-        </select>
-      </div>
-
-      <div className="rounded border border-gray-200 bg-white p-3">
-        <BarCharts
-          labels={chartResult.labels}
-          datasets={[
-            {
-              label: valueColumn?.label ?? valueKey,
-              values: chartResult.values,
-            },
-          ]}
-          stacked={false}
-          chartTitle={`${valueColumn?.label ?? valueKey} berdasarkan ${
-            labelColumn?.label ?? labelKey
-          }`}
-          datalabel={false}
-          yAxis={true}
-          rotateXLabels={chartResult.labels.length > 8 ? 45 : 0}
-        />
-      </div>
-    </div>
+    <DataChart
+      datasetId={datasetId}
+      columns={columns}
+      filters={filters}
+      tableConfig={tableConfig}
+      chartConfig={chartConfig}
+      readOnly
+      externalSelectedFilters={selectedFilters}
+      externalSortBy={sortBy}
+      onExternalFilterChange={onFilterChange}
+      onExternalSortChange={onSortChange}
+      isLoggedIn={isLoggedIn}
+      onLoginRequired={onLoginRequired}
+      onReadOnlyCsvDataChange={onCsvDataChange}
+    />
   );
 }

@@ -1,10 +1,7 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
-import ChartAquaculture from "@/app/components/ChartAquaculture";
-import ChartColdChain from "@/app/components/ChartColdChain";
 import ChartGeneric from "@/app/components/ChartGeneric";
 import ChartKKD from "@/app/components/ChartKKD";
-import ChartProductionFish from "@/app/components/ChartProductionFish";
-import ChartProductionKabFilter from "@/app/components/ChartProductionKabFilter";
+import MapPublic from "@/app/components/Maps/MapPublic";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -19,25 +16,13 @@ type PublishedMitraDataset = {
   label: string | null;
 };
 
+type PublishedMapDataset = {
+  label: string | null;
+};
+
 export const dynamic = "force-dynamic";
 
 const STATIC_PAGES: PageOption[] = [
-  {
-    title: "Produksi Perikanan Tangkap dan Budidaya per Kabupaten",
-    slug: "produksi-perikanan-kabupaten",
-  },
-  {
-    title: "Produksi Perikanan Tangkap per Komoditas",
-    slug: "produksi-komoditas",
-  },
-  {
-    title: "Gambaran Umum Perikanan Budidaya Provinsi Maluku Utara",
-    slug: "perikanan-budidaya-maluku-utara",
-  },
-  {
-    title: "Infrastruktur Rantai Dingin",
-    slug: "infrastruktur-rantai-dingin",
-  },
   {
     title: "Kawasan Konservasi Daerah",
     slug: "kawasan-konservasi-daerah",
@@ -57,19 +42,43 @@ function toSlug(value: string) {
 
 async function getPublishedMitraPages(): Promise<PageOption[]> {
   const { data, error } = await supabase
-    .from("data_mitra")
+    .from("datasets")
     .select("label")
     .eq("published", "approved")
     .order("label", { ascending: true });
 
   if (error) {
-    console.error("Failed to fetch published data_mitra labels:", error);
+    console.error("Failed to fetch published datasets labels:", error);
     return [];
   }
 
   const rows = (data ?? []) as PublishedMitraDataset[];
 
   return rows
+    .filter((row) => row.label && row.label.trim() !== "")
+    .map((row) => {
+      const label = row.label ?? "";
+
+      return {
+        title: label,
+        slug: toSlug(label),
+      };
+    });
+}
+
+async function getPublishedMapPages(): Promise<PageOption[]> {
+  const { data, error } = await supabase
+    .from("map_datasets")
+    .select("label")
+    .eq("published", "approved")
+    .order("label", { ascending: true });
+
+  if (error) {
+    console.error("Failed to fetch published map labels:", error);
+    return [];
+  }
+
+  return ((data ?? []) as PublishedMapDataset[])
     .filter((row) => row.label && row.label.trim() !== "")
     .map((row) => {
       const label = row.label ?? "";
@@ -96,27 +105,21 @@ function mergePages(staticPages: PageOption[], dynamicPages: PageOption[]) {
 export default async function Page({ params }: Props) {
   const { slug } = await params;
 
-  const publishedMitraPages = await getPublishedMitraPages();
-  const pages = mergePages(STATIC_PAGES, publishedMitraPages);
-
-  if (slug === "produksi-perikanan-kabupaten") {
-    return <ChartProductionKabFilter pages={pages} />;
-  }
-
-  if (slug === "produksi-komoditas") {
-    return <ChartProductionFish pages={pages} />;
-  }
-
-  if (slug === "perikanan-budidaya-maluku-utara") {
-    return <ChartAquaculture pages={pages} />;
-  }
-
-  if (slug === "infrastruktur-rantai-dingin") {
-    return <ChartColdChain pages={pages} />;
-  }
+  const [publishedMitraPages, publishedMapPages] = await Promise.all([
+    getPublishedMitraPages(),
+    getPublishedMapPages(),
+  ]);
+  const pages = mergePages(STATIC_PAGES, [
+    ...publishedMitraPages,
+    ...publishedMapPages,
+  ]);
 
   if (slug === "kawasan-konservasi-daerah") {
     return <ChartKKD pages={pages} />;
+  }
+
+  if (publishedMapPages.some((page) => page.slug === slug)) {
+    return <MapPublic slug={slug} pages={pages} />;
   }
 
   return <ChartGeneric slug={slug} pages={pages} />;

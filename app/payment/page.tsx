@@ -1,22 +1,16 @@
-"use client";
+import { Suspense } from "react";
+import TicketForm from "../components/TicketForm";
 
-import MidtransPayButton from "../components/MidtransPaymentButton";
-import { useAuthStore } from "../Stores/authStores";
-
-function page() {
-  const userId = useAuthStore((state) => state.userId);
+export default function PaymentPage() {
   return (
-    <div className="flex justify-center items-center w-full min-h-[80vh]">
-      <MidtransPayButton
-        userId={userId}
-        itemId="premium-data-access"
-        itemName="Akses Data Premium"
-        amount={50000}
-        customerName="Babejong"
-        customerEmail="user@email.com"
-      />
-    </div>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          Memuat formulir tiket...
+        </div>
+      }
+    >
+      <TicketForm />
+    </Suspense>
   );
 }
-
-export default page;

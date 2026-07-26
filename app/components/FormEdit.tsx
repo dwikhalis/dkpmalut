@@ -6,19 +6,25 @@ import TextareaAutosize from "react-textarea-autosize";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { updateData } from "@/lib/supabase/supabaseHelper";
 import SpinnerLoading from "./SpinnerLoading";
+import { getTableConfig, type ConfigItem } from "@/lib/tableConfig";
 
 type AdminType = "staff" | "news" | "gallery";
+type Locale = "id" | "en";
 
 interface DataTypes {
   id: string;
+  slug?: string;
   // shared/optional fields across all 3
   name?: string;
   image?: string;
   photo?: string;
   title?: string;
+  position?: string;
   division?: string;
+  division_long?: string;
   gender?: string;
   tag?: string;
+  tag_long?: string;
   date?: string;
   content?: string;
   source?: string;
@@ -28,13 +34,14 @@ interface DataTypes {
 interface Props {
   type: AdminType;
   oldData: DataTypes;
+  locale?: Locale;
   signalUpdated: (updated: string) => void;
 }
 
 /** Payload types for updates (exact keys used in compareKeys) */
 type StaffUpdate = {
   name: string;
-  title: string;
+  position: string;
   division: string;
   gender: string;
   photo: string;
@@ -42,6 +49,7 @@ type StaffUpdate = {
 
 type NewsUpdate = {
   tag: string;
+  tag_long: string;
   date: string;
   title: string;
   content: string;
@@ -52,6 +60,7 @@ type NewsUpdate = {
 type GalleryUpdate = {
   image: string;
   tag: string;
+  tag_long: string;
   title: string;
   date: string;
   description: string;
@@ -86,14 +95,21 @@ type Cfg =
       compareKeys: readonly (keyof GalleryUpdate)[];
     };
 
-export default function FormEdit({ type, oldData, signalUpdated }: Props) {
+export default function FormEdit({
+  type,
+  oldData,
+  signalUpdated,
+}: Props) {
   // file/image state
   const [fileName, setFileName] = useState(
-    type === "staff" ? "Ganti Foto" : "Upload gambar"
+    type === "staff" ? "Ganti Foto" : "Upload gambar",
   );
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [draggingImage, setDraggingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
+  const [options, setOptions] = useState<Record<string, ConfigItem[]>>({});
 
   // single form state that holds everything; render only what each type needs
   const [formData, setFormData] = useState({
@@ -102,6 +118,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
     photo: "",
     division: "",
     gender: "",
+    position: "",
     title: "",
     // news + gallery
     image: "",
@@ -126,12 +143,18 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
           labelFrom: () => formData.name,
           buildUpdate: (url: string): StaffUpdate => ({
             name: formData.name,
-            title: formData.title,
+            position: formData.position,
             division: formData.division,
             gender: formData.gender,
             photo: url,
           }),
-          compareKeys: ["name", "title", "division", "gender", "photo"],
+          compareKeys: [
+            "name",
+            "position",
+            "division",
+            "gender",
+            "photo",
+          ],
         };
       case "news":
         return {
@@ -142,13 +165,22 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
           labelFrom: () => formData.title,
           buildUpdate: (url: string): NewsUpdate => ({
             tag: formData.tag,
+            tag_long: formData.tag,
             date: formData.date,
             title: formData.title,
             content: formData.content,
             source: formData.source,
             image: url,
           }),
-          compareKeys: ["tag", "date", "title", "content", "source", "image"],
+          compareKeys: [
+            "tag",
+            "tag_long",
+            "date",
+            "title",
+            "content",
+            "source",
+            "image",
+          ],
         };
       case "gallery":
         return {
@@ -160,11 +192,19 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
           buildUpdate: (url: string): GalleryUpdate => ({
             image: url,
             tag: formData.tag,
+            tag_long: formData.tag,
             title: formData.title,
             date: formData.date,
             description: formData.description,
           }),
-          compareKeys: ["image", "tag", "title", "date", "description"],
+          compareKeys: [
+            "image",
+            "tag",
+            "tag_long",
+            "title",
+            "date",
+            "description",
+          ],
         };
     }
   }, [type, formData]);
@@ -179,6 +219,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
       photo: oldData.photo ?? "",
       division: oldData.division ?? "",
       gender: oldData.gender ?? "",
+      position: oldData.position ?? "",
       title: oldData.title ?? "",
       // news + gallery
       image: oldData.image ?? "",
@@ -197,8 +238,21 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
 
     setPreview(initialPreview);
     setFile(null);
+    setImageError(null);
     setFileName(type === "staff" ? "Ganti Foto" : "Upload gambar");
   }, [type, oldData]);
+
+  useEffect(() => {
+    void getTableConfig(type).then((config) => {
+      if (!config) return;
+      if (type === "staff") {
+        const staff = config as { division_items: ConfigItem[]; position_items: ConfigItem[]; gender_items: ConfigItem[] };
+        setOptions({ division: staff.division_items ?? [], position: staff.position_items ?? [], gender: staff.gender_items ?? [] });
+      } else {
+        setOptions({ tag: (config as { tag_items?: ConfigItem[] }).tag_items ?? [] });
+      }
+    });
+  }, [type]);
 
   // cleanup blob URLs
   useEffect(() => {
@@ -223,7 +277,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
   function shallowEqualByKeys(
     keys: readonly string[],
     a: unknown,
-    b: Record<string, string>
+    b: Record<string, string>,
   ): boolean {
     const ar = a as Record<string, unknown>;
     for (const k of keys) {
@@ -232,11 +286,8 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
     return true;
   }
 
-  // submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function executeSave() {
     try {
-      // current URL -> if user picks a file we upload and use the new URL
       const currentUrl =
         cfg.urlField === "photo" ? formData.photo : formData.image;
 
@@ -254,9 +305,9 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
       }
 
       const dataUpdate = cfg.buildUpdate(finalUrl);
+
       const oldSubset = pickOldSubset(cfg.compareKeys);
 
-      // compare only the relevant keys for this type
       if (shallowEqualByKeys(cfg.compareKeys, dataUpdate, oldSubset)) {
         signalUpdated("No Update");
       } else {
@@ -266,20 +317,29 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
         signalUpdated(label);
       }
 
-      // reset transient file state (keep form values so user sees the updated state)
       setFile(null);
       setLoadingSubmit(false);
       setFileName(type === "staff" ? "Ganti Foto" : "Upload gambar");
 
-      // set preview from the updated payload without `any`
       const urlMap = dataUpdate as Partial<
         Record<"photo" | "image", string | undefined>
       >;
       setPreview(urlMap[cfg.urlField] ?? cfg.placeholder);
     } catch (err) {
       console.error(err);
-      alert("Update gagal. Terdapat masalah pada server!");
+      setLoadingSubmit(false);
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Update gagal. Terdapat masalah pada server!",
+      );
     }
+  }
+
+  // submit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeSave();
   };
 
   // === RENDER ===
@@ -288,48 +348,67 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
     (type === "staff" ? formData.photo : formData.image) ||
     cfg.placeholder;
 
+  const selectImage = (selectedFile?: File) => {
+    if (!selectedFile) return;
+    if (!selectedFile.type.startsWith("image/")) {
+      setImageError("File harus berupa gambar.");
+      return;
+    }
+
+    setImageError(null);
+    setFile(selectedFile);
+    setFileName(selectedFile.name);
+    setPreview(URL.createObjectURL(selectedFile));
+  };
+
   return (
     <form
       className="flex flex-col w-full p-6 shadow-xl md:p-10 border border-stone-200 rounded-2xl"
       onSubmit={handleSubmit}
     >
       {/* IMAGE UPLOAD (shared) */}
-      <div className="flex flex-col gap-3">
+      <div className="mb-3 flex flex-col gap-3 md:mb-6">
         <label
           htmlFor="file-input"
-          className="flex flex-col w-full p-3 mb-3 border rounded-md cursor-pointer md:mb-6 hover:bg-stone-200"
+          onDragEnter={(event) => { event.preventDefault(); setDraggingImage(true); }}
+          onDragOver={(event) => { event.preventDefault(); setDraggingImage(true); }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDraggingImage(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDraggingImage(false);
+            selectImage(event.dataTransfer.files?.[0]);
+          }}
+          className={`flex min-h-48 w-full cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border-2 border-dashed p-4 text-center transition ${
+            draggingImage
+              ? "border-sky-500 bg-sky-50"
+              : "border-stone-300 bg-white hover:bg-stone-50"
+          }`}
         >
+          <input
+            id="file-input"
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(event) => {
+              selectImage(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
           <Image
             src={imageSrc}
             alt="Preview"
-            className="object-contain w-full h-full mt-3 max-h-60"
+            className="h-full max-h-48 w-full object-contain"
             width={800}
             height={600}
           />
-          <span className="mt-2 text-center">{fileName}</span>
+          <div>
+            <p className="text-sm font-semibold text-stone-700">Tarik gambar baru ke sini atau klik untuk mengganti</p>
+            <p className="mt-1 text-xs text-stone-500">{fileName}</p>
+          </div>
         </label>
-
-        <input
-          id="file-input"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const selectedFile = e.target.files?.[0];
-            if (selectedFile) {
-              setFile(selectedFile);
-              setFileName(selectedFile.name);
-              const url = URL.createObjectURL(selectedFile);
-              setPreview(url);
-            } else {
-              setFile(null);
-              setFileName(type === "staff" ? "Ganti Foto" : "Upload gambar");
-              setPreview(null);
-            }
-            // allow picking the same file again
-            (e.target as HTMLInputElement).value = "";
-          }}
-        />
+        {imageError && <p role="alert" className="text-xs text-red-600">{imageError}</p>}
       </div>
 
       {/* ===== STAFF FORM ===== */}
@@ -368,27 +447,19 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
             }
           >
             <option value="">-- Pilih Gender --</option>
-            <option value="Male">Laki-laki</option>
-            <option value="Female">Perempuan</option>
+            {(options.gender ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
           </select>
 
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
-            htmlFor="title"
+            htmlFor="position"
           >
             Jabatan
           </label>
-          <input
-            id="title"
-            type="text"
-            placeholder="Nama Jabatan"
-            className="h-6 md:h-10 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw] bg-stone-100 p-3 rounded-md mt-2 md:mb-6 mb-3"
-            value={formData.title}
-            onChange={(e) =>
-              setFormData((s) => ({ ...s, title: e.target.value }))
-            }
-            required
-          />
+          <select id="position" className="w-full md:w-auto bg-stone-100 rounded-md mt-2 md:mb-6 mb-3 py-2 px-3 text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]" value={formData.position} onChange={(e) => setFormData((s) => ({ ...s, position: e.target.value }))} required>
+            <option value="" disabled>-- Pilih Jabatan --</option>
+            {(options.position ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
+          </select>
 
           <label
             className="text-[2.8vw] md:text-[1.8vw] lg:text-[1.2vw]"
@@ -408,10 +479,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
             <option value="" disabled>
               -- Pilih Bidang --
             </option>
-            <option value="PRL">PRL</option>
-            <option value="Penangkapan">Penangkapan</option>
-            <option value="Budidaya">Budidaya</option>
-            <option value="PSDKP">PSDKP</option>
+            {(options.division ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
           </select>
         </>
       )}
@@ -437,9 +505,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
             <option value="" disabled>
               -- Pilih Tag --
             </option>
-            <option value="Berita">Berita</option>
-            <option value="Artikel">Artikel</option>
-            <option value="Peraturan">Peraturan</option>
+            {(options.tag ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
           </select>
 
           <label
@@ -536,9 +602,7 @@ export default function FormEdit({ type, oldData, signalUpdated }: Props) {
             <option value="" disabled>
               -- Pilih Tag --
             </option>
-            <option value="Kegiatan">Kegiatan</option>
-            <option value="Alam">Alam</option>
-            <option value="Lainnya">Lainnya</option>
+            {(options.tag ?? []).map((item) => <option key={item.key} value={item.key}>{item.short.id}</option>)}
           </select>
 
           <label

@@ -3,26 +3,28 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../Stores/authStores";
 import SpinnerLoading from "./SpinnerLoading";
 import AlertNotif from "./AlertNotif";
 import Button from "./Button";
 import {
-  getAppLabelComponent,
+  getAppComponentConfig,
   getImagePreviewUrl,
 } from "@/lib/supabase/supabaseHelper";
 import { useLocaleStore } from "../Stores/localeStore";
+import TicketHistoryLink from "./TicketHistoryLink";
 
 type AppLabels = Record<string, string>;
 
 const navbarFallbackLabels: AppLabels = {
-  org_logo: "/assets/logo_malut.png",
-  org_name_main: "Dinas Kelautan dan Perikanan",
-  org_name_sub: "Provinsi Maluku Utara",
+  nav_org_logo: "/assets/logo_malut.png",
+  nav_org_name_main: "BLUD Kawasan Konservasi",
+  nav_org_name_sub: "Provinsi Maluku Utara",
 
   nav_menu_organization: "Organisasi",
+  nav_menu_explore: "Kawasan",
   nav_menu_news: "Berita",
   nav_menu_gallery: "Galeri",
   nav_menu_data: "Data",
@@ -34,21 +36,29 @@ const navbarFallbackLabels: AppLabels = {
   nav_menu_logout: "Keluar",
 };
 
-export default function Navbar() {
+export default function Navbar({
+  previewMode = false,
+}: {
+  previewMode?: boolean;
+}) {
   //! ===== LANGUAGE SELECTOR TOGGLE ACTIVE / INACTIVE =====
-  const localeIsActive = false;
+  const ticketisActive = true;
 
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [show, setShow] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollYRef = useRef(0);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuId = useId();
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const [labels, setLabels] = useState<AppLabels>(navbarFallbackLabels);
+  const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [localeLoading, setLocaleLoading] = useState(false);
+  const [configVersion, setConfigVersion] = useState(0);
 
   const role = useAuthStore((state) => state.role);
   const locale = useLocaleStore((state) => state.locale);
@@ -61,13 +71,15 @@ export default function Navbar() {
     async function loadLabels() {
       setLocaleLoading(true);
 
-      const result = await getAppLabelComponent("navbar", locale);
+      const result = await getAppComponentConfig("navbar", locale);
 
       if (mounted) {
         setLabels({
           ...navbarFallbackLabels,
-          ...result,
+          nav_menu_explore: locale === "en" ? "Conservation Areas" : "Kawasan",
+          ...result.values,
         });
+        setVisibility(result.visibility);
 
         setLocaleLoading(false);
       }
@@ -78,12 +90,43 @@ export default function Navbar() {
     return () => {
       mounted = false;
     };
-  }, [locale]);
+  }, [locale, configVersion]);
+
+  useEffect(() => {
+    const refreshNavbarConfig = () => setConfigVersion((value) => value + 1);
+    window.addEventListener("navbar-config-updated", refreshNavbarConfig);
+    return () =>
+      window.removeEventListener("navbar-config-updated", refreshNavbarConfig);
+  }, []);
+
+  const isVisible = (target: string) => visibility[target] ?? true;
+  const localeSelectorVisible = visibility.nav_locale ?? true;
+
+  useEffect(() => {
+    if (!localeLoading && !localeSelectorVisible && locale !== "id") {
+      setLocale("id");
+    }
+  }, [locale, localeLoading, localeSelectorVisible, setLocale]);
 
   //! Loading if new page hasn't load
   useEffect(() => {
     setDashboardLoading(false);
+    setIsMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isMenuOpen]);
 
   //! Dropdown "Summary Details" Close When Click Outside
   useEffect(() => {
@@ -111,24 +154,23 @@ export default function Navbar() {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+      if (isMenuOpen) {
+        setShow(true);
+      } else if (
+        currentScrollY > lastScrollYRef.current &&
+        currentScrollY > 50
+      ) {
         setShow(false);
       } else {
         setShow(true);
       }
 
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        setShow(false);
-      } else {
-        setShow(true);
-      }
-
-      setLastScrollY(currentScrollY);
+      lastScrollYRef.current = currentScrollY;
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+  }, [isMenuOpen]);
 
   //! LOGOUT Handler
   const handleLogout = async () => {
@@ -149,70 +191,121 @@ export default function Navbar() {
     <>
       {/* //! DESKTOP */}
       <nav
-        className={`hidden md:flex sticky z-50 top-0 xl:h-[6vw] h-[8vw] bg-white w-full transition-transform duration-300 ${
+        data-app-shell={previewMode ? undefined : "navbar"}
+        className={`sticky top-0 z-[1400] hidden min-h-16 w-full bg-white py-2 transition-transform duration-300 md:flex ${
           show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
-        <div className="flex justify-between w-full mx-8 lg:mx-12">
+        <div className="mx-12 flex w-full items-center justify-between 2xl:mx-24">
           {/* Logo Home Desktop */}
-          <Link
-            href="/"
-            className="hidden md:flex h-full justify-between items-center"
-          >
-            <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3">
-              <Image
-                src={getImagePreviewUrl(labels.org_logo)}
-                alt="Logo"
-                className="object-contain"
-                height={600}
-                width={800}
-              />
-            </div>
-            <div className="flex flex-col justify-center">
-              <p className="font-bold md:text-xs lg:text-lg">
-                {labels.org_name_main}
-              </p>
-              <p className="md:text-xs lg:text-lg">{labels.org_name_sub}</p>
-            </div>
-          </Link>
+          {(isVisible("nav_org_logo") ||
+            isVisible("nav_org_name_main") ||
+            isVisible("nav_org_name_sub")) && (
+            <Link
+              href="/"
+              className="hidden md:flex h-full justify-between items-center"
+            >
+              {isVisible("nav_org_logo") && (
+                <div className="flex relative justify-center items-center h-[3.5vw] w-[3.5vw] mr-3 xl:p-2 2xl:p-4">
+                  <Image
+                    src={getImagePreviewUrl(labels.nav_org_logo)}
+                    alt="Logo"
+                    className="object-contain"
+                    height={600}
+                    width={800}
+                  />
+                </div>
+              )}
+              <div className="flex flex-col justify-center">
+                {isVisible("nav_org_name_main") && (
+                  <p className="font-bold md:text-xs lg:text-sm">
+                    {labels.nav_org_name_main}
+                  </p>
+                )}
+                {isVisible("nav_org_name_sub") && (
+                  <p className="md:text-xs lg:text-sm">
+                    {labels.nav_org_name_sub}
+                  </p>
+                )}
+              </div>
+            </Link>
+          )}
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex 2xl:gap-12 gap-6 h-full">
-            <Link
-              href="/organisasi"
-              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+          <div className="hidden h-full gap-3 text-xs md:flex lg:gap-4 lg:text-sm 2xl:gap-8">
+            <details
+              data-dropdown="true"
+              className="group relative flex items-center"
             >
-              <h6>{labels.nav_menu_organization}</h6>
-            </Link>
-            <Link
-              href="/berita"
-              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-            >
-              <h6>{labels.nav_menu_news}</h6>
-            </Link>
-            <Link
-              href="/galeri"
-              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-            >
-              <h6>{labels.nav_menu_gallery}</h6>
-            </Link>
-            <Link
-              href="/data"
-              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-            >
-              <h6>{labels.nav_menu_data}</h6>
-            </Link>
-            <Link
-              href="/kontak"
-              className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
-            >
-              <h6>{labels.nav_menu_contact}</h6>
-            </Link>
+              <summary className="flex cursor-pointer list-none items-center">
+                <span className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer">
+                  Tentang
+                </span>
+              </summary>
+
+              <div className="absolute top-full right-0 z-50 mt-2 flex min-w-[160px] flex-col rounded-lg border border-gray-300 bg-white p-2 shadow-lg">
+                {isVisible("nav_menu_organization") && (
+                  <Link
+                    href="/organisasi"
+                    className="flex min-h-[36px] items-center whitespace-nowrap rounded-md px-3 py-2 text-left text-sm hover:bg-sky-200"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")!.open = false;
+                    }}
+                  >
+                    <span>{labels.nav_menu_organization}</span>
+                  </Link>
+                )}
+                {isVisible("nav_menu_explore") && (
+                  <Link
+                    href="/explore"
+                    className="flex min-h-[36px] items-center whitespace-nowrap rounded-md px-3 py-2 text-left text-sm hover:bg-sky-200"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")!.open = false;
+                    }}
+                  >
+                    <span>{labels.nav_menu_explore}</span>
+                  </Link>
+                )}
+              </div>
+            </details>
+
+            {isVisible("nav_menu_news") && (
+              <Link
+                href="/berita"
+                className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+              >
+                <span>{labels.nav_menu_news}</span>
+              </Link>
+            )}
+            {isVisible("nav_menu_gallery") && (
+              <Link
+                href="/galeri"
+                className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+              >
+                <span>{labels.nav_menu_gallery}</span>
+              </Link>
+            )}
+            {isVisible("nav_menu_data") && (
+              <Link
+                href="/data"
+                className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+              >
+                <span>{labels.nav_menu_data}</span>
+              </Link>
+            )}
+            {isVisible("nav_menu_contact") && (
+              <Link
+                href="/kontak"
+                className="flex justify-center items-center hover:text-gray-400 h-full cursor-pointer"
+              >
+                <span>{labels.nav_menu_contact}</span>
+              </Link>
+            )}
 
             {/* //! LANGUAGE SELECTOR */}
 
-            {localeIsActive && (
+            {isVisible("nav_locale") && (
               <details
                 data-dropdown="true"
                 className="relative flex items-center group"
@@ -259,19 +352,21 @@ export default function Navbar() {
               </details>
             )}
 
-            {isLoggedIn ? (
-              <details
-                data-dropdown="true"
-                className="relative flex items-center group"
-              >
-                <summary className="flex items-center cursor-pointer list-none">
-                  <span className="flex items-center px-5 py-2 text-xs bg-sky-800 hover:bg-sky-200 text-white rounded-full hover:text-black cursor-pointer">
-                    {labels.nav_menu_loggedin}
-                  </span>
-                </summary>
+            {isVisible("nav_menu_login") &&
+              (isLoggedIn ? (
+                <details
+                  data-dropdown="true"
+                  className="relative flex items-center group"
+                >
+                  <summary className="flex items-center cursor-pointer list-none">
+                    <span className="flex items-center px-5 py-2 text-xs bg-sky-800 hover:bg-sky-200 text-white rounded-full hover:text-black cursor-pointer">
+                      {labels.nav_menu_loggedin}
+                    </span>
+                  </summary>
 
-                <div className="absolute top-full right-0 z-50 mt-2 flex min-w-[160px] flex-col rounded-lg border border-gray-300 bg-white shadow-lg p-2">
-                  {role !== "user" && (
+                  <div className="absolute top-full right-0 z-50 mt-2 flex min-w-[160px] flex-col rounded-lg border border-gray-300 bg-white shadow-lg p-2">
+                    {/* //! DASHBOARD */}
+
                     <button
                       className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
                       disabled={dashboardLoading}
@@ -283,207 +378,311 @@ export default function Navbar() {
                     >
                       {dashboardLoading ? (
                         <SpinnerLoading size="sm" color="black" />
+                      ) : role === "user" ? (
+                        "Akun Saya"
                       ) : (
                         "Dashboard"
                       )}
                     </button>
-                  )}
 
-                  <button
-                    className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
-                    onClick={(e) => {
-                      e.currentTarget.closest("details")!.open = false;
-                      setLogoutConfirm([false, "flex"]);
-                    }}
-                  >
-                    {loading ? (
-                      <SpinnerLoading size="sm" color="white" />
-                    ) : (
-                      labels.nav_menu_logout
+                    {role !== "user" && (
+                      <button
+                        className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
+                        disabled={dashboardLoading}
+                        onClick={(e) => {
+                          setDashboardLoading(true);
+                          e.currentTarget.closest("details")!.open = false;
+                          router.push("/profile/data");
+                        }}
+                      >
+                        {dashboardLoading ? (
+                          <SpinnerLoading size="sm" color="black" />
+                        ) : (
+                          "Data"
+                        )}
+                      </button>
                     )}
-                  </button>
-                </div>
-              </details>
-            ) : (
-              <Button size="lg" text={labels.nav_menu_login} link="/masuk" />
-            )}
+
+                    {/* //! TICKET */}
+                    {ticketisActive && role !== "admin" && (
+                      <TicketHistoryLink
+                        className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
+                        onClick={(event) => {
+                          event.currentTarget.closest("details")!.open = false;
+                        }}
+                      >
+                        {loading ? (
+                          <SpinnerLoading size="sm" color="white" />
+                        ) : (
+                          "Tiket Saya"
+                        )}
+                      </TicketHistoryLink>
+                    )}
+
+                    {role === "admin" && (
+                      <button
+                        className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
+                        disabled={dashboardLoading}
+                        onClick={(e) => {
+                          setDashboardLoading(true);
+                          e.currentTarget.closest("details")!.open = false;
+                          router.push("/profile/ticketing");
+                        }}
+                      >
+                        {dashboardLoading ? (
+                          <SpinnerLoading size="sm" color="black" />
+                        ) : (
+                          "Data"
+                        )}
+                      </button>
+                    )}
+
+                    {/* //! LOGOUT */}
+                    <button
+                      className="flex items-center whitespace-nowrap rounded-md text-left text-sm hover:bg-sky-200 px-3 py-2 min-h-[36px]"
+                      onClick={(e) => {
+                        e.currentTarget.closest("details")!.open = false;
+                        setLogoutConfirm([false, "flex"]);
+                      }}
+                    >
+                      {loading ? (
+                        <SpinnerLoading size="sm" color="white" />
+                      ) : (
+                        labels.nav_menu_logout
+                      )}
+                    </button>
+                  </div>
+                </details>
+              ) : (
+                <Button size="lg" text={labels.nav_menu_login} link="/masuk" />
+              ))}
           </div>
         </div>
       </nav>
 
       {/* //! MOBILE */}
       <nav
-        className={`md:hidden z-10 sticky top-0 transition-transform duration-300 ${
+        data-app-shell={previewMode ? undefined : "navbar"}
+        className={`md:hidden z-[1400] sticky top-0 transition-transform duration-300 ${
           show ? "translate-y-0" : "-translate-y-full"
         }`}
         style={{ filter: "drop-shadow(0px 5px 10px rgba(0,0,0,0.3))" }}
       >
         {/* Navigation Bar */}
-        <div className="flex justify-between z-10 relative bg-white w-full h-[12vw]">
+        <div className="relative z-10 flex min-h-[12vw] w-full items-center justify-between bg-white py-2">
           {/* Logo Home Mobile */}
-          <Link href="/" className="flex items-center h-full ml-6">
-            <div className="flex relative justify-center items-center h-[6vw] w-[6vw] mr-3">
-              <Image
-                src={getImagePreviewUrl(labels.org_logo)}
-                alt="Logo"
-                className="object-contain"
-                height={600}
-                width={800}
-              />
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="font-bold">{labels.org_name_main}</h4>
-              <h4>{labels.org_name_sub}</h4>
-            </div>
-          </Link>
-
-          {localeIsActive && (
-            <div className="relative grow flex h-full justify-end items-center">
-              <select
-                value={locale}
-                onChange={(e) => setLocale(e.target.value as "id" | "en")}
-                className="absolute inset-0 h-full cursor-pointer opacity-0"
-              >
-                <option value="id">Bahasa</option>
-                <option value="en">English</option>
-              </select>
-
-              <div className="pointer-events-none flex items-center justify-center">
-                {localeLoading ? (
-                  <SpinnerLoading size="sm" color="black" />
-                ) : (
-                  <img
-                    src="/assets/icon_locale.png"
-                    alt="Language"
-                    className="h-6 w-6 object-contain"
+          {(isVisible("nav_org_logo") ||
+            isVisible("nav_org_name_main") ||
+            isVisible("nav_org_name_sub")) && (
+            <Link href="/" className="flex items-center h-full ml-6">
+              {isVisible("nav_org_logo") && (
+                <div className="flex relative justify-center items-center h-[6vw] w-[6vw] mr-3">
+                  <Image
+                    src={getImagePreviewUrl(labels.nav_org_logo)}
+                    alt="Logo"
+                    className="object-contain"
+                    height={600}
+                    width={800}
                   />
+                </div>
+              )}
+              <div className="flex flex-col justify-center">
+                {isVisible("nav_org_name_main") && (
+                  <p className="text-xs font-bold sm:text-sm">
+                    {labels.nav_org_name_main}
+                  </p>
                 )}
+                {isVisible("nav_org_name_sub") && (
+                  <p className="text-xs sm:text-sm">
+                    {labels.nav_org_name_sub}
+                  </p>
+                )}
+              </div>
+            </Link>
+          )}
+
+          {isVisible("nav_locale") && (
+            <div className="flex grow items-center justify-end">
+              <div className="relative h-6 w-6 shrink-0">
+                <select
+                  aria-label="Language"
+                  value={locale}
+                  onChange={(e) => setLocale(e.target.value as "id" | "en")}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  <option value="id">Bahasa</option>
+                  <option value="en">English</option>
+                </select>
+
+                <div className="pointer-events-none flex h-full w-full items-center justify-center">
+                  {localeLoading ? (
+                    <SpinnerLoading size="sm" color="black" />
+                  ) : (
+                    <img
+                      src="/assets/icon_locale.png"
+                      alt="Language"
+                      className="h-6 w-6 object-contain"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* //! Burger Menu for Mobile */}
-          <div
-            className="flex items-center px-7 h-full justify-center cursor-pointer"
-            onClick={() =>
-              isMenuOpen ? setIsMenuOpen(false) : setIsMenuOpen(true)
-            }
-          >
-            <button className="text-2xl focus:outline-none cursor-pointer">
-              &#9776; {/* Burger icon */}
+          <div className="flex h-full items-center justify-center px-7">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              className="cursor-pointer text-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-800"
+              aria-label={
+                isMenuOpen ? "Close navigation menu" : "Open navigation menu"
+              }
+              aria-expanded={isMenuOpen}
+              aria-controls={mobileMenuId}
+              onClick={() => setIsMenuOpen((open) => !open)}
+            >
+              <span aria-hidden="true">{"\u2630"}</span>
             </button>
           </div>
         </div>
 
         {/* //!  DROP-DOWN MENU */}
         <div
-          className={`lg:hidden w-full absolute transform transition-all duration-500 ease-in-out 
+          id={mobileMenuId}
+          aria-hidden={!isMenuOpen}
+          inert={!isMenuOpen}
+          className={`absolute w-full transform transition-all duration-500 ease-in-out motion-reduce:transition-none lg:hidden
     ${
       isMenuOpen && show
         ? "translate-y-0"
         : "-translate-y-full pointer-events-none"
     }`}
         >
-          <Link
-            href="/organisasi"
-            className="text-center"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
-              {labels.nav_menu_organization}
-            </h4>
-          </Link>
-          <Link
-            href="/berita"
-            className="text-center"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
-              {labels.nav_menu_news}
-            </h4>
-          </Link>
-          <Link
-            href="/galeri"
-            className="text-center"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
-              {labels.nav_menu_gallery}
-            </h4>
-          </Link>
-          <Link
-            href="/data"
-            className="text-center"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
-              {labels.nav_menu_data}
-            </h4>
-          </Link>
-          <Link
-            href="/kontak"
-            className="text-center"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <h4 className="py-[2vh] bg-[rgba(0,0,0,0.8)] text-white">
-              {labels.nav_menu_contact}
-            </h4>
-          </Link>
-          {isLoggedIn ? (
-            <>
+          {isVisible("nav_menu_organization") && (
+            <Link
+              href="/organisasi"
+              className="text-center"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="block bg-[rgba(0,0,0,0.8)] py-[2vh] text-base text-white">
+                {labels.nav_menu_organization}
+              </span>
+            </Link>
+          )}
+          {isVisible("nav_menu_explore") && (
+            <Link
+              href="/explore"
+              className="text-center"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="block bg-[rgba(0,0,0,0.8)] py-[2vh] text-base text-white">
+                {labels.nav_menu_explore}
+              </span>
+            </Link>
+          )}
+          {isVisible("nav_menu_news") && (
+            <Link
+              href="/berita"
+              className="text-center"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="block bg-[rgba(0,0,0,0.8)] py-[2vh] text-base text-white">
+                {labels.nav_menu_news}
+              </span>
+            </Link>
+          )}
+          {isVisible("nav_menu_gallery") && (
+            <Link
+              href="/galeri"
+              className="text-center"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="block bg-[rgba(0,0,0,0.8)] py-[2vh] text-base text-white">
+                {labels.nav_menu_gallery}
+              </span>
+            </Link>
+          )}
+          {isVisible("nav_menu_data") && (
+            <Link
+              href="/data"
+              className="text-center"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="block bg-[rgba(0,0,0,0.8)] py-[2vh] text-base text-white">
+                {labels.nav_menu_data}
+              </span>
+            </Link>
+          )}
+          {isVisible("nav_menu_contact") && (
+            <Link
+              href="/kontak"
+              className="text-center"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="block bg-[rgba(0,0,0,0.8)] py-[2vh] text-base text-white">
+                {labels.nav_menu_contact}
+              </span>
+            </Link>
+          )}
+          {isVisible("nav_menu_login") &&
+            (isLoggedIn ? (
+              <>
+                <Link
+                  href="/profile"
+                  className="text-center"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white cursor-pointer">
+                    {loading ? (
+                      <SpinnerLoading size={"sm"} color="white" />
+                    ) : (
+                      <span className="text-base">
+                        {labels.nav_menu_loggedin}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+                <button
+                  type="button"
+                  className="w-full bg-[rgba(0,0,0,0.85)] py-[2vh] text-center text-white"
+                  onClick={() => {
+                    setLogoutConfirm([false, "flex"]);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  {loading ? (
+                    <SpinnerLoading size={"sm"} color="white" />
+                  ) : (
+                    <span className="text-base">{labels.nav_menu_logout}</span>
+                  )}
+                </button>
+              </>
+            ) : (
               <Link
-                href="/profile"
+                href="/masuk"
                 className="text-center"
                 onClick={() => {
                   setIsMenuOpen(false);
                 }}
               >
-                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white cursor-pointer">
+                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
                   {loading ? (
                     <SpinnerLoading size={"sm"} color="white" />
                   ) : (
-                    <h4>{labels.nav_menu_loggedin}</h4>
+                    <span className="text-base">{labels.nav_menu_login}</span>
                   )}
                 </div>
               </Link>
-              <div
-                className="text-center"
-                onClick={() => {
-                  setLogoutConfirm([false, "flex"]);
-                  setIsMenuOpen(false);
-                }}
-              >
-                <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white cursor-pointer">
-                  {loading ? (
-                    <SpinnerLoading size={"sm"} color="white" />
-                  ) : (
-                    <h4>{labels.nav_menu_logout}</h4>
-                  )}
-                </div>
-              </div>
-            </>
-          ) : (
-            <Link
-              href="/masuk"
-              className="text-center"
-              onClick={() => {
-                setIsMenuOpen(false);
-              }}
-            >
-              <div className="py-[2vh] bg-[rgba(0,0,0,0.85)] text-white">
-                {loading ? (
-                  <SpinnerLoading size={"sm"} color="white" />
-                ) : (
-                  <h4>{labels.nav_menu_login}</h4>
-                )}
-              </div>
-            </Link>
-          )}
+            ))}
 
           {/* Outer Element, if Burger Menu = Open, then Menu will Off if Outer Element "Clicked"  */}
           <div
-            className={`${isMenuOpen ? "flex" : "hidden"} h-[50vh] w-full`}
-            onClick={() => (isMenuOpen ? setIsMenuOpen(false) : null)}
+            className={`${isMenuOpen ? "block" : "hidden"} h-screen w-full`}
+            aria-hidden="true"
+            onClick={() => setIsMenuOpen(false)}
           />
         </div>
       </nav>
