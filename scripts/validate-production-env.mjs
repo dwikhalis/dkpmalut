@@ -11,12 +11,8 @@ const required = [
   "TURNSTILE_SECRET_KEY",
   "TURNSTILE_EXPECTED_HOSTNAME",
   "RATE_LIMIT_SALT",
-  "NEXT_PUBLIC_MIDTRANS_CLIENT_KEY",
-  "MIDTRANS_MERCHANT_ID",
-  "MIDTRANS_SERVER_KEY",
   "SMTP_HOST",
   "SMTP_PASSWORD",
-  "SMTP_TICKET_FROM_EMAIL",
   "SMTP_ADMIN_EMAIL",
   "CRON_SECRET",
 ];
@@ -24,9 +20,6 @@ const required = [
 const missing = required.filter((name) => !process.env[name]?.trim());
 const errors = [];
 
-if (process.env.MIDTRANS_IS_PRODUCTION !== "true") {
-  errors.push("MIDTRANS_IS_PRODUCTION must be true");
-}
 if (process.env.SMTP_TLS_REJECT_UNAUTHORIZED === "false") {
   errors.push("SMTP_TLS_REJECT_UNAUTHORIZED must not be false");
 }

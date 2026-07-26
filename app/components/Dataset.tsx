@@ -61,7 +61,6 @@ const TAG_OPTIONS = [
   { label: "Tangkap", value: "tangkap" },
   { label: "Budidaya", value: "budidaya" },
   { label: "Ekologi", value: "ekologi" },
-  { label: "Konservasi", value: "konservasi" },
   { label: "Sosial", value: "sosial" },
   { label: "Ekonomi", value: "ekonomi" },
   { label: "Lainnya", value: "lainnya" },

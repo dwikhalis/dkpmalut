@@ -5,8 +5,6 @@ const scriptSources = [
   "'self'",
   "'unsafe-inline'",
   ...(!isProduction ? ["'unsafe-eval'"] : []),
-  "https://app.midtrans.com",
-  "https://app.sandbox.midtrans.com",
   "https://challenges.cloudflare.com",
   "https://va.vercel-scripts.com",
 ].join(" ");
@@ -21,8 +19,8 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://i.imgur.com https://flagcdn.com https://*.supabase.co https://*.tile.openstreetmap.org",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.midtrans.com https://app.sandbox.midtrans.com https://challenges.cloudflare.com https://vitals.vercel-insights.com",
-  "frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://challenges.cloudflare.com https://www.google.com https://maps.google.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://vitals.vercel-insights.com",
+  "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://maps.google.com",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
@@ -48,20 +46,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  async redirects() {
-    return [
-      {
-        source: "/kawasan-konservasi/:path*",
-        destination: "/explore/:path*",
-        permanent: true,
-      },
-      {
-        source: "/profile/organisasi",
-        destination: "/profile/staff",
-        permanent: true,
-      },
-    ];
-  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

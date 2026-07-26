@@ -7,7 +7,6 @@ import { LeftChevron, RightChevron } from "@/public/icons/iconSets";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
-import TicketHistoryLink from "../TicketHistoryLink";
 
 interface Props {
   slug: string;
@@ -36,22 +35,6 @@ export default function DashSideMenu({
 
   const adminMenus = [
     {
-      label: "Staff",
-      slug: "staff",
-    },
-    {
-      label: "Berita",
-      slug: "berita",
-    },
-    {
-      label: "Galeri",
-      slug: "galeri",
-    },
-    {
-      label: "Kawasan",
-      slug: "kawasan-konservasi",
-    },
-    {
       label: "Pesan",
       slug: "pesan",
     },
@@ -68,32 +51,12 @@ export default function DashSideMenu({
       slug: "app-cms",
     },
     {
-      label: "Ticketing",
-      slug: "ticketing",
-    },
-    {
       label: "Log Aktivitas",
       slug: "logs",
     },
   ];
 
-  const partnerMenus = [
-    {
-      label: "Data",
-      slug: "data",
-    },
-    {
-      label: "My Tickets",
-      slug: "tickets",
-    },
-  ];
-
-  const userMenus = [
-    {
-      label: "My Tickets",
-      slug: "tickets",
-    },
-  ];
+  const partnerMenus = [{ label: "Data", slug: "data" }];
 
   useEffect(() => {
     const handleClose = () => {
@@ -187,14 +150,6 @@ export default function DashSideMenu({
                   </Link>
 
                   {partnerMenus.map(renderMenuLink)}
-
-                  <TicketHistoryLink>
-                    <span
-                      className={`block ${slug === "tickets" ? selected : unselected} 2xl:pl-6`}
-                    >
-                      Tiket Saya
-                    </span>
-                  </TicketHistoryLink>
                 </>
               )}
 
@@ -208,15 +163,6 @@ export default function DashSideMenu({
                     </span>
                   </Link>
 
-                  {userMenus.map((menu) => (
-                    <TicketHistoryLink key={menu.slug}>
-                      <span
-                        className={`block ${slug === menu.slug ? selected : unselected} 2xl:pl-6`}
-                      >
-                        {menu.label}
-                      </span>
-                    </TicketHistoryLink>
-                  ))}
                 </>
               )}
             </div>

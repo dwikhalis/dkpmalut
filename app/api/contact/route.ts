@@ -138,8 +138,6 @@ export async function POST(request: Request) {
     const fromEmail =
       process.env.CONTACT_FROM_EMAIL?.trim() ||
       process.env.SMTP_ADMIN_EMAIL?.trim() ||
-      process.env.SMTP_TICKET_FROM_EMAIL?.trim() ||
-      process.env.TICKET_FROM_EMAIL?.trim() ||
       destinationEmail;
     const fromName =
       process.env.SMTP_ADMIN_NAME?.trim() || "Website DKP Maluku Utara";

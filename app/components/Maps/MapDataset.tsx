@@ -193,7 +193,6 @@ type MapPublicationSnapshot = {
 };
 
 const TAG_OPTIONS = [
-  { label: "Konservasi", value: "konservasi" },
   { label: "Ekologi", value: "ekologi" },
   { label: "Sosial", value: "sosial" },
   { label: "Ekonomi", value: "ekonomi" },
@@ -4617,7 +4616,7 @@ export default function MapDataset({
               <input
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
-                placeholder="Contoh: Kawasan Konservasi Daerah"
+                placeholder="Contoh: Sebaran Produksi Perikanan"
                 className="rounded-md border border-stone-300 p-2"
               />
             </label>

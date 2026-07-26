@@ -1566,7 +1566,7 @@ export default function DataChart({
                 <FieldLabel
                   label="Kelompok Data"
                   technical="Dimension / X Axis"
-                  help="Pilih kolom yang menjadi kelompok utama, misalnya Tahun, Kabupaten, Zona Konservasi, atau Pekerjaan."
+                  help="Pilih kolom yang menjadi kelompok utama, misalnya Tahun, Kabupaten, Komoditas, atau Pekerjaan."
                   helpKey="category"
                   openHelpKey={openHelpKey}
                   onToggleHelp={(key) =>

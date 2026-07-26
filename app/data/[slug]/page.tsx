@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import ChartGeneric from "@/app/components/ChartGeneric";
-import ChartKKD from "@/app/components/ChartKKD";
 import MapPublic from "@/app/components/Maps/MapPublic";
 
 interface Props {
@@ -21,13 +20,6 @@ type PublishedMapDataset = {
 };
 
 export const dynamic = "force-dynamic";
-
-const STATIC_PAGES: PageOption[] = [
-  {
-    title: "Kawasan Konservasi Daerah",
-    slug: "kawasan-konservasi-daerah",
-  },
-];
 
 function toSlug(value: string) {
   return value
@@ -109,14 +101,10 @@ export default async function Page({ params }: Props) {
     getPublishedMitraPages(),
     getPublishedMapPages(),
   ]);
-  const pages = mergePages(STATIC_PAGES, [
+  const pages = mergePages([], [
     ...publishedMitraPages,
     ...publishedMapPages,
   ]);
-
-  if (slug === "kawasan-konservasi-daerah") {
-    return <ChartKKD pages={pages} />;
-  }
 
   if (publishedMapPages.some((page) => page.slug === slug)) {
     return <MapPublic slug={slug} pages={pages} />;

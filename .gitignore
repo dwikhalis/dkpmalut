@@ -50,5 +50,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# supabase migrations
-migrations
+# Supabase migrations are deployment source and must be version controlled.

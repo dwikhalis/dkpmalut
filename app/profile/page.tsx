@@ -1,19 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import DashStats from "../components/Dashboard/DashStats";
 import DashSideMenu from "../components/Dashboard/DashSideMenu";
 import { useAuthStore } from "@/app/Stores/authStores";
 import DashProfile from "../components/Dashboard/DashProfile";
 import { useRouter } from "next/navigation";
-import AuthAdminAccess from "../Auth/AuthAdminAccess";
 import SpinnerLoading from "../components/SpinnerLoading";
 
 export default function Page() {
   const router = useRouter();
 
   const loading = useAuthStore((state) => state.loading);
-  const userId = useAuthStore((state) => state.userId);
   const role = useAuthStore((state) => state.role);
 
   useEffect(() => {
@@ -35,13 +32,7 @@ export default function Page() {
       <DashSideMenu slug="home" userRole={role} />
 
       <div className="flex h-full w-full lg:mx-12 mx-8 min-h-[70vh]">
-        {role === "admin" && (
-          <AuthAdminAccess>
-            <DashStats />
-          </AuthAdminAccess>
-        )}
-        {role === "partner" && <DashProfile />}
-        {role === "user" && <DashProfile />}
+        <DashProfile />
       </div>
     </div>
   );

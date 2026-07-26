@@ -30,15 +30,6 @@ type PublishedMapDataset = {
   tag: string[] | string | null;
 };
 
-const STATIC_PAGES: DataPageOption[] = [
-  {
-    title: "Kawasan Konservasi Daerah",
-    slug: "kawasan-konservasi-daerah",
-    tag: "konservasi",
-    image: "charts/pic_data_kkd.png",
-  },
-];
-
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -122,7 +113,7 @@ async function DatasetContent() {
     return Array.from(pageMap.values());
   }
 
-  const pages = mergePages(STATIC_PAGES, [
+  const pages = mergePages([], [
     ...publishedDatasets,
     ...publishedMaps,
   ]);
