@@ -1,5 +1,11 @@
-import { redirect } from "next/navigation";
+import Hero from "./components/Homepage/Hero";
+import SectionAddr from "./components/Homepage/SectionAddr";
 
 export default function HomePage() {
-  redirect("/data");
+  return (
+    <div className="min-h-[70vh] overflow-hidden bg-transparent">
+      <Hero />
+      <SectionAddr />
+    </div>
+  );
 }
