@@ -18,13 +18,10 @@ const eslintConfig = [
   // unused-code checks remain enabled everywhere else.
   {
     files: [
-      "app/Stores/adminContentStore.ts",
       "app/components/ChartGeneric.tsx",
       "app/components/DataChart.tsx",
       "app/components/Dataset.tsx",
       "app/components/DatasetConfig.tsx",
-      "app/components/Homepage/SectionGallery.tsx",
-      "app/components/Homepage/SectionOrg.tsx",
       "app/components/Maps/MapDataset.tsx",
       "app/components/Maps/MapPreview.tsx",
       "app/components/Maps/MapPublic.tsx",
@@ -41,11 +38,9 @@ const eslintConfig = [
     files: [
       "app/components/Dashboard/DashAppCMS.tsx",
       "app/components/Dashboard/DashData.tsx",
-      "app/components/Dashboard/DashNewsGalleryStaff.tsx",
       "app/components/DataPublishTable.tsx",
       "app/components/DatasetConfig.tsx",
       "app/components/DatasetTable.tsx",
-      "app/components/MapKKD.tsx",
       "app/components/Maps/MapDataset.tsx",
       "app/components/Maps/MapPreview.tsx",
     ],

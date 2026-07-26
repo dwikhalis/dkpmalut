@@ -21,6 +21,8 @@ type PublishedMapDataset = {
 
 export const dynamic = "force-dynamic";
 
+const STATIC_PAGES: PageOption[] = [];
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -101,7 +103,7 @@ export default async function Page({ params }: Props) {
     getPublishedMitraPages(),
     getPublishedMapPages(),
   ]);
-  const pages = mergePages([], [
+  const pages = mergePages(STATIC_PAGES, [
     ...publishedMitraPages,
     ...publishedMapPages,
   ]);

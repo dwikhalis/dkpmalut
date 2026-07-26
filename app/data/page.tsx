@@ -30,6 +30,8 @@ type PublishedMapDataset = {
   tag: string[] | string | null;
 };
 
+const STATIC_PAGES: DataPageOption[] = [];
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -113,7 +115,7 @@ async function DatasetContent() {
     return Array.from(pageMap.values());
   }
 
-  const pages = mergePages([], [
+  const pages = mergePages(STATIC_PAGES, [
     ...publishedDatasets,
     ...publishedMaps,
   ]);

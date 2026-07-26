@@ -1,22 +1,40 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Footer from "../Footer";
 import Navbar from "../Navbar";
 import Hero from "../Homepage/Hero";
-import {
-  CmsPageHeader,
-  CmsPageProvider,
-  CmsParagraphs,
-} from "../CmsPageContent";
+import SectionAddr from "../Homepage/SectionAddr";
+import SectionNumber from "../Homepage/SectionNumber";
+import { getAppComponentConfig } from "@/lib/supabase/supabaseHelper";
 
-const pageNames: Record<string, string> = {
-  page_data: "Data",
-  page_contact: "Kontak",
-  page_regulations: "Peraturan",
-  page_privacy: "Kebijakan Privasi",
-  page_terms: "Syarat dan Ketentuan",
-  page_accessibility: "Aksesibilitas",
-};
+function PageComponentPreview({ component }: { component: string }) {
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    void getAppComponentConfig(component).then((config) => {
+      setLabels(config.values);
+      setVisibility(config.visibility);
+    });
+  }, [component]);
+
+  const titleTarget = `${component}_title`;
+  const subtitleTarget = `${component}_subtitle`;
+  const title = labels[titleTarget] || "Judul halaman";
+  const subtitle = labels[subtitleTarget] || "Subjudul halaman";
+
+  return (
+    <section className="min-h-[70vh] px-8 py-8 lg:px-12 lg:py-12 2xl:px-24 2xl:py-24">
+      <div className="flex flex-col gap-3">
+        {visibility[titleTarget] !== false && <h1>{title}</h1>}
+        {visibility[subtitleTarget] !== false && (
+          <p className="text-lg leading-relaxed md:text-xl">{subtitle}</p>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function AppCmsComponentPreview({
   component,
@@ -24,31 +42,23 @@ export default function AppCmsComponentPreview({
   component: string;
 }) {
   if (component === "navbar") return <Navbar previewMode />;
-  if (component === "footer") return <Footer previewMode />;
   if (component === "hero") return <Hero />;
-  if (component.startsWith("page_")) {
-    const fallbackTitle = pageNames[component] ?? "Platform Data";
+  if (component === "sectwo") {
     return (
-      <section className="mx-auto min-h-[70vh] max-w-5xl px-6 py-12">
-        <CmsPageProvider component={component}>
-          <CmsPageHeader
-            prefix={component}
-            titleFallback={fallbackTitle}
-            subtitleFallback="Preview konten App CMS."
-          />
-          <CmsParagraphs
-            target={`${component}_section_1_content`}
-            fallback="Konten halaman akan tampil di sini."
-            className="mt-8 rounded-2xl bg-white p-6"
-          />
-        </CmsPageProvider>
-      </section>
+      <div className="bg-sky-100">
+        <SectionNumber />
+      </div>
     );
+  }
+  if (component === "secfive") return <SectionAddr previewMode />;
+  if (component === "footer") return <Footer previewMode />;
+  if (component.startsWith("page_")) {
+    return <PageComponentPreview component={component} />;
   }
 
   return (
     <div className="p-8 text-center text-sm text-slate-600">
-      Preview tidak tersedia.
+      Preview belum tersedia untuk component &quot;{component}&quot;.
     </div>
   );
 }

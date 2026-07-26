@@ -38,6 +38,7 @@ const entityLabels: Record<string, string> = {
   map_datasets: "Dataset peta",
   map_layers: "Layer peta",
   map_legend_items: "Legenda peta",
+  table_config: "Konfigurasi tabel",
 };
 
 const entityPageLabels: Record<string, string> = {
@@ -47,12 +48,20 @@ const entityPageLabels: Record<string, string> = {
   map_datasets: "Peta",
   map_layers: "Peta",
   map_legend_items: "Peta",
+  table_config: "Dashboard",
 };
 
 const cmsPageLabels: Record<string, string> = {
   navbar: "Semua Halaman",
   footer: "Semua Halaman",
-  page_data: "Data",
+  hero: "Beranda",
+  secone: "Beranda",
+  sectwo: "Beranda",
+  secthree: "Beranda",
+  secfour: "Beranda",
+  secfive: "Beranda",
+  secsix: "Beranda",
+  page_rates: "Informasi Tarif",
   page_regulations: "Peraturan",
   page_privacy: "Kebijakan Privasi",
   page_terms: "Syarat dan Ketentuan",

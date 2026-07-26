@@ -1,8 +1,19 @@
+// app/components/Reveal.tsx
+
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 type RevealAnimation = "fade-up" | "fade-left" | "fade-right" | "scale-in";
+
+interface Props {
+  children: ReactNode;
+  className?: string;
+  animation?: RevealAnimation;
+  delay?: number;
+  once?: boolean;
+  disabled?: boolean;
+}
 
 export default function Reveal({
   children,
@@ -11,20 +22,15 @@ export default function Reveal({
   delay = 0,
   once = true,
   disabled = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  animation?: RevealAnimation;
-  delay?: number;
-  once?: boolean;
-  disabled?: boolean;
-}) {
+}: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (disabled) return;
+
     const element = ref.current;
+
     if (!element) return;
 
     if (!("IntersectionObserver" in window)) {
@@ -36,19 +42,30 @@ export default function Reveal({
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true);
-          if (once) observer.unobserve(entry.target);
+
+          if (once) {
+            observer.unobserve(entry.target);
+          }
         } else if (!once) {
           setVisible(false);
         }
       },
-      { threshold: 0.15, rootMargin: "0px 0px -80px 0px" },
+      {
+        threshold: 0.15,
+        rootMargin: "0px 0px -80px 0px",
+      },
     );
 
     observer.observe(element);
-    return () => observer.disconnect();
+
+    return () => {
+      observer.disconnect();
+    };
   }, [disabled, once]);
 
-  if (disabled) return <div className={className}>{children}</div>;
+  if (disabled) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <div

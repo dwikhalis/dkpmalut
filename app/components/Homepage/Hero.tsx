@@ -12,11 +12,11 @@ import {
 type AppLabels = Record<string, string>;
 
 const fallbackLabels: AppLabels = {
-  hero_eyebrow: "Satu Data Kelautan dan Perikanan",
-  hero_title: "Data Laut Maluku Utara dalam Satu Platform",
-  hero_button_label: "Jelajahi Data",
+  hero_eyebrow: "Dinas Kelautan dan Perikanan Maluku Utara",
+  hero_title: "Data Kelautan dan Perikanan dalam Satu Portal",
+  hero_button_label: "Lihat Data",
   hero_subtitle:
-    "Akses data perikanan tangkap, budidaya, rantai dingin, dan informasi spasial yang terbuka, terukur, dan mudah dipahami.",
+    "Temukan data kelautan dan perikanan Provinsi Maluku Utara yang telah dipublikasikan.",
   hero_button_path: "/data",
   hero_secondary_button_label: "Hubungi Kami",
   hero_secondary_button_path: "/kontak",
@@ -113,7 +113,7 @@ export default function Hero() {
           labels.hero_image_desktop?.trim() && (
             <div className="z-10 flex items-center justify-center">
               <Image
-                alt="Platform data kelautan dan perikanan Maluku Utara"
+                alt="Portal data kelautan dan perikanan Maluku Utara"
                 src={getImagePreviewUrl(labels.hero_image_desktop)}
                 width={1200}
                 height={1200}
@@ -180,7 +180,7 @@ export default function Hero() {
         {visibility.hero_image_mobile !== false &&
           labels.hero_image_mobile?.trim() && (
             <Image
-              alt="Platform data kelautan dan perikanan Maluku Utara"
+              alt="Portal data kelautan dan perikanan Maluku Utara"
               src={getImagePreviewUrl(labels.hero_image_mobile)}
               width={1200}
               height={1200}

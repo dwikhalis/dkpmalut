@@ -1,84 +1,78 @@
 "use client";
 
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { FaFacebook, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 
-import { useLocaleStore } from "../Stores/localeStore";
+import { useLocaleStore } from "@/app/Stores/localeStore";
 import {
   getAppComponentConfig,
   getImagePreviewUrl,
 } from "@/lib/supabase/supabaseHelper";
 
-type Labels = Record<string, string>;
+type AppLabels = Record<string, string>;
 
-const fallbackByLocale: Record<"id" | "en", Labels> = {
+const fallbackByLocale: Record<"id" | "en", AppLabels> = {
   id: {
     footer_org_logo: "/assets/logo_malut.png",
-    footer_org_name_main: "Platform Data DKP",
+    footer_org_name_main: "Dinas Kelautan dan Perikanan",
     footer_org_name_sub: "Provinsi Maluku Utara",
-    footer_description:
-      "Pusat data kelautan dan perikanan yang terbuka, terukur, dan mudah diakses untuk Maluku Utara.",
-    footer_tab_title_1: "Platform",
-    footer_tab_label_1_1: "Beranda",
-    footer_tab_label_1_1_path: "/",
-    footer_tab_label_1_2: "Data",
-    footer_tab_label_1_2_path: "/data",
-    footer_tab_label_1_3: "Peraturan",
-    footer_tab_label_1_3_path: "/peraturan",
-    footer_tab_title_2: "Informasi",
-    footer_tab_label_2_1: "Kontak",
-    footer_tab_label_2_1_path: "/kontak",
-    footer_tab_label_2_2: "Kebijakan Privasi",
-    footer_tab_label_2_2_path: "/kebijakan-privasi",
-    footer_tab_label_2_3: "Syarat dan Ketentuan",
-    footer_tab_label_2_3_path: "/syarat-dan-ketentuan",
-    footer_tab_title_3: "Akun",
-    footer_tab_label_3_1: "Masuk",
-    footer_tab_label_3_1_path: "/masuk",
-    footer_tab_label_3_2: "Daftar",
-    footer_tab_label_3_2_path: "/daftar",
-    footer_tab_label_3_3: "Aksesibilitas",
-    footer_tab_label_3_3_path: "/aksesibilitas",
-    footer_copyright_title: "Pemerintah Provinsi Maluku Utara",
+    footer_copyright_title: "© 2025 DKP Malut. Seluruh hak dilindungi.",
+    footer_copyright_subtitle: "Desain dan dikembangkan oleh Khalis",
+    footer_copyright_subtitle_path: "https://www.linkedin.com/in/khalisdwih/",
+    footer_tab_title_1: "Layanan",
+    footer_tab_label_1_1: "Data",
+    footer_tab_label_1_1_path: "/data",
+    footer_tab_label_1_2: "Kontak",
+    footer_tab_label_1_2_path: "/kontak",
   },
   en: {
     footer_org_logo: "/assets/logo_malut.png",
-    footer_org_name_main: "DKP Data Platform",
+    footer_org_name_main: "Department of Marine Affairs and Fisheries",
     footer_org_name_sub: "North Maluku Province",
-    footer_description:
-      "An open and accessible marine and fisheries data hub for North Maluku.",
-    footer_tab_title_1: "Platform",
-    footer_tab_label_1_1: "Home",
-    footer_tab_label_1_1_path: "/",
-    footer_tab_label_1_2: "Data",
-    footer_tab_label_1_2_path: "/data",
-    footer_tab_label_1_3: "Regulations",
-    footer_tab_label_1_3_path: "/peraturan",
-    footer_tab_title_2: "Information",
-    footer_tab_label_2_1: "Contact",
-    footer_tab_label_2_1_path: "/kontak",
-    footer_tab_label_2_2: "Privacy Policy",
-    footer_tab_label_2_2_path: "/kebijakan-privasi",
-    footer_tab_label_2_3: "Terms and Conditions",
-    footer_tab_label_2_3_path: "/syarat-dan-ketentuan",
-    footer_tab_title_3: "Account",
-    footer_tab_label_3_1: "Sign in",
-    footer_tab_label_3_1_path: "/masuk",
-    footer_tab_label_3_2: "Register",
-    footer_tab_label_3_2_path: "/daftar",
-    footer_tab_label_3_3: "Accessibility",
-    footer_tab_label_3_3_path: "/aksesibilitas",
-    footer_copyright_title: "Government of North Maluku Province",
+    footer_copyright_title: "© 2025 DKP Malut. All rights reserved.",
+    footer_copyright_subtitle: "Designed and built by Khalis",
+    footer_copyright_subtitle_path: "https://www.linkedin.com/in/khalisdwih/",
+    footer_tab_title_1: "Services",
+    footer_tab_label_1_1: "Data",
+    footer_tab_label_1_1_path: "/data",
+    footer_tab_label_1_2: "Contact",
+    footer_tab_label_1_2_path: "/kontak",
   },
 };
 
-function safePath(value: string | undefined) {
-  const path = value?.trim();
-  if (!path) return "#";
-  if (path.startsWith("/") || /^https?:\/\//i.test(path)) return path;
-  return "#";
+function cleanValue(value: string | undefined) {
+  return (value ?? "").trim();
+}
+
+function cleanCopyright(value: string) {
+  if (!value) return value;
+
+  // Repair common mojibake before a copyright year (for example Â© or ï¿½).
+  return value.replace(/^.*?(?=\s*20\d{2}\b)/, "\u00A9");
+}
+
+function isExternal(href: string) {
+  return /^https?:\/\//i.test(href);
+}
+
+function FooterLink({ href, children }: { href: string; children: ReactNode }) {
+  const safeHref = cleanValue(href) || "#";
+
+  return (
+    <Link
+      href={safeHref}
+      className="cursor-pointer hover:text-stone-400"
+      {...(isExternal(safeHref)
+        ? { target: "_blank", rel: "noopener noreferrer" }
+        : {})}
+    >
+      {children}
+    </Link>
+  );
 }
 
 export default function Footer({
@@ -88,16 +82,36 @@ export default function Footer({
 }) {
   const pathname = usePathname();
   const locale = useLocaleStore((state) => state.locale);
-  const [labels, setLabels] = useState<Labels>(fallbackByLocale[locale]);
-  const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+  const [labels, setLabels] = useState<AppLabels>(fallbackByLocale[locale]);
 
   useEffect(() => {
     let mounted = true;
-    void getAppComponentConfig("footer", locale).then((config) => {
-      if (!mounted) return;
-      setLabels({ ...fallbackByLocale[locale], ...config.values });
-      setVisibility(config.visibility);
-    });
+    const fallback = fallbackByLocale[locale];
+
+    async function loadLabels() {
+      try {
+        const footerResult = await getAppComponentConfig("footer", locale);
+        if (!mounted) return;
+
+        const mergedLabels = {
+          ...fallback,
+          ...footerResult.values,
+        };
+
+        Object.entries(footerResult.visibility).forEach(
+          ([target, isActive]) => {
+            if (!isActive) mergedLabels[target] = "";
+          },
+        );
+
+        setLabels(mergedLabels);
+      } catch (error) {
+        console.error("Failed to load footer labels:", error);
+        if (mounted) setLabels(fallback);
+      }
+    }
+
+    void loadLabels();
     return () => {
       mounted = false;
     };
@@ -105,127 +119,158 @@ export default function Footer({
 
   const columns = useMemo(
     () =>
-      [1, 2, 3].map((column) => ({
-        title: labels[`footer_tab_title_${column}`],
-        target: `footer_tab_title_${column}`,
-        items: [1, 2, 3].map((item) => ({
-          label: labels[`footer_tab_label_${column}_${item}`],
-          path: safePath(labels[`footer_tab_label_${column}_${item}_path`]),
-          target: `footer_tab_label_${column}_${item}`,
-        })),
-      })),
+      [1, 2, 3]
+        .map((column) => ({
+          title: cleanValue(labels[`footer_tab_title_${column}`]),
+          items: [1, 2, 3, 4, 5]
+            .map((item) => ({
+              label: cleanValue(labels[`footer_tab_label_${column}_${item}`]),
+              path: cleanValue(
+                labels[`footer_tab_label_${column}_${item}_path`],
+              ),
+            }))
+            .filter((item) => item.label && item.path),
+        }))
+        .filter((column) => column.title || column.items.length > 0),
     [labels],
   );
 
-  if (!previewMode && (pathname === "/profile" || pathname.startsWith("/profile/"))) {
-    return null;
-  }
+  const isProfileRoute =
+    pathname === "/profile" || pathname.startsWith("/profile/");
 
-  const isVisible = (target: string) => visibility[target] !== false;
+  if (!previewMode && isProfileRoute) return null;
+
+  const socials = [
+    { key: "socmed_facebook", label: "Facebook", icon: <FaFacebook /> },
+    { key: "socmed_instagram", label: "Instagram", icon: <FaInstagram /> },
+    { key: "socmed_youtube", label: "YouTube", icon: <FaYoutube /> },
+    { key: "socmed_xtwitter", label: "X / Twitter", icon: <FaXTwitter /> },
+    { key: "socmed_tiktok", label: "TikTok", icon: <FaTiktok /> },
+  ].filter((social) => cleanValue(labels[social.key]));
+
+  const copyrightTitle = cleanCopyright(
+    cleanValue(labels.footer_copyright_title),
+  );
+  const copyrightSubtitle = cleanValue(labels.footer_copyright_subtitle);
+  const copyrightPath = cleanValue(labels.footer_copyright_subtitle_path);
+  const organizationLogo = cleanValue(labels.footer_org_logo);
+  const organizationName = cleanValue(labels.footer_org_name_main);
+  const organizationSubName = cleanValue(labels.footer_org_name_sub);
+  const hasOrganization = Boolean(
+    organizationLogo || organizationName || organizationSubName,
+  );
+  const hasCopyright = Boolean(copyrightTitle || copyrightSubtitle);
+  const hasLeftContent = hasOrganization || socials.length > 0 || hasCopyright;
+
+  const navigation = (mobile = false) => (
+    <div
+      className={
+        mobile
+          ? "flex w-full flex-wrap justify-center gap-6"
+          : "flex min-w-[18rem] grow basis-[30rem] flex-wrap gap-8 text-white"
+      }
+    >
+      {columns.map((column, columnIndex) => (
+        <div
+          key={`${column.title}-${columnIndex}`}
+          className={`flex min-w-32 grow basis-32 flex-col gap-2 ${mobile ? "text-center" : ""}`}
+        >
+          {column.title && (
+            <h2 className={`${mobile ? "text-sm" : "text-base"} font-bold`}>
+              {column.title}
+            </h2>
+          )}
+          {column.items.map((item, itemIndex) => (
+            <FooterLink key={`${item.label}-${itemIndex}`} href={item.path}>
+              <span
+                className={`${mobile ? "text-sm" : "text-xs lg:text-sm"} leading-tight`}
+              >
+                {item.label}
+              </span>
+            </FooterLink>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
+  const socialLinks = (center = false) => (
+    <div
+      className={`flex h-10 items-center gap-5 ${center ? "justify-center" : ""}`}
+    >
+      {socials.map((social) => (
+        <FooterLink key={social.key} href={labels[social.key]}>
+          <span aria-label={social.label} className="text-2xl text-white">
+            {social.icon}
+          </span>
+        </FooterLink>
+      ))}
+    </div>
+  );
+
+  const organization = (center = false) => (
+    <div
+      className={`flex flex-col gap-3 ${center ? "items-center text-center" : "items-start text-left"}`}
+    >
+      {organizationLogo && (
+        <Image
+          src={getImagePreviewUrl(organizationLogo)}
+          alt={organizationName || "Logo organisasi"}
+          width={96}
+          height={96}
+          className="h-16 w-16 shrink-0 object-contain"
+        />
+      )}
+      <div>
+        {organizationName && (
+          <p className="text-base font-bold text-white">{organizationName}</p>
+        )}
+        {organizationSubName && (
+          <p className="text-sm text-white">{organizationSubName}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const copyright = (center = false) => (
+    <div className={center ? "text-center" : ""}>
+      {copyrightTitle && <p className="text-sm text-white">{copyrightTitle}</p>}
+      {copyrightSubtitle &&
+        (copyrightPath ? (
+          <FooterLink href={copyrightPath}>
+            <span className="text-sm text-white">{copyrightSubtitle}</span>
+          </FooterLink>
+        ) : (
+          <p className="text-sm text-white">{copyrightSubtitle}</p>
+        ))}
+    </div>
+  );
 
   return (
     <footer
       data-app-shell={previewMode ? undefined : "footer"}
-      className="relative overflow-hidden bg-sky-950 text-white"
+      className="relative z-[1400] w-full bg-sky-900 text-white"
     >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-20"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 15% 15%, #22d3ee 0, transparent 28%), radial-gradient(circle at 85% 70%, #0ea5e9 0, transparent 25%)",
-        }}
-      />
-      <div className="relative mx-auto grid max-w-[90rem] gap-12 px-6 py-14 lg:grid-cols-[1.3fr_2fr] lg:px-10 lg:py-16">
-        <div className="max-w-md">
-          <Link href="/" className="inline-flex items-center gap-4">
-            {isVisible("footer_org_logo") && (
-              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white p-2 shadow-lg">
-                <Image
-                  src={getImagePreviewUrl(labels.footer_org_logo)}
-                  width={56}
-                  height={56}
-                  alt=""
-                  className="h-full w-full object-contain"
-                />
-              </span>
-            )}
-            <span>
-              {isVisible("footer_org_name_main") && (
-                <strong className="block text-lg font-bold tracking-wide">
-                  {labels.footer_org_name_main}
-                </strong>
-              )}
-              {isVisible("footer_org_name_sub") && (
-                <span className="text-sm text-sky-200">
-                  {labels.footer_org_name_sub}
-                </span>
-              )}
-            </span>
-          </Link>
-          {isVisible("footer_description") && (
-            <p className="mt-6 text-sm leading-7 text-sky-100/80">
-              {labels.footer_description}
-            </p>
-          )}
-          <div className="mt-7 flex gap-3">
-            {[
-              ["Instagram", labels.footer_social_instagram],
-              ["Facebook", labels.footer_social_facebook],
-              ["YouTube", labels.footer_social_youtube],
-            ].map(([name, href]) =>
-              href?.trim() ? (
-                <a
-                  key={name}
-                  href={safePath(href)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="grid h-10 min-w-10 place-items-center rounded-full border border-sky-700 px-3 text-xs font-bold text-sky-100 transition hover:border-cyan-300 hover:bg-cyan-300 hover:text-sky-950"
-                  aria-label={name}
-                >
-                  {name.slice(0, 2)}
-                </a>
-              ) : null,
-            )}
+      <div className="hidden w-full flex-wrap gap-8 px-12 py-8 md:flex 2xl:px-24">
+        {hasLeftContent && (
+          <div className="min-w-[18rem] grow basis-[24rem]">
+            {hasOrganization && organization()}
+            {socials.length > 0 && <div className="mt-4">{socialLinks()}</div>}
+            {hasCopyright && <div className="mt-3">{copyright()}</div>}
           </div>
-        </div>
-
-        <nav className="grid gap-8 sm:grid-cols-3" aria-label="Navigasi footer">
-          {columns.map((column) =>
-            isVisible(column.target) ? (
-              <div key={column.target}>
-                <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-cyan-300">
-                  {column.title}
-                </h2>
-                <ul className="mt-5 space-y-3">
-                  {column.items.map(
-                    (item) =>
-                      isVisible(item.target) &&
-                      item.label?.trim() && (
-                        <li key={item.target}>
-                          <Link
-                            href={item.path}
-                            className="text-sm text-sky-100/80 transition hover:translate-x-1 hover:text-white"
-                          >
-                            {item.label}
-                          </Link>
-                        </li>
-                      ),
-                  )}
-                </ul>
-              </div>
-            ) : null,
-          )}
-        </nav>
+        )}
+        {columns.length > 0 && navigation()}
       </div>
 
-      <div className="relative border-t border-sky-800/80">
-        <div className="mx-auto flex max-w-[90rem] flex-col gap-2 px-6 py-5 text-xs text-sky-200 sm:flex-row sm:items-center sm:justify-between lg:px-10">
-          <p>
-            © {new Date().getFullYear()} {labels.footer_copyright_title}
-          </p>
-          <p>Platform Data Kelautan dan Perikanan</p>
-        </div>
+      <div className="w-full px-6 py-6 md:hidden">
+        {hasOrganization && <div className="pb-6">{organization(true)}</div>}
+        {columns.length > 0 && navigation(true)}
+        {(socials.length > 0 || hasCopyright) && (
+          <div className="pt-6">
+            {socials.length > 0 && socialLinks(true)}
+            {hasCopyright && <div className="mt-3">{copyright(true)}</div>}
+          </div>
+        )}
       </div>
     </footer>
   );

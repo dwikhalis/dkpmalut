@@ -55,7 +55,7 @@ export default function AccessibilityPage() {
               "teks alternatif untuk gambar informatif;",
               "tampilan responsif untuk telepon, tablet, dan komputer;",
               "dukungan pembesaran teks dan preferensi pengurangan animasi;",
-              "penyajian data dalam tabel, grafik, dan peta; serta",
+              "informasi tiket dalam halaman web dan dokumen PDF; serta",
               "Bahasa Indonesia sebagai bahasa layanan utama.",
             ]}
             className="list-disc space-y-2 pl-6"
@@ -72,7 +72,7 @@ export default function AccessibilityPage() {
           <CmsValue
             as="p"
             target="page_accessibility_section_content_3"
-            fallback="Beberapa peta interaktif, visualisasi data kompleks, dan dokumen lama mungkin belum sepenuhnya memenuhi seluruh kebutuhan aksesibilitas. Pengguna dapat meminta informasi dalam bentuk alternatif melalui halaman kontak."
+            fallback="Beberapa peta interaktif, dokumen peraturan lama dalam format PDF, layanan pembayaran pihak ketiga, dan pemindaian kamera mungkin belum sepenuhnya memenuhi seluruh kebutuhan aksesibilitas. Pengguna dapat meminta informasi dalam bentuk alternatif melalui halaman kontak."
           />
         </section>
 
@@ -86,7 +86,7 @@ export default function AccessibilityPage() {
           <CmsValue
             as="p"
             target="page_accessibility_section_content_4"
-            fallback="Apabila Anda kesulitan membaca dokumen, menggunakan tabel, grafik, atau peta, sampaikan halaman atau fungsi yang bermasalah, perangkat yang digunakan, dan format yang dibutuhkan. Jangan menyertakan kata sandi atau data rahasia."
+            fallback="Apabila Anda kesulitan membeli tiket, membaca dokumen, menggunakan peta, atau mengakses informasi kawasan, sampaikan halaman atau fungsi yang bermasalah, perangkat yang digunakan, dan format yang dibutuhkan. Jangan menyertakan kata sandi atau informasi pembayaran rahasia."
           />
         </section>
         <CmsPageCta
