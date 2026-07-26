@@ -12,7 +12,7 @@ type AppLabels = Record<string, string>;
 
 const fallbackLabels: AppLabels = {
   hero_eyebrow: "Dinas Kelautan dan Perikanan Maluku Utara",
-  hero_title: "Data Kelautan dan Perikanan dalam Satu Portal",
+  hero_title: "Platform Data Kelautan dan Perikanan",
   hero_button_label: "Lihat Data",
   hero_subtitle:
     "Temukan data kelautan dan perikanan Provinsi Maluku Utara yang telah dipublikasikan.",
