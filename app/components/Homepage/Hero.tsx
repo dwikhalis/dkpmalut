@@ -12,16 +12,16 @@ import {
 type AppLabels = Record<string, string>;
 
 const fallbackLabels: AppLabels = {
-  hero_eyebrow: "Kawasan Konservasi Maluku Utara",
-  hero_title: "Jelajahi Laut, Jaga Kehidupan",
-  hero_button_label: "Jelajahi Kawasan",
+  hero_eyebrow: "Satu Data Kelautan dan Perikanan",
+  hero_title: "Data Laut Maluku Utara dalam Satu Platform",
+  hero_button_label: "Jelajahi Data",
   hero_subtitle:
-    "Temukan kawasan konservasi dan wisata bahari Maluku Utara. Berkunjung dengan bijak, menikmati alam, dan ikut menjaga laut untuk generasi mendatang.",
-  hero_button_path: "/explore",
-  hero_secondary_button_label: "Beli Tiket",
-  hero_secondary_button_path: "/payment",
-  hero_image_desktop: "icon_images/icon_conservation_tourism.png",
-  hero_image_mobile: "icon_images/icon_conservation_island.png",
+    "Akses data perikanan tangkap, budidaya, rantai dingin, dan informasi spasial yang terbuka, terukur, dan mudah dipahami.",
+  hero_button_path: "/data",
+  hero_secondary_button_label: "Hubungi Kami",
+  hero_secondary_button_path: "/kontak",
+  hero_image_desktop: "/assets/hero_1.png",
+  hero_image_mobile: "/assets/hero_1.png",
 };
 
 export default function Hero() {
@@ -113,7 +113,7 @@ export default function Hero() {
           labels.hero_image_desktop?.trim() && (
             <div className="z-10 flex items-center justify-center">
               <Image
-                alt="Wisata bahari bertanggung jawab di kawasan konservasi"
+                alt="Platform data kelautan dan perikanan Maluku Utara"
                 src={getImagePreviewUrl(labels.hero_image_desktop)}
                 width={1200}
                 height={1200}
@@ -180,7 +180,7 @@ export default function Hero() {
         {visibility.hero_image_mobile !== false &&
           labels.hero_image_mobile?.trim() && (
             <Image
-              alt="Perjalanan menuju kawasan konservasi pulau"
+              alt="Platform data kelautan dan perikanan Maluku Utara"
               src={getImagePreviewUrl(labels.hero_image_mobile)}
               width={1200}
               height={1200}

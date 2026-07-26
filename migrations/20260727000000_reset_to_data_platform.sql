@@ -215,7 +215,7 @@ create table public.app_cms (
   updated_at timestamptz not null default now(),
   component text not null check (
     component in (
-      'navbar', 'footer', 'page_data', 'page_contact',
+      'navbar', 'footer', 'hero', 'page_data', 'page_contact',
       'page_regulations', 'page_privacy', 'page_terms',
       'page_accessibility'
     )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import AlertNotif from "../AlertNotif";
@@ -21,6 +22,7 @@ type CmsRow = {
 const allowedComponents = [
   "navbar",
   "footer",
+  "hero",
   "page_data",
   "page_contact",
   "page_regulations",
@@ -102,6 +104,7 @@ export default function DashAppCMS() {
     setSaving(false);
     await load();
     window.dispatchEvent(new Event("navbar-config-updated"));
+    window.dispatchEvent(new Event("app-cms-config-updated"));
   }
 
   if (loading) {
@@ -123,7 +126,7 @@ export default function DashAppCMS() {
           digunakan.
         </p>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
           <select
             value={locale}
             onChange={(event) => setLocale(event.target.value as Locale)}
@@ -150,6 +153,15 @@ export default function DashAppCMS() {
             placeholder="Cari target atau nilai..."
             className="rounded-xl border border-slate-200 px-3 py-2"
           />
+          {component !== "all" && (
+            <Link
+              href={`/app-cms-preview?component=${encodeURIComponent(component)}`}
+              target="_blank"
+              className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-center text-sm font-semibold text-sky-800 hover:bg-sky-100"
+            >
+              Preview
+            </Link>
+          )}
         </div>
       </div>
 

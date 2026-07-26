@@ -2,6 +2,7 @@
 
 import Footer from "../Footer";
 import Navbar from "../Navbar";
+import Hero from "../Homepage/Hero";
 import {
   CmsPageHeader,
   CmsPageProvider,
@@ -24,6 +25,7 @@ export default function AppCmsComponentPreview({
 }) {
   if (component === "navbar") return <Navbar previewMode />;
   if (component === "footer") return <Footer previewMode />;
+  if (component === "hero") return <Hero />;
   if (component.startsWith("page_")) {
     const fallbackTitle = pageNames[component] ?? "Platform Data";
     return (
