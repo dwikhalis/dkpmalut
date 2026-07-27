@@ -92,12 +92,6 @@ const sortOptions: { label: string; value: SortKey }[] = [
 const filterOptionValues = filterOptions.map((option) => option.value);
 const sortOptionValues = sortOptions.map((option) => option.value);
 
-const tableHeaderClass =
-  "border border-stone-200 bg-sky-800 px-3 py-3 text-center text-white whitespace-nowrap font-normal";
-
-const tableCellClass =
-  "border border-stone-200 px-3 py-3 align-middle whitespace-nowrap";
-
 function getPublicImageUrl(imagePath: string | null | undefined) {
   if (!imagePath) return DEFAULT_PROFILE_IMAGE;
 
@@ -495,110 +489,110 @@ export default function DashUsers() {
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-max table-auto border-collapse lg:text-xs">
-            <thead>
-              <tr>
-                <th className={tableHeaderClass}>No.</th>
-                <th className={tableHeaderClass}>Photo</th>
-                <th className={tableHeaderClass}>Terdaftar</th>
-                <th className={tableHeaderClass}>Nama</th>
-                <th className={tableHeaderClass}>Gender</th>
-                <th className={tableHeaderClass}>Kontak</th>
-                <th className={tableHeaderClass}>Email</th>
-                <th className={tableHeaderClass}>Konfirm Email</th>
-                <th className={tableHeaderClass}>Organisasi</th>
-                <th className={tableHeaderClass}>Pekerjaan</th>
-                <th className={tableHeaderClass}>Akses</th>
-              </tr>
-            </thead>
+        {visibleUsers.length === 0 ? (
+          <div className="rounded-2xl border border-stone-200 bg-white px-4 py-10 text-center text-stone-600">
+            Tidak ada data pengguna.
+          </div>
+        ) : (
+          <div className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleUsers.map((user, index) => (
+              <article
+                key={user.id}
+                className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+              >
+                <header className="flex items-center gap-4 border-b border-stone-100 bg-sky-50 p-4">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-sky-700 bg-stone-100">
+                    <Image
+                      src={getPublicImageUrl(user.image_path)}
+                      alt={user.username || "Foto pengguna"}
+                      width={100}
+                      height={100}
+                      className="h-full w-full object-cover"
+                      unoptimized
+                    />
+                  </div>
 
-            <tbody>
-              {visibleUsers.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={11}
-                    className="border border-stone-200 px-3 py-8 text-center"
-                  >
-                    Tidak ada data pengguna.
-                  </td>
-                </tr>
-              ) : (
-                visibleUsers.map((user, index) => (
-                  <tr key={user.id} className="hover:bg-stone-50">
-                    <td className={tableCellClass}>{index + 1}</td>
-
-                    <td className={tableCellClass}>
-                      <div className="flex justify-center">
-                        <div className="h-10 w-10 overflow-hidden rounded-full border-2 border-sky-700 bg-stone-100 md:h-12 md:w-12">
-                          <Image
-                            src={getPublicImageUrl(user.image_path)}
-                            alt={user.username || "Foto pengguna"}
-                            width={100}
-                            height={100}
-                            className="h-full w-full object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className={tableCellClass}>
-                      {formatDateTime(user.created_at)}
-                    </td>
-
-                    <td className={tableCellClass}>
-                      {displayText(user.username)}
-                    </td>
-
-                    <td className={tableCellClass}>
-                      {displayGender(user.gender)}
-                    </td>
-
-                    <td className={tableCellClass}>
-                      {displayText(user.phone)}
-                    </td>
-
-                    <td className={tableCellClass}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="truncate font-semibold text-sky-950">
+                        {displayText(user.username)}
+                      </h2>
+                      <span className="shrink-0 text-xs font-medium text-stone-400">
+                        #{index + 1}
+                      </span>
+                    </div>
+                    <p className="truncate text-sm text-stone-600">
                       {displayText(user.email)}
-                    </td>
+                    </p>
+                  </div>
+                </header>
 
-                    <td className={tableCellClass}>
-                      {displayEmailConfirm(user.email_confirmed)}
-                    </td>
+                <div className="space-y-4 p-4">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div className="col-span-2">
+                      <dt className="text-xs text-stone-500">Terdaftar</dt>
+                      <dd className="mt-0.5 font-medium text-stone-800">
+                        {formatDateTime(user.created_at)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-stone-500">Gender</dt>
+                      <dd className="mt-0.5 text-stone-800">
+                        {displayGender(user.gender)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-stone-500">Konfirm Email</dt>
+                      <dd className="mt-0.5 text-stone-800">
+                        {displayEmailConfirm(user.email_confirmed)}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-xs text-stone-500">Kontak</dt>
+                      <dd className="mt-0.5 truncate text-stone-800">
+                        {displayText(user.phone)}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-xs text-stone-500">Organisasi</dt>
+                      <dd className="mt-0.5 truncate text-stone-800">
+                        {displayText(user.organization)}
+                      </dd>
+                    </div>
+                    <div className="col-span-2 min-w-0">
+                      <dt className="text-xs text-stone-500">Pekerjaan</dt>
+                      <dd className="mt-0.5 truncate text-stone-800">
+                        {displayText(user.occupation)}
+                      </dd>
+                    </div>
+                  </dl>
 
-                    <td className={tableCellClass}>
-                      {displayText(user.organization)}
-                    </td>
+                  <label className="block border-t border-stone-100 pt-4 text-sm">
+                    <span className="mb-1 block text-xs font-medium text-stone-500">
+                      Akses
+                    </span>
+                    <select
+                      value={user.role ?? ""}
+                      onChange={(event) => handleRoleSelect(event, user)}
+                      className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 font-medium outline-none focus:ring-2 focus:ring-sky-400"
+                      disabled={savingRole}
+                    >
+                      <option value="" disabled>
+                        Pilih Akses
+                      </option>
 
-                    <td className={tableCellClass}>
-                      {displayText(user.occupation)}
-                    </td>
-
-                    <td className={tableCellClass}>
-                      <select
-                        value={user.role ?? ""}
-                        onChange={(event) => handleRoleSelect(event, user)}
-                        className="rounded-md bg-stone-100 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-                        disabled={savingRole}
-                      >
-                        <option value="" disabled>
-                          Pilih Akses
+                      {roleOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
                         </option>
-
-                        {roleOptions.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       {alertType === "confirm-role" && pendingRoleChange && (

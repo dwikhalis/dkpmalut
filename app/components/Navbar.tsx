@@ -366,8 +366,8 @@ export default function Navbar({
           className={`absolute w-full transform transition-all duration-500 ease-in-out motion-reduce:transition-none lg:hidden
     ${
       isMenuOpen && show
-        ? "translate-y-0"
-        : "-translate-y-full pointer-events-none"
+        ? "visible translate-y-0 delay-0"
+        : "invisible -translate-y-full pointer-events-none delay-500 motion-reduce:delay-0"
     }`}
         >
           {isVisible("nav_menu_data") && (

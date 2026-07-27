@@ -41,6 +41,7 @@ export default function DashAppCMS() {
   const [search, setSearch] = useState("");
   const [componentFilter, setComponentFilter] = useState("all");
   const [previewComponent, setPreviewComponent] = useState<string | null>(null);
+  const [openComponents, setOpenComponents] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -126,6 +127,14 @@ export default function DashAppCMS() {
   function updateRow(id: string, changes: Partial<AppLabel>) {
     setLabels((current) =>
       current.map((row) => (row.id === id ? { ...row, ...changes } : row)),
+    );
+  }
+
+  function toggleComponent(component: string) {
+    setOpenComponents((current) =>
+      current.includes(component)
+        ? current.filter((item) => item !== component)
+        : [...current, component],
     );
   }
 
@@ -241,76 +250,116 @@ export default function DashAppCMS() {
               (row) => row.component === component,
             );
             if (rows.length === 0) return null;
+            const isOpen = openComponents.includes(component);
+            const contentId = `app-cms-${component.replace(
+              /[^a-z0-9_-]/gi,
+              "-",
+            )}`;
 
             return (
               <div
                 key={component}
-                className="overflow-hidden rounded-xl border border-stone-200 bg-white"
+                className={`overflow-hidden rounded-xl border bg-white transition-colors ${
+                  isOpen ? "border-sky-800" : "border-stone-300"
+                }`}
               >
-                <div className="flex items-center justify-between bg-sky-50 px-4 py-3">
-                  <h2 className="text-lg font-semibold">{component}</h2>
+                <div
+                  className={`group flex items-center justify-between px-4 py-3 transition-colors ${
+                    isOpen
+                      ? "bg-sky-900 text-white"
+                      : "bg-white text-stone-950 hover:bg-sky-100"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={contentId}
+                    onClick={() => toggleComponent(component)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`inline-block text-sm transition-transform ${
+                        isOpen ? "rotate-90" : ""
+                      }`}
+                    >
+                      ▶
+                    </span>
+                    <h2 className="truncate text-lg font-semibold">
+                      {component}
+                    </h2>
+                  </button>
                   <button
                     type="button"
                     onClick={() => openPreview(component)}
-                    className="rounded-md border border-sky-700 px-3 py-1 text-sm text-sky-800"
+                    className={`ml-3 shrink-0 rounded-md border px-3 py-1 text-sm transition-colors ${
+                      isOpen
+                        ? "border-white/70 bg-white/10 text-white hover:bg-white hover:text-sky-950"
+                        : "border-sky-800 bg-white text-stone-950 hover:bg-sky-800 hover:text-white"
+                    }`}
                   >
                     Pratinjau
                   </button>
                 </div>
-                <div className="divide-y divide-stone-100">
-                  {rows.map((row) => (
-                    <div
-                      key={row.id}
-                      className="grid gap-3 p-4 lg:grid-cols-[minmax(12rem,0.7fr)_minmax(0,2fr)_auto]"
-                    >
-                      <div>
-                        <p className="font-medium">{row.target}</p>
-                        <p className="text-xs text-stone-500">{row.type}</p>
-                      </div>
-                      {row.type === "textarea" ? (
-                        <textarea
-                          value={row.value}
-                          onChange={(event) =>
-                            updateRow(row.id, { value: event.target.value })
-                          }
-                          rows={4}
-                          className="w-full rounded-md border border-stone-300 p-2"
-                        />
-                      ) : (
-                        <div className="space-y-2">
-                          <input
+
+                {isOpen && (
+                  <div id={contentId} className="divide-y divide-stone-100">
+                    {rows.map((row) => (
+                      <div
+                        key={row.id}
+                        className="grid gap-3 p-4 lg:grid-cols-[minmax(12rem,0.7fr)_minmax(0,2fr)_auto]"
+                      >
+                        <div>
+                          <p className="font-medium">{row.target}</p>
+                          <p className="text-xs text-stone-500">{row.type}</p>
+                        </div>
+                        {row.type === "textarea" ? (
+                          <textarea
                             value={row.value}
                             onChange={(event) =>
                               updateRow(row.id, { value: event.target.value })
                             }
+                            rows={4}
                             className="w-full rounded-md border border-stone-300 p-2"
                           />
-                          {row.type === "image" && row.value && (
-                            <Image
-                              src={getImagePreviewUrl(row.value)}
-                              alt=""
-                              width={192}
-                              height={96}
-                              className="max-h-24 max-w-48 rounded object-contain"
+                        ) : (
+                          <div className="space-y-2">
+                            <input
+                              value={row.value}
+                              onChange={(event) =>
+                                updateRow(row.id, {
+                                  value: event.target.value,
+                                })
+                              }
+                              className="w-full rounded-md border border-stone-300 p-2"
                             />
-                          )}
-                        </div>
-                      )}
-                      <label className="flex items-center gap-2 self-start">
-                        <input
-                          type="checkbox"
-                          checked={row.is_active}
-                          onChange={(event) =>
-                            updateRow(row.id, {
-                              is_active: event.target.checked,
-                            })
-                          }
-                        />
-                        Aktif
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                            {row.type === "image" && row.value && (
+                              <Image
+                                src={getImagePreviewUrl(row.value)}
+                                alt=""
+                                width={192}
+                                height={96}
+                                className="max-h-24 max-w-48 rounded object-contain"
+                              />
+                            )}
+                          </div>
+                        )}
+                        <label className="flex items-center gap-2 self-start">
+                          <input
+                            type="checkbox"
+                            checked={row.is_active}
+                            onChange={(event) =>
+                              updateRow(row.id, {
+                                is_active: event.target.checked,
+                              })
+                            }
+                          />
+                          Aktif
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -319,7 +368,7 @@ export default function DashAppCMS() {
       {previewComponent && (
         <div className="fixed inset-0 z-[2000] overflow-auto bg-black/70 p-4">
           <div className="mx-auto max-w-7xl overflow-hidden rounded-xl bg-white">
-            <div className="flex items-center justify-between border-b p-3">
+            <div className="flex items-center justify-between border-b border-sky-950 bg-sky-900 p-3 text-white">
               <strong>Pratinjau: {previewComponent}</strong>
               <button
                 type="button"

@@ -15,17 +15,24 @@ import {
 type AppLabels = Record<string, string>;
 
 const fallbackLabels: AppLabels = {
-    footer_org_logo: "/assets/logo_malut.png",
-    footer_org_name_main: "Dinas Kelautan dan Perikanan",
-    footer_org_name_sub: "Provinsi Maluku Utara",
-    footer_copyright_title: "© 2025 DKP Malut. Seluruh hak dilindungi.",
-    footer_copyright_subtitle: "Desain dan dikembangkan oleh Khalis",
-    footer_copyright_subtitle_path: "https://www.linkedin.com/in/khalisdwih/",
-    footer_tab_title_1: "Layanan",
-    footer_tab_label_1_1: "Data",
-    footer_tab_label_1_1_path: "/data",
-    footer_tab_label_1_2: "Kontak",
-    footer_tab_label_1_2_path: "/kontak",
+  footer_org_logo: "/assets/logo_malut.png",
+  footer_org_name_main: "Dinas Kelautan dan Perikanan",
+  footer_org_name_sub: "Provinsi Maluku Utara",
+  footer_copyright_title: "© 2025 DKP Malut. Seluruh hak dilindungi.",
+  footer_copyright_subtitle: "Desain dan dikembangkan oleh Khalis",
+  footer_copyright_subtitle_path: "https://www.linkedin.com/in/khalisdwih/",
+  footer_tab_title_1: "Layanan",
+  footer_tab_label_1_1: "Data",
+  footer_tab_label_1_1_path: "/data",
+  footer_tab_label_1_2: "Kontak",
+  footer_tab_label_1_2_path: "/kontak",
+  footer_tab_title_2: "Informasi",
+  footer_tab_label_2_1: "Aksesibilitas",
+  footer_tab_label_2_1_path: "/aksesibilitas",
+  footer_tab_label_2_2: "Kebijakan Privasi",
+  footer_tab_label_2_2_path: "/kebijakan-privasi",
+  footer_tab_label_2_3: "Syarat dan Ketentuan",
+  footer_tab_label_2_3_path: "/syarat-dan-ketentuan",
 };
 
 function cleanValue(value: string | undefined) {

@@ -6,7 +6,13 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import { useUrlTableState } from "@/lib/hooks/useUrlTableState";
 import AlertNotif from "./AlertNotif";
 import SpinnerLoading from "./SpinnerLoading";
-import { DownChevron, LeftChevron, RightChevron } from "@/public/icons/iconSets";
+import {
+  DownChevron,
+  LeftChevron,
+  RightChevron,
+} from "@/public/icons/iconSets";
+
+const Papa = (await import("papaparse")).default;
 
 type DatasetValue = string | number | null | undefined;
 
@@ -67,15 +73,14 @@ const createRowId = () => {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
-const createEmptyRows = (count: number) => {
-  return Array.from(
-    { length: count },
-    (_, index) =>
-      ({
-        id: `new-${index}`,
-      }) as DatasetRow,
-  );
+type CsvRow = Record<string, string | undefined>;
+
+type CsvValidationResult = {
+  rows: DatasetRow[];
+  errors: string[];
 };
+
+const escapeCsvCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
 
 const normalizeJsonbRows = (value: unknown): DatasetRow[] => {
   if (!Array.isArray(value)) return [];
@@ -134,11 +139,7 @@ export default function DatasetTable({
   const [allRows, setAllRows] = useState<DatasetRow[]>([]);
   const [dataset, setDataset] = useState<DatasetRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const {
-    page,
-    setPage,
-    updatePage,
-  } = useUrlTableState({
+  const { page, setPage, updatePage } = useUrlTableState({
     columns,
     filters,
     defaultSortKey,
@@ -148,9 +149,11 @@ export default function DatasetTable({
     Record<string, Partial<DatasetRow>>
   >({});
 
-  const [newRows, setNewRows] = useState<DatasetRow[]>(() =>
-    createEmptyRows(10),
-  );
+  const [newRows, setNewRows] = useState<DatasetRow[]>([]);
+  const [isDraggingCsv, setIsDraggingCsv] = useState(false);
+  const [uploadedCsvName, setUploadedCsvName] = useState("");
+  const [csvValidationErrors, setCsvValidationErrors] = useState<string[]>([]);
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
 
@@ -194,6 +197,19 @@ export default function DatasetTable({
     const visibleKeys = new Set(visibleColumnKeys);
     return columns.filter((column) => visibleKeys.has(column.key));
   }, [action, columns, visibleColumnKeys]);
+
+  const importColumns = useMemo(
+    () => columns.filter((column) => column.key !== "id"),
+    [columns],
+  );
+
+  const csvTemplateHref = useMemo(() => {
+    const header = importColumns
+      .map((column) => escapeCsvCell(column.key))
+      .join(",");
+
+    return `data:text/csv;charset=utf-8,%EF%BB%BF${encodeURIComponent(`${header}\r\n`)}`;
+  }, [importColumns]);
 
   const compareColumnValues = (
     aValue: DatasetValue,
@@ -260,9 +276,7 @@ export default function DatasetTable({
 
     columns.forEach((column) => {
       const values = Array.from(
-        new Set(
-          rows.map((row) => String(row[column.key] ?? "")),
-        ),
+        new Set(rows.map((row) => String(row[column.key] ?? ""))),
       );
 
       values.sort((a, b) => compareColumnValues(a, b, column));
@@ -369,7 +383,10 @@ export default function DatasetTable({
 
   useEffect(() => {
     if (action === "add") {
-      setNewRows(createEmptyRows(10));
+      setNewRows([]);
+      setUploadedCsvName("");
+      setCsvValidationErrors([]);
+      setIsDraggingCsv(false);
       setEditedRows({});
       setSelectedDeleteIds([]);
     }
@@ -453,6 +470,146 @@ export default function DatasetTable({
     return inputType === "number" ? Number(value) : value;
   };
 
+  const validateCsvRows = (
+    rows: CsvRow[],
+    fields: string[],
+  ): CsvValidationResult => {
+    const errors: string[] = [];
+    const expectedKeys = importColumns.map((column) => column.key);
+    const expectedKeySet = new Set(expectedKeys);
+    const actualFields = fields.map((field) => field.trim()).filter(Boolean);
+    const actualFieldSet = new Set(actualFields);
+    const duplicateFields = actualFields.filter(
+      (field, index) => actualFields.indexOf(field) !== index,
+    );
+    const missingFields = expectedKeys.filter(
+      (key) => !actualFieldSet.has(key),
+    );
+    const unexpectedFields = actualFields.filter(
+      (field) => !expectedKeySet.has(field),
+    );
+
+    if (duplicateFields.length > 0) {
+      errors.push(
+        `Nama kolom duplikat: ${Array.from(new Set(duplicateFields)).join(", ")}.`,
+      );
+    }
+
+    if (missingFields.length > 0) {
+      errors.push(`Kolom wajib tidak ditemukan: ${missingFields.join(", ")}.`);
+    }
+
+    if (unexpectedFields.length > 0) {
+      errors.push(
+        `Kolom tidak dikenali: ${Array.from(new Set(unexpectedFields)).join(", ")}.`,
+      );
+    }
+
+    if (
+      actualFields.length !== expectedKeys.length &&
+      missingFields.length === 0 &&
+      unexpectedFields.length === 0
+    ) {
+      errors.push(
+        `Jumlah kolom tidak sesuai. Diperlukan ${expectedKeys.length} kolom, tetapi ditemukan ${actualFields.length}.`,
+      );
+    }
+
+    if (errors.length > 0) {
+      return { rows: [], errors };
+    }
+
+    const parsedRows: DatasetRow[] = [];
+
+    rows.forEach((row, rowIndex) => {
+      const parsedRow: DatasetRow = { id: createRowId() };
+      let hasValue = false;
+
+      importColumns.forEach((column) => {
+        const rawValue = row[column.key] ?? "";
+        const value = rawValue.trim();
+
+        if (!value) {
+          parsedRow[column.key] = null;
+          return;
+        }
+
+        hasValue = true;
+
+        if (column.inputType === "number") {
+          const numberValue = Number(value.replaceAll(",", ""));
+
+          if (!Number.isFinite(numberValue)) {
+            errors.push(
+              `Baris ${rowIndex + 2}, kolom "${column.label}" (${column.key}): "${value}" bukan angka yang valid.`,
+            );
+            return;
+          }
+
+          parsedRow[column.key] = numberValue;
+          return;
+        }
+
+        parsedRow[column.key] = value;
+      });
+
+      if (hasValue) {
+        parsedRows.push(parsedRow);
+      }
+    });
+
+    if (parsedRows.length === 0 && errors.length === 0) {
+      errors.push("CSV tidak berisi baris data. Isi minimal satu baris.");
+    }
+
+    return {
+      rows: errors.length === 0 ? parsedRows : [],
+      errors,
+    };
+  };
+
+  const handleCsvFile = (file: File) => {
+    const isCsvFile =
+      file.name.toLowerCase().endsWith(".csv") &&
+      (!file.type ||
+        ["text/csv", "application/vnd.ms-excel", "text/plain"].includes(
+          file.type,
+        ));
+
+    setUploadedCsvName(file.name);
+    setNewRows([]);
+    setCsvValidationErrors([]);
+
+    if (!isCsvFile) {
+      setCsvValidationErrors([
+        `File "${file.name}" bukan dokumen CSV. Gunakan template dan simpan dokumen dengan ekstensi .csv.`,
+      ]);
+      return;
+    }
+
+    Papa.parse<CsvRow>(file, {
+      header: true,
+      skipEmptyLines: "greedy",
+      complete: (result) => {
+        const parserErrors = result.errors.map(
+          (error) =>
+            `Baris ${error.row === undefined ? "tidak diketahui" : error.row + 1}: ${error.message}`,
+        );
+        const validation = validateCsvRows(
+          result.data,
+          result.meta.fields ?? [],
+        );
+        const errors = [...parserErrors, ...validation.errors];
+
+        setCsvValidationErrors(errors);
+        setNewRows(errors.length === 0 ? validation.rows : []);
+      },
+      error: (error) => {
+        setCsvValidationErrors([`CSV gagal dibaca: ${error.message}`]);
+      },
+    });
+  };
+
   const getRowsToAdd = () => {
     return newRows
       .map((row) => {
@@ -530,26 +687,6 @@ export default function DatasetTable({
     }));
   };
 
-  const handleNewCellChange = (
-    rowIndex: number,
-    key: string,
-    value: string,
-    inputType?: HTMLInputTypeAttribute,
-  ) => {
-    const finalValue = normalizeInputValue(value, inputType);
-
-    setNewRows((prev) =>
-      prev.map((row, index) =>
-        index === rowIndex
-          ? {
-              ...row,
-              [key]: finalValue,
-            }
-          : row,
-      ),
-    );
-  };
-
   const handlePasteToEdit = (
     e: ClipboardEvent<HTMLInputElement>,
     startRowIndex: number,
@@ -580,48 +717,6 @@ export default function DatasetTable({
 
           next[targetRow.id] = {
             ...next[targetRow.id],
-            [targetColumn.key]: normalizeInputValue(
-              cellValue,
-              targetColumn.inputType,
-            ),
-          };
-        });
-      });
-
-      return next;
-    });
-  };
-
-  const handlePasteToAdd = (
-    e: ClipboardEvent<HTMLInputElement>,
-    startRowIndex: number,
-    startColIndex: number,
-  ) => {
-    e.preventDefault();
-
-    const pastedText = e.clipboardData.getData("text");
-
-    const pastedRows = pastedText
-      .trim()
-      .split(/\r?\n/)
-      .map((row) => row.split("\t"));
-
-    setNewRows((prev) => {
-      const next = prev.map((row) => ({ ...row }));
-
-      pastedRows.forEach((pastedRow, rowOffset) => {
-        const targetRowIndex = startRowIndex + rowOffset;
-
-        if (!next[targetRowIndex]) return;
-
-        pastedRow.forEach((cellValue, colOffset) => {
-          const targetColumn = columns[startColIndex + colOffset];
-
-          if (!targetColumn) return;
-          if (targetColumn.editable === false) return;
-
-          next[targetRowIndex] = {
-            ...next[targetRowIndex],
             [targetColumn.key]: normalizeInputValue(
               cellValue,
               targetColumn.inputType,
@@ -694,7 +789,9 @@ export default function DatasetTable({
       applyRowsToPage(nextRows);
       buildFilterOptions(nextRows);
 
-      setNewRows(createEmptyRows(10));
+      setNewRows([]);
+      setUploadedCsvName("");
+      setCsvValidationErrors([]);
       setAlertType("success-add");
     } catch (err) {
       console.error("Failed to add data:", err);
@@ -789,7 +886,10 @@ export default function DatasetTable({
     [editedRows],
   );
 
-  const addChangeCount = useMemo(() => getRowsToAdd().length, [newRows, columns]);
+  const addChangeCount = useMemo(
+    () => getRowsToAdd().length,
+    [newRows, columns],
+  );
 
   useEffect(() => {
     if (!onChangeCountChange) return;
@@ -922,66 +1022,149 @@ export default function DatasetTable({
         <div className="w-full h-full flex flex-col">
           {/* //! TABLE : ADD NEW DATA */}
           {action === "add" ? (
-            <div className="w-full overflow-x-auto">
-              <div className="overflow-x-auto mb-6">
-                <div className="border-1 border-gray-950/20 rounded-sm overflow-x-auto mb-6">
-                  <table className="min-w-full lg:text-sm md:text-[1.5vw] text-[2vw]">
-                    <thead>
+            <div className="mb-8 w-full space-y-5">
+              <section className="rounded-xl border border-sky-200 bg-sky-50 p-5">
+                <h2 className="text-lg font-semibold text-sky-950">
+                  Gunakan template dataset
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-stone-700">
+                  Unduh template berikut, isi data tanpa mengubah nama kolom,
+                  lalu simpan dan unggah kembali sebagai CSV.
+                </p>
+                <a
+                  href={csvTemplateHref}
+                  download={`template-dataset-${datasetId}.csv`}
+                  className="mt-4 inline-flex rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2"
+                >
+                  Unduh Template CSV
+                </a>
+
+                <div className="mt-5 overflow-x-auto rounded-lg border border-sky-200 bg-white">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-sky-100 text-sky-950">
                       <tr>
-                        {columns.map((col) => (
-                          <th
-                            key={col.key}
-                            className={`${
-                              col.color ? col.color : "bg-sky-100"
-                            } px-3 py-2 border border-gray-400 whitespace-normal break-words`}
-                          >
-                            {col.label}
-                          </th>
-                        ))}
+                        <th className="px-3 py-2">Kolom CSV</th>
+                        <th className="px-3 py-2">Nama Data</th>
+                        <th className="px-3 py-2">Tipe</th>
                       </tr>
                     </thead>
-
-                    <tbody>
-                      {newRows.map((row, rowIndex) => (
-                        <tr key={row.id}>
-                          {columns.map((col, colIndex) => {
-                            const alignClass =
-                              col.align === "right"
-                                ? "text-right"
-                                : col.align === "center"
-                                  ? "text-center"
-                                  : "text-left";
-
-                            return (
-                              <td
-                                key={col.key}
-                                className={`border border-gray-400 p-0 ${alignClass}`}
-                              >
-                                <input
-                                  type={col.inputType ?? "text"}
-                                  value={String(row[col.key] ?? "")}
-                                  onChange={(e) =>
-                                    handleNewCellChange(
-                                      rowIndex,
-                                      col.key,
-                                      e.target.value,
-                                      col.inputType,
-                                    )
-                                  }
-                                  onPaste={(e) =>
-                                    handlePasteToAdd(e, rowIndex, colIndex)
-                                  }
-                                  className={`w-full px-3 py-2 ${alignClass}`}
-                                />
-                              </td>
-                            );
-                          })}
+                    <tbody className="divide-y divide-stone-200">
+                      {importColumns.map((column) => (
+                        <tr key={column.key}>
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {column.key}
+                          </td>
+                          <td className="px-3 py-2">{column.label}</td>
+                          <td className="px-3 py-2">
+                            {column.inputType === "number" ? "Angka" : "Teks"}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+              </section>
+
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingCsv(true);
+                }}
+                onDragLeave={(event) => {
+                  if (
+                    !(event.relatedTarget instanceof Node) ||
+                    !event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    setIsDraggingCsv(false);
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDraggingCsv(false);
+
+                  const file = event.dataTransfer.files?.[0];
+                  if (file) handleCsvFile(file);
+                }}
+                onClick={() => csvFileInputRef.current?.click()}
+                className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-xl border-4 border-dashed p-6 text-center transition ${
+                  isDraggingCsv
+                    ? "border-sky-500 bg-sky-50"
+                    : "border-stone-300 bg-white hover:border-sky-400 hover:bg-sky-50"
+                }`}
+              >
+                <input
+                  ref={csvFileInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) handleCsvFile(file);
+                    event.target.value = "";
+                  }}
+                />
+                <p className="text-xl font-semibold text-stone-800">
+                  Jatuhkan CSV di sini atau klik untuk memilih file
+                </p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
+                  Sistem akan memeriksa nama dan jumlah kolom serta memastikan
+                  nilai pada kolom angka menggunakan format yang benar.
+                </p>
               </div>
+
+              {uploadedCsvName && (
+                <p className="text-sm text-stone-600">
+                  File dipilih:{" "}
+                  <span className="font-semibold">{uploadedCsvName}</span>
+                </p>
+              )}
+
+              {csvValidationErrors.length > 0 && (
+                <section
+                  role="alert"
+                  className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"
+                >
+                  <h2 className="font-semibold">
+                    CSV tidak sesuai dengan struktur dataset
+                  </h2>
+                  <p className="mt-1 text-sm">
+                    Perbaiki masalah berikut, kemudian unggah kembali file CSV.
+                  </p>
+                  <ul className="mt-3 max-h-72 list-disc space-y-2 overflow-y-auto pl-5 text-sm">
+                    {csvValidationErrors.slice(0, 100).map((error, index) => (
+                      <li key={`${index}-${error}`}>{error}</li>
+                    ))}
+                  </ul>
+                  {csvValidationErrors.length > 100 && (
+                    <p className="mt-3 text-sm font-medium">
+                      Ditampilkan 100 dari {csvValidationErrors.length} masalah.
+                    </p>
+                  )}
+                </section>
+              )}
+
+              {newRows.length > 0 && csvValidationErrors.length === 0 && (
+                <section
+                  role="status"
+                  className="flex flex-col items-start justify-between gap-4 rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-900 sm:flex-row sm:items-center"
+                >
+                  <div>
+                    <h2 className="font-semibold">CSV siap ditambahkan</h2>
+                    <p className="mt-1 text-sm">
+                      {newRows.length} baris lolos pemeriksaan. Pilih Simpan
+                      untuk menambahkan data ke dataset ini.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAlertType("confirm-add")}
+                    disabled={saving}
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {saving ? "Menyimpan…" : `Simpan (${newRows.length})`}
+                  </button>
+                </section>
+              )}
             </div>
           ) : (
             //! TABLE : NORMAL AND EDIT, UPDATE, DELETE
@@ -1037,9 +1220,7 @@ export default function DatasetTable({
                             >
                               <input
                                 type="checkbox"
-                                checked={visibleColumnKeys.includes(
-                                  column.key,
-                                )}
+                                checked={visibleColumnKeys.includes(column.key)}
                                 onChange={() => toggleVisibleColumn(column.key)}
                               />
                               <span>{toTitleCase(column.label)}</span>
