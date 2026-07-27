@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getNumNewMessage, getNumOf } from "@/lib/supabase/supabaseHelper";
+import { getNumOf, getNumUnreadMessages } from "@/lib/supabase/supabaseHelper";
 import Link from "next/link";
 
 export default function DashStats() {
@@ -15,7 +15,7 @@ export default function DashStats() {
     const fetchNum = async () => {
       try {
         const [messages, datasetCount, users] = await Promise.all([
-          getNumNewMessage(),
+          getNumUnreadMessages(),
           getNumOf("datasets"),
           getNumOf("users"),
         ]);

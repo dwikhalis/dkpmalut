@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LeftChevron, RightChevron } from "@/public/icons/iconSets";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import { getNumUnreadMessages } from "@/lib/supabase/supabaseHelper";
+import { useMessageStore } from "@/app/Stores/messageStores";
 import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 
@@ -24,6 +26,10 @@ export default function DashSideMenu({
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [showMobileSideMenu, setShowMobileSideMenu] = useState(false);
+  const unreadMessageCount = useMessageStore((state) => state.unreadCount);
+  const setUnreadMessageCount = useMessageStore(
+    (state) => state.setUnreadCount,
+  );
   // Desktop navigation is open by default. Starting in the open state prevents
   // its entrance transition from replaying whenever a profile route remounts.
   const [showDesktopSideMenu, setShowDesktopSideMenu] = useState(!overlayMode);
@@ -71,6 +77,33 @@ export default function DashSideMenu({
     };
   }, []);
 
+  useEffect(() => {
+    if (userRole !== "admin") return;
+
+    let active = true;
+
+    const refreshUnreadMessageCount = async () => {
+      const count = await getNumUnreadMessages();
+      if (active) setUnreadMessageCount(count);
+    };
+
+    void refreshUnreadMessageCount();
+
+    const channel = supabase
+      .channel("dash-side-menu:messages")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => void refreshUnreadMessageCount(),
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [setUnreadMessageCount, userRole]);
+
   const handleLogout = async () => {
     setLoading(true);
 
@@ -92,9 +125,17 @@ export default function DashSideMenu({
   const renderMenuLink = (menu: { label: string; slug: string }) => (
     <Link key={menu.slug} href={`/profile/${menu.slug}`}>
       <span
-        className={`block ${slug === menu.slug ? selected : unselected} 2xl:pl-6`}
+        className={`flex items-center gap-2 ${slug === menu.slug ? selected : unselected} 2xl:pl-6`}
       >
         {menu.label}
+        {menu.slug === "pesan" && unreadMessageCount > 0 && (
+          <span
+            className="flex size-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[0.65rem] font-bold leading-none text-white"
+            aria-label={`${unreadMessageCount} pesan baru`}
+          >
+            {unreadMessageCount}
+          </span>
+        )}
       </span>
     </Link>
   );

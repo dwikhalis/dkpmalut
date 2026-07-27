@@ -100,54 +100,60 @@ export default function DashMessage() {
   }, [searchParams, selectedItem]);
 
   // tiny helper: update just the status column
-  const updateStatus = async (id: string, status: "old" | "new") => {
+  const updateStatus = async (id: string, status: "read" | "unread") => {
     await updateData("messages", { status }, id);
   };
 
   const handleDataFromChild = async (
     childData: DataTypes,
-    action: "read" | "unread" | "switch",
+    action: "open" | "unread" | "switch",
   ) => {
-    if (action === "read") {
+    if (action === "open") {
       setSelectedItem(childData);
       setShowMessage(true);
       setMessageUrl(true, childData.id);
 
-      // mark as read using the fresh childData, not selectedItem
-      if (childData.status !== "old") {
-        await updateStatus(childData.id, "old");
+      // Mark as read using the fresh childData, not selectedItem.
+      if (childData.status !== "read") {
+        await updateStatus(childData.id, "read");
         // optional: keep local state in sync while waiting for Supabase realtime
         setSelectedItem((prev) =>
-          prev && prev.id === childData.id ? { ...prev, status: "old" } : prev,
+          prev && prev.id === childData.id
+            ? { ...prev, status: "read" }
+            : prev,
         );
       }
       return;
     }
 
     if (action === "unread") {
-      // mark as unread directly with childData
-      await updateStatus(childData.id, "new");
+      // Mark as unread directly with childData.
+      await updateStatus(childData.id, "unread");
       // optional local sync if this item is currently open
       setSelectedItem((prev) =>
-        prev && prev.id === childData.id ? { ...prev, status: "new" } : prev,
+        prev && prev.id === childData.id ? { ...prev, status: "unread" } : prev,
       );
     }
 
     if (action === "switch") {
       setSelectedItem(childData);
 
-      // mark as read using the fresh childData, not selectedItem
-      if (childData.status === "new") {
-        await updateStatus(childData.id, "old");
+      // Toggle between the two canonical message statuses.
+      if (childData.status === "unread") {
+        await updateStatus(childData.id, "read");
         // optional: keep local state in sync while waiting for Supabase realtime
         setSelectedItem((prev) =>
-          prev && prev.id === childData.id ? { ...prev, status: "old" } : prev,
+          prev && prev.id === childData.id
+            ? { ...prev, status: "read" }
+            : prev,
         );
-      } else if (childData.status === "old") {
-        await updateStatus(childData.id, "new");
+      } else if (childData.status === "read") {
+        await updateStatus(childData.id, "unread");
         // optional: keep local state in sync while waiting for Supabase realtime
         setSelectedItem((prev) =>
-          prev && prev.id === childData.id ? { ...prev, status: "new" } : prev,
+          prev && prev.id === childData.id
+            ? { ...prev, status: "unread" }
+            : prev,
         );
       }
       return;

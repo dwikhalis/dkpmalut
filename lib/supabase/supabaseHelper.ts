@@ -151,7 +151,7 @@ export const getNumOf = async (
   );
 };
 
-export const getNumNewMessage = async (): Promise<number> => {
+export const getNumUnreadMessages = async (): Promise<number> => {
   const maxAttempts = 2;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -159,7 +159,7 @@ export const getNumNewMessage = async (): Promise<number> => {
 
     if (!error) {
       return (data ?? []).filter(
-        (message) => message.status?.trim().toLowerCase() === "new",
+        (message) => message.status?.trim().toLowerCase() === "unread",
       ).length;
     }
 

@@ -8,7 +8,7 @@ import AlertNotif from "./AlertNotif";
 import SpinnerLoading from "./SpinnerLoading";
 import MessageEmailStatus from "./MessageEmailStatus";
 
-type MessageAction = "read" | "unread" | "switch";
+type MessageAction = "open" | "unread" | "switch";
 
 interface Prop {
   admin: boolean;
@@ -37,8 +37,8 @@ const typeConfig = {
     table: "messages",
     groupKey: "status",
     labels: {
-      old: "Pesan Lama",
-      new: "Pesan Baru",
+      read: "Pesan Lama",
+      unread: "Pesan Baru",
     },
     titleField: "name",
     subtitleField: "email",
@@ -118,13 +118,13 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
   async function handleMessageAction(item: DataTypes, action: MessageAction) {
     const previousStatus = item.status;
     const nextStatus =
-      action === "read"
-        ? "old"
+      action === "open"
+        ? "read"
         : action === "unread"
-          ? "new"
-          : item.status === "new"
-            ? "old"
-            : "new";
+          ? "unread"
+          : item.status === "unread"
+            ? "read"
+            : "unread";
 
     setData((current) =>
       current.map((message) =>
@@ -183,9 +183,14 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
       {admin && (
         <div className="flex flex-col gap-6 w-full">
           {Object.entries(groupedData)
-            .sort(([a], [b]) =>
-              a.localeCompare(b, undefined, { sensitivity: "base" }),
-            )
+            .sort(([a], [b]) => {
+              const groupOrder: Record<string, number> = {
+                unread: 0,
+                read: 1,
+              };
+
+              return (groupOrder[a] ?? 2) - (groupOrder[b] ?? 2);
+            })
             .map(([key, items]) => (
               <div key={key} className="flex flex-col mb-6 gap-3">
                 <h2 className="mb-3 text-xl font-bold">
@@ -211,7 +216,7 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                       className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-3 md:p-6 shadow-xl transition-colors hover:bg-stone-200"
                       key={e.id}
                       onClick={() => {
-                        void handleMessageAction(e, "read");
+                        void handleMessageAction(e, "open");
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                     >
@@ -256,7 +261,10 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                           type="button"
                           aria-label="Ubah status pesan"
                           className="flex size-7 items-center justify-center rounded-lg bg-sky-500 transition-colors hover:bg-sky-600 lg:size-8 xl:size-10"
-                          onClick={() => void handleMessageAction(e, "switch")}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleMessageAction(e, "switch");
+                          }}
                         >
                           <Switch className="size-5 text-white md:size-4 xl:size-6" />
                         </button>
@@ -264,7 +272,10 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
                           type="button"
                           aria-label="Hapus pesan"
                           className="flex size-7 items-center justify-center rounded-lg bg-rose-500 transition-colors hover:bg-rose-600 lg:size-8 xl:size-10"
-                          onClick={() => setConfirmAction([false, e.id])}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setConfirmAction([false, e.id]);
+                          }}
                         >
                           <Delete className="size-5 text-white md:size-4 xl:size-6" />
                         </button>

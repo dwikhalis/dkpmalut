@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         email,
         phone: phone || null,
         message,
-        status: "new",
+        status: "unread",
         email_delivery_status: "pending",
         email_sent_at: null,
         email_delivery_error: null,
