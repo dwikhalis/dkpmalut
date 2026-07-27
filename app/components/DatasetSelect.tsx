@@ -1,47 +1,69 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type PageOption = {
-  title: string;
-  slug: string;
+  tag: string[];
 };
 
 type Props = {
   datasets: PageOption[];
+  selectedTag?: string | null;
 };
 
-export default function DatasetSelect({ datasets }: Props) {
-  const router = useRouter();
-
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const slug = event.target.value;
-
-    if (!slug) return;
-
-    router.push(`/data/${slug}`);
-  };
+export default function DatasetSelect({ datasets, selectedTag = null }: Props) {
+  const tags = Array.from(
+    new Set(
+      datasets
+        .flatMap((dataset) => dataset.tag)
+        .map((tag) => tag.trim())
+        .filter((tag): tag is string => Boolean(tag)),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "id-ID"));
 
   return (
-    <div className="mt-6 w-full">
-      <select
-        defaultValue=""
-        disabled={datasets.length === 0}
-        onChange={handleChange}
-        className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm shadow-sm disabled:cursor-not-allowed disabled:bg-stone-100"
+    <div className="mt-6 w-full" aria-labelledby="dataset-selector-heading">
+      <h2
+        id="dataset-selector-heading"
+        className="text-sm font-semibold text-stone-800"
       >
-        <option value="" disabled>
-          {datasets.length > 0
-            ? "Pilih Dataset"
-            : "Belum Ada Data Terpublikasi"}
-        </option>
+        Pilih Tag
+      </h2>
 
-        {datasets.map((dataset, idx) => (
-          <option key={idx} value={dataset.slug}>
-            {dataset.title}
-          </option>
-        ))}
-      </select>
+      {tags.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href="/data"
+            aria-current={!selectedTag ? "page" : undefined}
+            className={`rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+              !selectedTag
+                ? "border-sky-700 bg-sky-700 text-white"
+                : "border-sky-200 bg-white text-sky-800 hover:border-sky-700 hover:bg-sky-700 hover:text-white"
+            }`}
+          >
+            Semua
+          </Link>
+
+          {tags.map((tag) => (
+            <Link
+              key={tag}
+              href={`/data?tag=${encodeURIComponent(tag)}`}
+              aria-current={selectedTag === tag ? "page" : undefined}
+              className={`rounded-full border px-4 py-2 text-sm font-medium capitalize shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                selectedTag === tag
+                  ? "border-sky-700 bg-sky-700 text-white"
+                  : "border-sky-200 bg-white text-sky-800 hover:border-sky-700 hover:bg-sky-700 hover:text-white"
+              }`}
+            >
+              {tag}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-lg border border-stone-200 bg-stone-100 px-4 py-3 text-sm text-stone-500">
+          Belum ada tag data terpublikasi
+        </p>
+      )}
     </div>
   );
 }

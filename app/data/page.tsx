@@ -13,14 +13,14 @@ export type DataPageOption = {
   title: string;
   slug: string;
   image: string;
-  tag: string | null;
+  tag: string[];
 };
 
 type PublishedMitraDataset = {
   id: string;
   label: string | null;
   image_path: string;
-  tag: string | null;
+  tag: string[] | string | null;
 };
 
 type PublishedMapDataset = {
@@ -31,6 +31,11 @@ type PublishedMapDataset = {
 };
 
 const STATIC_PAGES: DataPageOption[] = [];
+
+function normalizeTags(value: string[] | string | null): string[] {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value?.trim() ? [value] : [];
+}
 
 function toSlug(value: string) {
   return value
@@ -43,7 +48,7 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-async function DatasetContent() {
+async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
   const { data, error } = await supabase
     .from("datasets")
     .select("id, label, image_path, tag")
@@ -85,7 +90,7 @@ async function DatasetContent() {
       title: row.label,
       slug: toSlug(row.label),
       image: row.image_path,
-      tag: row.tag,
+      tag: normalizeTags(row.tag),
     }));
 
   const publishedMaps: DataPageOption[] = (
@@ -97,7 +102,7 @@ async function DatasetContent() {
       title: row.label ?? "",
       slug: toSlug(row.label ?? ""),
       image: row.image_path || "charts/pic_data_kkd.png",
-      tag: Array.isArray(row.tag) ? (row.tag[0] ?? null) : row.tag,
+      tag: normalizeTags(row.tag),
     }));
 
   function mergePages(
@@ -119,6 +124,9 @@ async function DatasetContent() {
     ...publishedDatasets,
     ...publishedMaps,
   ]);
+  const filteredPages = selectedTag
+    ? pages.filter((page) => page.tag.includes(selectedTag))
+    : pages;
 
   if (publishedDatasets.length === 0 && publishedMaps.length === 0) {
     return <p className="mt-10">Belum ada data terpublikasi.</p>;
@@ -126,16 +134,16 @@ async function DatasetContent() {
 
   return (
     <>
-      <DatasetSelect datasets={pages} />
+      <DatasetSelect datasets={pages} selectedTag={selectedTag} />
 
       <div className="mt-12 flex w-full flex-col gap-6 md:flex-row md:flex-wrap lg:gap-10">
-        {pages.map((dataset, idx) => (
+        {filteredPages.map((dataset, idx) => (
           <div
             className="min-w-0 w-full md:flex-[1_1_calc(50%-0.75rem)] lg:flex-[1_1_calc(33.333%-1.667rem)]"
             key={idx}
           >
             <CardData
-              tag={dataset.tag}
+              tag={dataset.tag[0] ?? null}
               title={dataset.title}
               image={getImagePreviewUrl(dataset.image) ?? ""}
               link={`/data/${dataset.slug}`}
@@ -143,11 +151,27 @@ async function DatasetContent() {
           </div>
         ))}
       </div>
+
+      {filteredPages.length === 0 && (
+        <p className="mt-10 rounded-xl border border-sky-200 bg-sky-50 p-5 text-stone-600">
+          Tidak ada dataset dengan tag yang dipilih.
+        </p>
+      )}
     </>
   );
 }
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const selectedTag =
+    typeof params.tag === "string" && params.tag.trim()
+      ? params.tag.trim()
+      : null;
+
   return (
     <main className="mx-auto min-h-[70vh] w-full max-w-7xl p-6 md:p-10">
       <PageHeader
@@ -158,7 +182,7 @@ export default function Page() {
 
       <div className="mt-8">
         <Suspense fallback={<SpinnerLoading size="sm" color="black" />}>
-          <DatasetContent />
+          <DatasetContent selectedTag={selectedTag} />
         </Suspense>
       </div>
     </main>

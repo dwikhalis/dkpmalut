@@ -28,6 +28,11 @@ import DatasetTable, {
 import DataChart from "./DataChart";
 import AlertNotif from "./AlertNotif";
 import Button from "./Button";
+import {
+  DATA_KKPD_OPTIONS,
+  DATA_REGENCY_OPTIONS,
+  DATA_SUBWPP_OPTIONS,
+} from "./configAreaSelector";
 import SpinnerLoading from "./SpinnerLoading";
 
 type PublicationStatus = null | "requested" | "approved" | "rejected" | string;
@@ -53,6 +58,9 @@ type DatasetPublicationRow = {
   published_config: PublishedConfig | string | null;
   published: PublicationStatus;
   tag: string[] | string | null;
+  data_regency: string[] | string | null;
+  data_subwpp: string[] | string | null;
+  data_kkpd: string[] | string | null;
   description: string | null;
   image_path: string | null;
 };
@@ -195,6 +203,15 @@ export default function Dataset({
     useState<PublicationStatus>(null);
   const [publicationTitle, setPublicationTitle] = useState("");
   const [publicationTags, setPublicationTags] = useState<string[]>([]);
+  const [publicationDataRegencies, setPublicationDataRegencies] = useState<
+    string[]
+  >([]);
+  const [publicationInSubWpp, setPublicationInSubWpp] = useState(false);
+  const [publicationDataSubWpp, setPublicationDataSubWpp] = useState<string[]>(
+    [],
+  );
+  const [publicationInKkpd, setPublicationInKkpd] = useState(false);
+  const [publicationDataKkpd, setPublicationDataKkpd] = useState<string[]>([]);
   const [publicationDescription, setPublicationDescription] = useState("");
   const [publicationImagePath, setPublicationImagePath] = useState<
     string | null
@@ -269,7 +286,7 @@ export default function Dataset({
         const { data: configData, error: configError } = await supabase
           .from("datasets")
           .select(
-            "label, column_config, published_config, published, tag, description, image_path",
+            "label, column_config, published_config, published, tag, data_regency, data_subwpp, data_kkpd, description, image_path",
           )
           .eq("id", datasetId)
           .maybeSingle();
@@ -304,6 +321,30 @@ export default function Dataset({
         setPublicationTitle(row.label ?? "");
         setPublicationStatus(row.published ?? null);
         setPublicationTags(parsedTags);
+        const configuredRegencyValues = new Set<string>(
+          DATA_REGENCY_OPTIONS.map((regency) => regency.value),
+        );
+        setPublicationDataRegencies(
+          parseJsonArray<string>(row.data_regency).filter((regency) =>
+            configuredRegencyValues.has(regency),
+          ),
+        );
+        const configuredSubWppValues = new Set<string>(
+          DATA_SUBWPP_OPTIONS.map((subWpp) => subWpp.value),
+        );
+        const parsedDataSubWpp = parseJsonArray<string>(row.data_subwpp).filter(
+          (subWpp) => configuredSubWppValues.has(subWpp),
+        );
+        setPublicationDataSubWpp(parsedDataSubWpp);
+        setPublicationInSubWpp(parsedDataSubWpp.length > 0);
+        const configuredKkpdValues = new Set<string>(
+          DATA_KKPD_OPTIONS.map((area) => area.value),
+        );
+        const parsedDataKkpd = parseJsonArray<string>(row.data_kkpd).filter(
+          (area) => configuredKkpdValues.has(area),
+        );
+        setPublicationDataKkpd(parsedDataKkpd);
+        setPublicationInKkpd(parsedDataKkpd.length > 0);
         setPublicationDescription(row.description ?? "");
         setPublicationImagePath(row.image_path ?? null);
         setPublicationImageEditing(!row.image_path);
@@ -363,18 +404,14 @@ export default function Dataset({
     if (!snapshotDataUrl) return publicationImagePath;
 
     const blob = dataUrlToBlob(snapshotDataUrl);
-    const fileNameBase = toSlug(
-      publicationTitle || originalLabel || datasetId,
-    );
+    const fileNameBase = toSlug(publicationTitle || originalLabel || datasetId);
     const dateStamp = getUploadDateStamp();
     const path = `charts/${fileNameBase}-${dateStamp}.png`;
 
-    const { error } = await supabase.storage
-      .from("images")
-      .upload(path, blob, {
-        upsert: true,
-        contentType: "image/png",
-      });
+    const { error } = await supabase.storage.from("images").upload(path, blob, {
+      upsert: true,
+      contentType: "image/png",
+    });
 
     if (error) throw error;
 
@@ -428,6 +465,30 @@ export default function Dataset({
 
       return [...prev, tag];
     });
+  };
+
+  const togglePublicationDataKkpd = (area: string) => {
+    setPublicationDataKkpd((current) =>
+      current.includes(area)
+        ? current.filter((item) => item !== area)
+        : [...current, area],
+    );
+  };
+
+  const togglePublicationDataSubWpp = (subWpp: string) => {
+    setPublicationDataSubWpp((current) =>
+      current.includes(subWpp)
+        ? current.filter((item) => item !== subWpp)
+        : [...current, subWpp],
+    );
+  };
+
+  const togglePublicationDataRegency = (regency: string) => {
+    setPublicationDataRegencies((current) =>
+      current.includes(regency)
+        ? current.filter((item) => item !== regency)
+        : [...current, regency],
+    );
   };
 
   const applySelectedImage = (file: File) => {
@@ -513,9 +574,7 @@ export default function Dataset({
     }
 
     const extension = getFileExtension(imageFile);
-    const fileNameBase = toSlug(
-      publicationTitle || originalLabel || datasetId,
-    );
+    const fileNameBase = toSlug(publicationTitle || originalLabel || datasetId);
     const dateStamp = getUploadDateStamp();
 
     const path = `charts/${fileNameBase}-${dateStamp}.${extension}`;
@@ -552,6 +611,15 @@ export default function Dataset({
         .update({
           label: publicationTitle.trim(),
           tag: publicationTags,
+          data_regency: publicationDataRegencies,
+          data_subwpp:
+            publicationInSubWpp && publicationDataSubWpp.length > 0
+              ? publicationDataSubWpp
+              : null,
+          data_kkpd:
+            publicationInKkpd && publicationDataKkpd.length > 0
+              ? publicationDataKkpd
+              : null,
           description: publicationDescription.trim(),
           image_path: imagePath,
           published: "requested",
@@ -864,6 +932,164 @@ export default function Dataset({
                   ))}
                 </div>
               </div>
+
+              <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                <legend className="px-1 text-sm font-semibold text-gray-900">
+                  Wilayah Administratif — Kabupaten / Kota
+                </legend>
+
+                <div className="flex flex-wrap gap-2">
+                  {DATA_REGENCY_OPTIONS.map((regency) => {
+                    const selected = publicationDataRegencies.includes(
+                      regency.value,
+                    );
+
+                    return (
+                      <button
+                        key={regency.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          togglePublicationDataRegency(regency.value)
+                        }
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                          selected
+                            ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-800"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-sky-400 hover:bg-sky-50"
+                        }`}
+                      >
+                        {regency.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs leading-relaxed text-gray-500">
+                  Pilih kabupaten atau kota yang dicakup oleh dataset.
+                </p>
+              </fieldset>
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-colors hover:bg-sky-50">
+                <input
+                  type="checkbox"
+                  checked={publicationInKkpd}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setPublicationInKkpd(checked);
+
+                    if (!checked) {
+                      setPublicationDataKkpd([]);
+                    }
+                  }}
+                  className="h-4 w-4 accent-sky-700"
+                />
+
+                <span>
+                  <span className="block font-medium text-gray-900">
+                    Data Kawasan Konservasi Perairan
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Dataset mencakup salah satu kawasan konservasi.
+                  </span>
+                </span>
+              </label>
+
+              {publicationInKkpd && (
+                <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                  <legend className="px-1 text-sm font-semibold text-gray-900">
+                    Kawasan Konservasi — KKD
+                  </legend>
+
+                  <div className="flex flex-wrap gap-2">
+                    {DATA_KKPD_OPTIONS.map((area) => {
+                      const selected = publicationDataKkpd.includes(area.value);
+
+                      return (
+                        <button
+                          key={area.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => togglePublicationDataKkpd(area.value)}
+                          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                            selected
+                              ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-800"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-sky-400 hover:bg-sky-50"
+                          }`}
+                        >
+                          {area.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    Pilih kawasan konservasi yang dicakup oleh dataset.
+                  </p>
+                </fieldset>
+              )}
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-colors hover:bg-sky-50">
+                <input
+                  type="checkbox"
+                  checked={publicationInSubWpp}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setPublicationInSubWpp(checked);
+
+                    if (!checked) {
+                      setPublicationDataSubWpp([]);
+                    }
+                  }}
+                  className="h-4 w-4 accent-sky-700"
+                />
+
+                <span>
+                  <span className="block font-medium text-gray-900">
+                    Data Sub-WPP
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Dataset mencakup salah satu wilayah Sub-WPP.
+                  </span>
+                </span>
+              </label>
+
+              {publicationInSubWpp && (
+                <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                  <legend className="px-1 text-sm font-semibold text-gray-900">
+                    Wilayah Perikanan — Sub-WPP
+                  </legend>
+
+                  <div className="flex flex-wrap gap-2">
+                    {DATA_SUBWPP_OPTIONS.map((subWpp) => {
+                      const selected = publicationDataSubWpp.includes(
+                        subWpp.value,
+                      );
+
+                      return (
+                        <button
+                          key={subWpp.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() =>
+                            togglePublicationDataSubWpp(subWpp.value)
+                          }
+                          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                            selected
+                              ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-800"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-sky-400 hover:bg-sky-50"
+                          }`}
+                        >
+                          {subWpp.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    Pilih Sub-WPP yang dicakup oleh dataset.
+                  </p>
+                </fieldset>
+              )}
 
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-medium">Deskripsi</span>
