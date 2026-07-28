@@ -306,7 +306,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const selectedActionOwnerId =
     selectedOwnerId || searchParams.get("owner") || userId;
   const isAddMode = mainPage === "add" || mainPage === "mapadd" || mainPage === "linkadd";
-  const showOuterActionButtons = !isAddMode || addDataReady;
+  const showOuterActionButtons =
+    mainPage === "linkadd" || !isAddMode || addDataReady;
   const actionCountLabel =
     action === "delete"
       ? `Hapus (${actionChangeCount})`
@@ -587,7 +588,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const showSaveCancelAction =
     !showMobileAction &&
-    ((isAddMode && addDataReady) ||
+    ((mainPage === "linkadd") ||
+      (isAddMode && addDataReady) ||
       (!isAddMode &&
         (action === "edit" ||
           action === "delete" ||
@@ -1440,7 +1442,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             Batal
           </button>
 
-          {((isAddMode && addDataReady) ||
+          {((mainPage === "linkadd") ||
+            (isAddMode && addDataReady) ||
             (!isAddMode &&
               (action === "edit" || (action === "add" && addDataReady)))) && (
             <button
