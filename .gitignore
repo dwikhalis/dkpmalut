@@ -52,3 +52,6 @@ next-env.d.ts
 
 # supabase migrations
 migrations
+!migrations/
+migrations/*
+!migrations/20260728000000_add_dataset_path_redirect.sql

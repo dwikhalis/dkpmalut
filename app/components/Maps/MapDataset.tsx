@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FeatureCollection } from "geojson";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import { getUploadTimestamp } from "@/lib/utils/uploadTimestamp";
 import {
   collectionToCsv,
   createLegendDrafts,
@@ -556,18 +557,6 @@ function PatternControls({
       )}
     </>
   );
-}
-
-function getUploadDateStamp() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const year = String(now.getFullYear());
-  const hour = String(now.getHours()).padStart(2, "0");
-  const minute = String(now.getMinutes()).padStart(2, "0");
-  const second = String(now.getSeconds()).padStart(2, "0");
-
-  return `${month}${day}${year}_${hour}${minute}${second}`;
 }
 
 function getDraftExpiryDate() {
@@ -2398,7 +2387,7 @@ export default function MapDataset({
   ) => {
     const extension = getFileExtension(file);
     const base = toSlug(file.name.replace(/\.[^.]+$/, ""));
-    const path = `${folder}/${base}-${getUploadDateStamp()}.${extension}`;
+    const path = `${folder}/${base}-${getUploadTimestamp()}.${extension}`;
 
     const { error } = await supabase.storage.from(bucket).upload(path, file, {
       upsert: true,
@@ -2425,7 +2414,7 @@ export default function MapDataset({
       const draftSlug = `draft-${Date.now()}`;
       const storagePath = `${ownerId}/${draftSlug}/${toSlug(
         file.name.replace(/\.[^.]+$/, ""),
-      )}-${getUploadDateStamp()}.${getFileExtension(file)}`;
+      )}-${getUploadTimestamp()}.${getFileExtension(file)}`;
       const uploadBody = await createGeoJsonUploadBlob(file);
 
       const { error: uploadError } = await supabase.storage
@@ -2795,7 +2784,7 @@ export default function MapDataset({
 
       const storagePath = `${ownerId || dataset?.user_id}/${nextSlug}/${toSlug(
         file.name.replace(/\.[^.]+$/, ""),
-      )}-${getUploadDateStamp()}.${getFileExtension(file)}`;
+      )}-${getUploadTimestamp()}.${getFileExtension(file)}`;
       const uploadBody = await createGeoJsonUploadBlob(file);
 
       const { error: uploadError } = await supabase.storage
@@ -4347,7 +4336,7 @@ export default function MapDataset({
     const blob = dataUrlToBlob(snapshotDataUrl);
     const path = `map_items/${mapDatasetId}/publication/${toSlug(
       label || mapDatasetId,
-    )}-${getUploadDateStamp()}.png`;
+    )}-${getUploadTimestamp()}.png`;
 
     const { error } = await supabase.storage.from("images").upload(path, blob, {
       upsert: true,

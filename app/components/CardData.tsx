@@ -8,11 +8,12 @@ interface Props {
   title: string;
   image: string;
   link: string;
+  external?: boolean;
 }
 
-export default function CardData({ tag, title, image, link }: Props) {
+export default function CardData({ tag, title, image, link, external = false }: Props) {
   return (
-    <Link href={link} className="block h-full">
+    <Link href={link} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="block h-full">
       <article className="h-full overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-stone-200 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
         <div className="flex h-50 items-center justify-center overflow-hidden bg-stone-100">
           <Image

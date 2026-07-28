@@ -14,6 +14,7 @@ export type DataPageOption = {
   slug: string;
   image: string;
   tag: string[];
+  pathRedirect?: string | null;
 };
 
 type PublishedMitraDataset = {
@@ -21,6 +22,7 @@ type PublishedMitraDataset = {
   label: string | null;
   image_path: string;
   tag: string[] | string | null;
+  path_redirect: string | null;
 };
 
 type PublishedMapDataset = {
@@ -37,6 +39,16 @@ function normalizeTags(value: string[] | string | null): string[] {
   return value?.trim() ? [value] : [];
 }
 
+function formatTagLabel(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("id-ID")
+    .replace(/[_-]+/g, " ")
+    .replace(/(^|\s)\p{L}/gu, (letter) =>
+      letter.toLocaleUpperCase("id-ID"),
+    );
+}
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -51,7 +63,7 @@ function toSlug(value: string) {
 async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
   const { data, error } = await supabase
     .from("datasets")
-    .select("id, label, image_path, tag")
+    .select("id, label, image_path, tag, path_redirect")
     .eq("published", "approved")
     .order("label", { ascending: true });
 
@@ -91,6 +103,7 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
       slug: toSlug(row.label),
       image: row.image_path,
       tag: normalizeTags(row.tag),
+      pathRedirect: row.path_redirect,
     }));
 
   const publishedMaps: DataPageOption[] = (
@@ -143,10 +156,15 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
             key={idx}
           >
             <CardData
-              tag={dataset.tag[0] ?? null}
+              tag={
+                dataset.tag.length > 0
+                  ? dataset.tag.map(formatTagLabel).join(", ")
+                  : null
+              }
               title={dataset.title}
               image={getImagePreviewUrl(dataset.image) ?? ""}
-              link={`/data/${dataset.slug}`}
+              link={dataset.pathRedirect || `/data/${dataset.slug}`}
+              external={Boolean(dataset.pathRedirect)}
             />
           </div>
         ))}

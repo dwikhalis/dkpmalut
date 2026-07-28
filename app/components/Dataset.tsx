@@ -34,6 +34,7 @@ import {
   DATA_SUBWPP_OPTIONS,
 } from "./configAreaSelector";
 import SpinnerLoading from "./SpinnerLoading";
+import { getUploadTimestamp } from "@/lib/utils/uploadTimestamp";
 
 type PublicationStatus = null | "requested" | "approved" | "rejected" | string;
 
@@ -63,6 +64,7 @@ type DatasetPublicationRow = {
   data_kkpd: string[] | string | null;
   description: string | null;
   image_path: string | null;
+  path_redirect: string | null;
 };
 
 const TAG_OPTIONS = [
@@ -125,16 +127,6 @@ function getSafeView(value: string | null): DatasetView {
   return "dataset";
 }
 
-function getUploadDateStamp() {
-  const now = new Date();
-
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const year = String(now.getFullYear());
-
-  return `${month}${day}${year}`;
-}
-
 function getStatusBar(status: PublicationStatus) {
   if (status === "requested") {
     return {
@@ -170,6 +162,7 @@ export default function Dataset({
   onSignalAction,
   onChangeCountChange,
   role,
+  linkMode = false,
 }: {
   datasetId: string;
   action: "add" | "edit" | "list" | "delete";
@@ -177,6 +170,7 @@ export default function Dataset({
   onSignalAction: (signal: string) => void;
   onChangeCountChange?: (count: number) => void;
   role: "admin" | "partner" | null;
+  linkMode?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -213,6 +207,7 @@ export default function Dataset({
   const [publicationInKkpd, setPublicationInKkpd] = useState(false);
   const [publicationDataKkpd, setPublicationDataKkpd] = useState<string[]>([]);
   const [publicationDescription, setPublicationDescription] = useState("");
+  const [publicationLink, setPublicationLink] = useState("");
   const [publicationImagePath, setPublicationImagePath] = useState<
     string | null
   >(null);
@@ -286,7 +281,7 @@ export default function Dataset({
         const { data: configData, error: configError } = await supabase
           .from("datasets")
           .select(
-            "label, column_config, published_config, published, tag, data_regency, data_subwpp, data_kkpd, description, image_path",
+            "label, column_config, published_config, published, tag, data_regency, data_subwpp, data_kkpd, description, image_path, path_redirect",
           )
           .eq("id", datasetId)
           .maybeSingle();
@@ -346,6 +341,7 @@ export default function Dataset({
         setPublicationDataKkpd(parsedDataKkpd);
         setPublicationInKkpd(parsedDataKkpd.length > 0);
         setPublicationDescription(row.description ?? "");
+        setPublicationLink(row.path_redirect ?? "");
         setPublicationImagePath(row.image_path ?? null);
         setPublicationImageEditing(!row.image_path);
         setPublicationImageFile(null);
@@ -405,7 +401,7 @@ export default function Dataset({
 
     const blob = dataUrlToBlob(snapshotDataUrl);
     const fileNameBase = toSlug(publicationTitle || originalLabel || datasetId);
-    const dateStamp = getUploadDateStamp();
+    const dateStamp = getUploadTimestamp();
     const path = `charts/${fileNameBase}-${dateStamp}.png`;
 
     const { error } = await supabase.storage.from("images").upload(path, blob, {
@@ -512,8 +508,16 @@ export default function Dataset({
   };
 
   const handleSelectedImage = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setPublicationMessage("File harus berupa gambar.");
+    if (
+      linkMode
+        ? !["image/jpeg", "image/png"].includes(file.type)
+        : !file.type.startsWith("image/")
+    ) {
+      setPublicationMessage(
+        linkMode
+          ? "Gambar harus berformat JPG, JPEG, atau PNG."
+          : "File harus berupa gambar.",
+      );
       return;
     }
 
@@ -543,6 +547,19 @@ export default function Dataset({
       setPublicationMessage("Judul data wajib diisi.");
       setPublicationAlert("invalid-form");
       return false;
+    }
+
+    if (linkMode) {
+      try {
+        const url = new URL(publicationLink.trim());
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+          throw new Error("invalid protocol");
+        }
+      } catch {
+        setPublicationMessage("Link tujuan harus berupa URL HTTP atau HTTPS yang valid.");
+        setPublicationAlert("invalid-form");
+        return false;
+      }
     }
 
     if (publicationTags.length === 0) {
@@ -575,7 +592,7 @@ export default function Dataset({
 
     const extension = getFileExtension(imageFile);
     const fileNameBase = toSlug(publicationTitle || originalLabel || datasetId);
-    const dateStamp = getUploadDateStamp();
+    const dateStamp = getUploadTimestamp();
 
     const path = `charts/${fileNameBase}-${dateStamp}.${extension}`;
 
@@ -621,6 +638,9 @@ export default function Dataset({
               ? publicationDataKkpd
               : null,
           description: publicationDescription.trim(),
+          ...(linkMode
+            ? { path_redirect: new URL(publicationLink.trim()).toString() }
+            : {}),
           image_path: imagePath,
           published: "requested",
         })
@@ -636,6 +656,13 @@ export default function Dataset({
       setShowPublicationForm(true);
 
       await fetchImageUrl(imagePath ?? null);
+
+      if (linkMode) {
+        router.replace(
+          `/profile/data/${toSlug(publicationTitle.trim())}?view=publication`,
+          { scroll: false },
+        );
+      }
 
       setPublicationAlert("success-submit");
     } catch (error) {
@@ -725,7 +752,7 @@ export default function Dataset({
     );
   }
 
-  if (!datasetId || columns.length === 0) {
+  if (!datasetId || (!linkMode && columns.length === 0)) {
     return (
       <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
         Konfigurasi data belum tersedia.
@@ -838,6 +865,11 @@ export default function Dataset({
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDropImage}
                 onClick={() => {
+                  if (linkMode) {
+                    fileInputRef.current?.click();
+                    return;
+                  }
+
                   if (publicationImageEditing || !publicationImageUrl) {
                     fileInputRef.current?.click();
                   }
@@ -851,7 +883,11 @@ export default function Dataset({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={
+                    linkMode
+                      ? ".jpg,.jpeg,.png,image/jpeg,image/png"
+                      : "image/*"
+                  }
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -864,7 +900,8 @@ export default function Dataset({
                   }}
                 />
 
-                {publicationImageUrl && !publicationImageEditing ? (
+                {publicationImageUrl &&
+                (linkMode || !publicationImageEditing) ? (
                   <img
                     src={publicationImageUrl}
                     alt={publicationTitle || "Preview publikasi"}
@@ -873,17 +910,23 @@ export default function Dataset({
                 ) : (
                   <>
                     <p className="max-w-xl text-2xl font-semibold text-gray-700">
-                      Lakukan screenshot grafik, dan drag file tersebut kesini
+                      {linkMode
+                        ? publicationImageFile
+                          ? `${publicationImageFile.name} dipilih`
+                          : "Jatuhkan gambar JPG, JPEG, atau PNG di sini"
+                        : "Lakukan screenshot grafik, dan drag file tersebut kesini"}
                     </p>
 
                     <p className="mt-2 text-sm text-gray-500">
-                      Klik untuk memilih gambar
+                      {linkMode
+                        ? "atau klik untuk mencari dari perangkat"
+                        : "Klik untuk memilih gambar"}
                     </p>
                   </>
                 )}
               </div>
 
-              {publicationImageUrl && (
+              {!linkMode && publicationImageUrl && (
                 <Button
                   type="button"
                   onClick={() => {
@@ -903,7 +946,9 @@ export default function Dataset({
               )}
 
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium">Judul Dataset</span>
+                <span className="font-medium">
+                  {linkMode ? "Judul Link" : "Judul Dataset"}
+                </span>
 
                 <input
                   value={publicationTitle}
@@ -911,6 +956,22 @@ export default function Dataset({
                   className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </label>
+
+              {linkMode && (
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-medium">Link</span>
+
+                  <input
+                    type="url"
+                    value={publicationLink}
+                    onChange={(event) =>
+                      setPublicationLink(event.target.value)
+                    }
+                    placeholder="https://example.com"
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              )}
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Tag Data</p>

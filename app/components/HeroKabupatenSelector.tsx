@@ -279,28 +279,10 @@ export default function HeroKabupatenSelector({ className = "" }: Props) {
         aria-live="polite"
       >
         {selectedLabel ? (
-          <>
-            <p>
-              Filter terpilih:{" "}
-              <span className="font-semibold">{selectedLabel}</span>
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                replaceSelection(
-                  activeMode === "sub-wpp"
-                    ? "sub_wpp"
-                    : activeMode === "kkpd"
-                      ? "kkpd"
-                      : "kabupaten",
-                  null,
-                )
-              }
-              className="rounded-full border border-white/70 bg-white/10 px-3 py-1.5 font-semibold text-white transition-colors hover:bg-white hover:text-sky-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-sky-800"
-            >
-              Tampilkan Semua
-            </button>
-          </>
+          <p>
+            Filter terpilih:{" "}
+            <span className="font-semibold">{selectedLabel}</span>
+          </p>
         ) : (
           <p className="text-cyan-100">
             Pilih wilayah, atau gunakan “Tampilkan Semua”, lalu tekan Cari

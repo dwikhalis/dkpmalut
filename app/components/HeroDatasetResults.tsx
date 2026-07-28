@@ -9,6 +9,8 @@ type DatasetResult = {
   id: string;
   label: string | null;
   tag: string[] | string | null;
+  kind: "dataset" | "link" | null;
+  path_redirect: string | null;
 };
 
 function toSlug(value: string) {
@@ -55,7 +57,7 @@ export default function HeroDatasetResults() {
 
       let query = supabase
         .from("datasets")
-        .select("id, label, tag")
+        .select("id, label, tag, kind, path_redirect")
         .eq("published", "approved")
         .order("label", { ascending: true });
 
@@ -194,11 +196,17 @@ export default function HeroDatasetResults() {
           {filteredDatasets.map((dataset) => {
             const title = dataset.label?.trim() || "Dataset tanpa judul";
             const tags = datasetTags(dataset.tag);
+            const externalLink =
+              dataset.kind === "link" && dataset.path_redirect
+                ? dataset.path_redirect
+                : null;
 
             return (
               <Link
                 key={dataset.id}
-                href={`/data/${toSlug(title)}`}
+                href={externalLink || `/data/${toSlug(title)}`}
+                target={externalLink ? "_blank" : undefined}
+                rel={externalLink ? "noopener noreferrer" : undefined}
                 className="group block rounded-2xl bg-white p-5 shadow-md ring-1 ring-stone-200 transition duration-200 hover:-translate-y-1 hover:shadow-xl"
               >
                 <article className="flex items-start justify-between gap-4">

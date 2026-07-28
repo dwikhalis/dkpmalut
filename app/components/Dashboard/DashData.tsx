@@ -8,6 +8,7 @@ import Button from "../Button";
 import { getDatasetPages } from "@/lib/supabase/supabaseHelper";
 import Dataset from "../Dataset";
 import MapDataset from "../Maps/MapDataset";
+import { LinkDatasetCreate } from "../LinkDataset";
 import { useAuthStore } from "@/app/Stores/authStores";
 import type { EditSource } from "../DatasetConfig";
 import { supabase } from "@/lib/supabase/supabaseClient";
@@ -32,11 +33,12 @@ interface Props {
 }
 
 type ActionType = "add" | "edit" | "list" | "delete";
-type MainPage = "main" | "add" | "edit" | "delete" | "mapadd";
+type MainPage = "main" | "add" | "edit" | "delete" | "mapadd" | "linkadd";
 type DetailView =
   | "dataset"
   | "visualization"
   | "publication"
+  | "link"
   | "mapadd"
   | "mapdataset"
   | "mapvisualization"
@@ -52,7 +54,7 @@ type DatasetPage = {
   published: "approved" | "requested" | "rejected" | null;
   import_status?: "draft" | "ready" | null;
   draft_expires_at?: string | null;
-  kind: "dataset" | "map";
+  kind: "dataset" | "map" | "link";
 };
 
 function downloadText(filename: string, content: string) {
@@ -130,6 +132,10 @@ function getSafeView(value: string | null): DetailView {
 
   if (value === "publication") {
     return "publication";
+  }
+
+  if (value === "link") {
+    return "link";
   }
 
   return "dataset";
@@ -251,6 +257,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const isNewMapPage = currentSlug === "peta-baru" && detailView === "mapadd";
   const isDetailPage = Boolean(currentSlug);
   const isMapDetail = selectedDataset?.kind === "map" || isNewMapPage;
+  const isLinkDetail = selectedDataset?.kind === "link";
   const detailPageLabel = isMapDetail
     ? action === "add" || detailView === "mapadd"
       ? "Tambah Layer"
@@ -263,12 +270,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             : detailView === "publication"
               ? "Publikasi"
               : "Layer"
+    : isLinkDetail
+      ? "Publikasi"
     : detailView === "visualization"
       ? "Visualisasi"
       : detailView === "publication"
         ? "Publikasi"
         : "Dataset";
-  const nextDetailView = isMapDetail
+  const nextDetailView = isLinkDetail
+    ? null
+    : isMapDetail
     ? detailView === "mapadd"
       ? "mapdataset"
       : detailView === "mapdataset"
@@ -294,7 +305,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const selectedActionOwnerId =
     selectedOwnerId || searchParams.get("owner") || userId;
-  const isAddMode = mainPage === "add" || mainPage === "mapadd";
+  const isAddMode = mainPage === "add" || mainPage === "mapadd" || mainPage === "linkadd";
   const showOuterActionButtons = !isAddMode || addDataReady;
   const actionCountLabel =
     action === "delete"
@@ -377,6 +388,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       ? "Tambah Peta"
       : mainPage === "mapadd"
         ? labels.add
+        : mainPage === "linkadd"
+          ? "Tambah Link"
         : mainPage === "add"
           ? labels.add
           : mainPage === "edit"
@@ -397,6 +410,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     setAddDataReady(false);
     setActionChangeCount(0);
   }, [mainPage, action, detailView]);
+
+  useEffect(() => {
+    if (!isDetailPage || selectedDataset?.kind !== "link") return;
+    if (searchParams.get("view") === "publication") return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("action");
+    params.set("view", "publication");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [isDetailPage, pathname, router, searchParams, selectedDataset]);
 
   useEffect(() => {
     if (loading || !userId) return;
@@ -446,7 +469,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         setDatasetPages([
           ...result.map((item) => ({
             ...item,
-            kind: "dataset" as const,
+            kind: item.kind === "link" ? "link" as const : "dataset" as const,
           })),
           ...((mapRows ?? []) as Omit<DatasetPage, "kind">[]).map((item) => ({
             ...item,
@@ -527,6 +550,14 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     if (urlAction === "mapadd") {
       setSelectedOwnerId(searchParams.get("owner") || userId);
       setMainPage("mapadd");
+      setAction("list");
+      onSignal("dataset");
+      return;
+    }
+
+    if (urlAction === "linkadd") {
+      setSelectedOwnerId(searchParams.get("owner") || userId);
+      setMainPage("linkadd");
       setAction("list");
       onSignal("dataset");
       return;
@@ -672,6 +703,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   };
 
   const goToPreviousDetailView = () => {
+    if (isLinkDetail) {
+      resetToHome();
+      return;
+    }
+
     if (isMapDetail) {
       if (detailView === "publication") {
         setDetailStep("mapvisualization");
@@ -768,6 +804,18 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     });
   };
 
+  const setLinkAddAction = (ownerId: string | null) => {
+    setMainPage("linkadd");
+    setAction("list");
+    setShowMobileAction(false);
+    setSelectedOwnerId(ownerId);
+    onSignal("dataset");
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("action", "linkadd");
+    if (ownerId) params.set("owner", ownerId);
+    router.replace(`/profile/data?${params.toString()}`, { scroll: false });
+  };
+
   const handleSignalAction = () => {
     if (isDetailPage) {
       setDetailAction("list");
@@ -842,7 +890,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               {pageTitle}
             </p>
 
-            {isDetailPage && selectedDataset && (
+            {isDetailPage && selectedDataset && !isLinkDetail && (
               <>
                 <div className="hidden shrink-0 items-center justify-end md:flex">
                   <details
@@ -1023,7 +1071,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               </>
             )}
 
-            {isDetailPage && !selectedDataset && (
+            {isDetailPage && (!selectedDataset || isLinkDetail) && (
               <div className="w-9 shrink-0" aria-hidden="true" />
             )}
           </div>
@@ -1088,7 +1136,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                                 `/profile/data/${toSlug(dataset.label)}${
                                   dataset.kind === "map"
                                     ? "?view=mapdataset"
-                                    : ""
+                                    : dataset.kind === "link"
+                                      ? "?view=publication"
+                                      : ""
                                 }`,
                               );
                             }, 500);
@@ -1101,6 +1151,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           {dataset.kind === "map" && (
                             <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
                               peta
+                            </span>
+                          )}
+                          {dataset.kind === "link" && (
+                            <span className="shrink-0 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-800">
+                              link
                             </span>
                           )}
 
@@ -1127,6 +1182,17 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               onSignalAction={handleSignalAction}
               onChangeCountChange={handleActionChangeCount}
               role={role}
+            />
+          )}
+          {isDetailPage && selectedDataset?.kind === "link" && (
+            <Dataset
+              datasetId={selectedDataset.id}
+              action="list"
+              saveData={saveData}
+              onSignalAction={handleSignalAction}
+              onChangeCountChange={handleActionChangeCount}
+              role={role}
+              linkMode
             />
           )}
 
@@ -1212,7 +1278,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           </div>
 
           <div className="flex min-h-0 flex-col gap-6 mb-6">
-            {(mainPage === "add" || mainPage === "mapadd") && (
+            {(mainPage === "add" || mainPage === "mapadd" || mainPage === "linkadd") && (
               <div className="flex w-full flex-wrap gap-3">
                 <Button
                   variant={mainPage === "add" ? "outline" : "primary"}
@@ -1229,10 +1295,25 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                 >
                   Peta
                 </Button>
+
+                <Button
+                  variant={mainPage === "linkadd" ? "outline" : "primary"}
+                  size="md"
+                  onClick={() => setLinkAddAction(selectedActionOwnerId)}
+                >
+                  Link
+                </Button>
               </div>
             )}
 
-            {mainPage === "mapadd" ? (
+            {mainPage === "linkadd" ? (
+              <LinkDatasetCreate
+                ownerId={selectedActionOwnerId}
+                saveData={saveData}
+                onReadyChange={setAddDataReady}
+                onCreated={handleSignalDatasetAction}
+              />
+            ) : mainPage === "mapadd" ? (
               <MapDataset
                 mapDatasetId={null}
                 ownerId={selectedActionOwnerId}
@@ -1260,7 +1341,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         </div>
       )}
 
-      {mobileActions.mounted && (
+      {mobileActions.mounted && !isLinkDetail && (
         <div
           className={`fixed inset-0 z-[1200] md:hidden ${mobileActions.closing ? "pointer-events-none bg-transparent" : "bg-gray-950/70"}`}
           onClick={() => setShowMobileAction(false)}

@@ -11,6 +11,16 @@ type Props = {
   selectedTag?: string | null;
 };
 
+function formatTagLabel(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("id-ID")
+    .replace(/[_-]+/g, " ")
+    .replace(/(^|\s)\p{L}/gu, (letter) =>
+      letter.toLocaleUpperCase("id-ID"),
+    );
+}
+
 export default function DatasetSelect({ datasets, selectedTag = null }: Props) {
   const tags = Array.from(
     new Set(
@@ -49,13 +59,13 @@ export default function DatasetSelect({ datasets, selectedTag = null }: Props) {
               key={tag}
               href={`/data?tag=${encodeURIComponent(tag)}`}
               aria-current={selectedTag === tag ? "page" : undefined}
-              className={`rounded-full border px-4 py-2 text-sm font-medium capitalize shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+              className={`rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
                 selectedTag === tag
                   ? "border-sky-700 bg-sky-700 text-white"
                   : "border-sky-200 bg-white text-sky-800 hover:border-sky-700 hover:bg-sky-700 hover:text-white"
               }`}
             >
-              {tag}
+              {formatTagLabel(tag)}
             </Link>
           ))}
         </div>
