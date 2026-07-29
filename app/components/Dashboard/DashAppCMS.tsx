@@ -9,6 +9,10 @@ import {
 } from "@/lib/supabase/supabaseHelper";
 import AppCmsComponentPreview from "./AppCmsComponentPreview";
 import SpinnerLoading from "../SpinnerLoading";
+import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+
+const APP_CMS_CACHE_KEY = "dashboard-app-cms";
+const APP_CMS_CACHE_TTL = 5 * 60 * 1000;
 
 type AppLabel = {
   id: string;
@@ -50,6 +54,25 @@ export default function DashAppCMS() {
     async function loadLabels() {
       setLoading(true);
       setMessage("");
+      const cached = getSessionCache<AppLabel[]>(
+        APP_CMS_CACHE_KEY,
+        APP_CMS_CACHE_TTL,
+      );
+
+      if (cached) {
+        const rows = sortRows(cached);
+        setLabels(rows);
+        setOriginals(
+          Object.fromEntries(
+            rows.map((row) => [
+              rowKey(row),
+              { value: row.value, is_active: row.is_active },
+            ]),
+          ),
+        );
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("app_cms")
@@ -75,6 +98,7 @@ export default function DashAppCMS() {
       );
 
       setLabels(rows);
+      setSessionCache(APP_CMS_CACHE_KEY, rows);
       setOriginals(
         Object.fromEntries(
           rows.map((row) => [
@@ -185,6 +209,7 @@ export default function DashAppCMS() {
         ]),
       ),
     );
+    setSessionCache(APP_CMS_CACHE_KEY, labels);
     window.dispatchEvent(new Event("navbar-config-updated"));
     setMessage(`${changedRows.length} perubahan berhasil disimpan.`);
     setSaving(false);

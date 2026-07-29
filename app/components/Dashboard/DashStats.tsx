@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { getNumOf, getNumUnreadMessages } from "@/lib/supabase/supabaseHelper";
 import Link from "next/link";
+import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+
+const DASHBOARD_STATS_CACHE_KEY = "dashboard-stats";
+const DASHBOARD_STATS_TTL = 60 * 1000;
 
 export default function DashStats() {
   const [numOfMessage, setNumOfMessage] = useState(0);
@@ -11,6 +15,20 @@ export default function DashStats() {
 
   useEffect(() => {
     let mounted = true;
+    const cached = getSessionCache<{
+      messages: number;
+      datasets: number;
+      users: number;
+    }>(DASHBOARD_STATS_CACHE_KEY, DASHBOARD_STATS_TTL);
+
+    if (cached) {
+      setNumOfMessage(cached.messages);
+      setNumOfDataset(cached.datasets);
+      setNumOfUser(cached.users);
+      return () => {
+        mounted = false;
+      };
+    }
 
     const fetchNum = async () => {
       try {
@@ -24,6 +42,11 @@ export default function DashStats() {
         setNumOfMessage(messages);
         setNumOfDataset(datasetCount);
         setNumOfUser(users);
+        setSessionCache(DASHBOARD_STATS_CACHE_KEY, {
+          messages,
+          datasets: datasetCount,
+          users,
+        });
       } catch (err) {
         console.error("Error fetching numOf data:", err);
       }

@@ -1,4 +1,4 @@
-/** Upload suffix in MMDDYYYY_HHMMSS, always evaluated in UTC+9. */
+/** Upload suffix in MMDDYYYY_HHMMSS, always evaluated in WIT. */
 export function getUploadTimestamp() {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Tokyo",

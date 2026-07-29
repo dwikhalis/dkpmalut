@@ -14,6 +14,12 @@ import AccordionToggleIcon from "../AccordionToggleIcon";
 import { getMessage, updateData } from "@/lib/supabase/supabaseHelper";
 import AuthAdminAccess from "@/app/Auth/AuthAdminAccess";
 import MessageEmailStatus from "../MessageEmailStatus";
+import {
+  getSessionCache,
+  MESSAGE_LIST_CACHE_KEY,
+} from "@/lib/utils/sessionCache";
+
+const MESSAGE_CACHE_TTL = 30 * 1000;
 
 interface DataTypes {
   id: string;
@@ -84,7 +90,11 @@ export default function DashMessage() {
     let active = true;
 
     async function loadSelectedMessage() {
-      const messages = await getMessage();
+      const messages =
+        getSessionCache<DataTypes[]>(
+          MESSAGE_LIST_CACHE_KEY,
+          MESSAGE_CACHE_TTL,
+        ) ?? (await getMessage());
       const message = messages.find((item) => item.id === messageId);
 
       if (active && message) {

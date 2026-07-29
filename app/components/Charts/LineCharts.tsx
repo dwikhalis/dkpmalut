@@ -34,6 +34,8 @@ ChartJS.register(
 
 type LineChartProps = BaseChartProps & {
   yAxis?: boolean;
+  xAxisTitle?: string;
+  showLegend?: boolean;
   rotateXLabels?: number;
   heightClassName?: string;
 };
@@ -47,6 +49,8 @@ const LineCharts = forwardRef<ChartJS<"line"> | undefined, LineChartProps>(
       tooltipLabels,
       datalabel = false,
       yAxis = true,
+      xAxisTitle = "",
+      showLegend = true,
       rotateXLabels = 0,
       unit,
       heightClassName = "h-[60vh]",
@@ -79,6 +83,7 @@ const LineCharts = forwardRef<ChartJS<"line"> | undefined, LineChartProps>(
       layout: { padding: { top: 16 } },
       plugins: {
         legend: {
+          display: showLegend,
           position: "bottom",
           labels: { font: { size: 10 } },
         },
@@ -106,6 +111,10 @@ const LineCharts = forwardRef<ChartJS<"line"> | undefined, LineChartProps>(
       },
       scales: {
         x: {
+          title: {
+            display: Boolean(xAxisTitle),
+            text: xAxisTitle,
+          },
           ticks: {
             minRotation: rotateXLabels,
             maxRotation: rotateXLabels,

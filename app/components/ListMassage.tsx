@@ -7,6 +7,13 @@ import { Delete, Switch } from "@/public/icons/iconSets";
 import AlertNotif from "./AlertNotif";
 import SpinnerLoading from "./SpinnerLoading";
 import MessageEmailStatus from "./MessageEmailStatus";
+import {
+  getSessionCache,
+  MESSAGE_LIST_CACHE_KEY,
+  setSessionCache,
+} from "@/lib/utils/sessionCache";
+
+const MESSAGE_CACHE_TTL = 30 * 1000;
 
 type MessageAction = "open" | "unread" | "switch";
 
@@ -85,11 +92,23 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
   useEffect(() => {
     async function fetchData() {
       const result = await fetch();
-      setData(result || []);
+      const nextData = result || [];
+      setData(nextData);
+      setSessionCache(MESSAGE_LIST_CACHE_KEY, nextData);
       setLoading(false);
     }
 
-    fetchData();
+    const cached = getSessionCache<DataTypes[]>(
+      MESSAGE_LIST_CACHE_KEY,
+      MESSAGE_CACHE_TTL,
+    );
+
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+    } else {
+      void fetchData();
+    }
 
     const channel = supabase
       .channel(`public:${table}`)
@@ -126,11 +145,13 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
             ? "read"
             : "unread";
 
-    setData((current) =>
-      current.map((message) =>
+    setData((current) => {
+      const nextData = current.map((message) =>
         message.id === item.id ? { ...message, status: nextStatus } : message,
-      ),
-    );
+      );
+      setSessionCache(MESSAGE_LIST_CACHE_KEY, nextData);
+      return nextData;
+    });
 
     try {
       await sendToParent(item, action);
@@ -152,6 +173,11 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
       setLoadingAction(true);
       const executed = await deleteData("messages", dataId);
       if (executed) {
+        setData((current) => {
+          const nextData = current.filter((message) => message.id !== dataId);
+          setSessionCache(MESSAGE_LIST_CACHE_KEY, nextData);
+          return nextData;
+        });
         setLoadingAction(false);
         setConfirmAction([true, ""]);
       } else {

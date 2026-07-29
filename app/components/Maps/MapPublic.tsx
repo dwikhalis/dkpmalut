@@ -296,8 +296,41 @@ export default function MapPublic({ slug, pages }: Props) {
   const documents = parseJsonArray<MapAttachment>(dataset?.documents_path);
   const canDownloadCsv = layers.length > 0;
 
+  useEffect(() => {
+    if (!dataset?.id) return;
+
+    const storageKey = `public-dataset-view:map:${dataset.id}`;
+    if (window.sessionStorage.getItem(storageKey)) return;
+
+    window.sessionStorage.setItem(storageKey, "1");
+    void supabase
+      .rpc("record_public_dataset_metric", {
+        p_resource_kind: "map",
+        p_resource_id: dataset.id,
+        p_metric: "view",
+      })
+      .then(({ error }) => {
+        if (error) {
+          window.sessionStorage.removeItem(storageKey);
+          console.warn("Failed to record map view:", error);
+        }
+      });
+  }, [dataset?.id]);
+
   const downloadCsv = () => {
     if (!canDownloadCsv) return;
+
+    if (dataset?.id) {
+      void supabase
+        .rpc("record_public_dataset_metric", {
+          p_resource_kind: "map",
+          p_resource_id: dataset.id,
+          p_metric: "download",
+        })
+        .then(({ error }) => {
+          if (error) console.warn("Failed to record map download:", error);
+        });
+    }
 
     const collections = layers.map((layer) => layer.collection);
     downloadText(`${slug}.csv`, collectionToCsv(collections as FeatureCollection[]));

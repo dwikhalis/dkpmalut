@@ -1567,6 +1567,13 @@ export default function MapDataset({
   const [visibleFeatureColumns, setVisibleFeatureColumns] = useState<string[]>(
     [],
   );
+  const [draggedFeatureColumn, setDraggedFeatureColumn] = useState<
+    string | null
+  >(null);
+  const [featureColumnDropTarget, setFeatureColumnDropTarget] = useState<{
+    column: string;
+    position: "before" | "after";
+  } | null>(null);
   const [featureFilters, setFeatureFilters] = useState<Record<string, string[]>>(
     {},
   );
@@ -1816,8 +1823,9 @@ export default function MapDataset({
   }, [selectedLayer]);
 
   const activeFeatureColumns = useMemo(() => {
-    return featureColumns.filter((column) =>
-      visibleFeatureColumns.includes(column),
+    const availableColumns = new Set(featureColumns);
+    return visibleFeatureColumns.filter((column) =>
+      availableColumns.has(column),
     );
   }, [featureColumns, visibleFeatureColumns]);
 
@@ -2248,13 +2256,45 @@ export default function MapDataset({
   }, [layers, selectedLayerId]);
 
   useEffect(() => {
+    let cancelled = false;
     setVisibleFeatureColumns(featureColumns);
     setFeatureFilters({});
     setFeatureSort(null);
     setSelectedFeatureRows([]);
     setDeleteSelectedLayer(false);
     setEditedFeatureCells([]);
-  }, [featureColumns]);
+
+    const fetchColumnOrder = async () => {
+      if (!selectedLayer?.id || featureColumns.length === 0) return;
+
+      const { data, error } = await supabase
+        .from("table_view_preferences")
+        .select("column_order")
+        .eq("resource_kind", "map_layer")
+        .eq("resource_id", selectedLayer.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        console.warn("Map table column order is unavailable:", error);
+        return;
+      }
+      if (!Array.isArray(data?.column_order)) return;
+
+      const savedColumns = data.column_order.filter((column: string) =>
+        featureColumns.includes(column),
+      );
+      setVisibleFeatureColumns([
+        ...savedColumns,
+        ...featureColumns.filter((column) => !savedColumns.includes(column)),
+      ]);
+    };
+
+    void fetchColumnOrder();
+    return () => {
+      cancelled = true;
+    };
+  }, [featureColumns, selectedLayer?.id]);
 
   useEffect(() => {
     if (!onChangeCountChange) return;
@@ -3732,6 +3772,78 @@ export default function MapDataset({
     setVisibleFeatureColumns(visible ? featureColumns : []);
   };
 
+  const persistFeatureColumnOrder = async (visibleOrder: string[]) => {
+    if (!selectedLayer?.id) return;
+
+    const columnOrder = [
+      ...visibleOrder,
+      ...featureColumns.filter((column) => !visibleOrder.includes(column)),
+    ];
+    const { error } = await supabase.from("table_view_preferences").upsert(
+      {
+        resource_kind: "map_layer",
+        resource_id: selectedLayer.id,
+        column_order: columnOrder,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,resource_kind,resource_id" },
+    );
+
+    if (error) {
+      console.error("Failed to save map table column order:", error);
+    }
+  };
+
+  const moveFeatureColumn = (column: string, direction: -1 | 1) => {
+    const index = visibleFeatureColumns.indexOf(column);
+    const targetIndex = index + direction;
+    if (
+      index < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= visibleFeatureColumns.length
+    ) {
+      return;
+    }
+
+    const next = [...visibleFeatureColumns];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    setVisibleFeatureColumns(next);
+    void persistFeatureColumnOrder(next);
+  };
+
+  const dropFeatureColumn = (
+    event: DragEvent<HTMLTableCellElement>,
+    targetColumn: string,
+    position: "before" | "after",
+  ) => {
+    event.preventDefault();
+    const sourceColumn =
+      draggedFeatureColumn || event.dataTransfer.getData("text/plain");
+    if (!sourceColumn || sourceColumn === targetColumn) {
+      setDraggedFeatureColumn(null);
+      setFeatureColumnDropTarget(null);
+      return;
+    }
+
+    const sourceIndex = visibleFeatureColumns.indexOf(sourceColumn);
+    const targetIndex = visibleFeatureColumns.indexOf(targetColumn);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const next = [...visibleFeatureColumns];
+    const [moved] = next.splice(sourceIndex, 1);
+    const adjustedTargetIndex =
+      sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    next.splice(
+      position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex,
+      0,
+      moved,
+    );
+    setVisibleFeatureColumns(next);
+    void persistFeatureColumnOrder(next);
+    setDraggedFeatureColumn(null);
+    setFeatureColumnDropTarget(null);
+  };
+
   const toggleFeatureSort = (column: string) => {
     setFeatureSort((prev) => {
       if (prev?.key !== column) {
@@ -4038,7 +4150,7 @@ export default function MapDataset({
     }
   }, [action, requestDeleteConfirmation, saveData, saveFeatureEdits, view]);
 
-  const renderFeatureHeaderMenu = (column: string) => {
+  const renderFeatureHeaderMenu = (column: string, columnIndex: number) => {
     const options = featureFilterOptions[column] ?? [];
     const selectedValues = featureFilters[column] ?? options;
     const allSelected =
@@ -4046,6 +4158,38 @@ export default function MapDataset({
 
     return (
       <div className="relative">
+        <div className="flex items-center justify-between lg:hidden">
+          <button
+            type="button"
+            aria-label={`Geser ${column} ke kiri`}
+            disabled={columnIndex === 0}
+            onClick={() => moveFeatureColumn(column, -1)}
+            className="shrink-0 rounded p-1 hover:bg-sky-200 disabled:opacity-25"
+          >
+            <LeftChevron className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setOpenFeatureHeaderMenu((prev) =>
+                prev === column ? null : column,
+              )
+            }
+            className="min-w-0 grow rounded py-1 text-center hover:bg-sky-200"
+          >
+            {column}
+          </button>
+          <button
+            type="button"
+            aria-label={`Geser ${column} ke kanan`}
+            disabled={columnIndex === activeFeatureColumns.length - 1}
+            onClick={() => moveFeatureColumn(column, 1)}
+            className="shrink-0 rounded p-1 hover:bg-sky-200 disabled:opacity-25"
+          >
+            <RightChevron className="size-4" />
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() =>
@@ -4053,8 +4197,27 @@ export default function MapDataset({
               prev === column ? null : column,
             )
           }
-          className="flex w-full items-center justify-center gap-2 rounded px-2 py-1 text-left hover:bg-sky-200"
+          className="relative hidden w-full items-center justify-center gap-2 rounded px-7 py-1 text-left hover:bg-sky-200 lg:flex"
         >
+          <span
+            draggable
+            aria-label={`Geser kolom ${column}`}
+            title="Geser kolom"
+            onClick={(event) => event.stopPropagation()}
+            onDragStart={(event) => {
+              event.stopPropagation();
+              setDraggedFeatureColumn(column);
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", column);
+            }}
+            onDragEnd={() => {
+              setDraggedFeatureColumn(null);
+              setFeatureColumnDropTarget(null);
+            }}
+            className="absolute left-0 cursor-grab rounded p-0.5 active:cursor-grabbing"
+          >
+            <Draggable className="size-4" />
+          </span>
           <span>{column}</span>
           <DownChevron className="h-3 w-3 shrink-0" />
         </button>
@@ -4907,17 +5070,53 @@ export default function MapDataset({
                 <thead>
                   <tr>
                     {action === "delete" && (
-                      <th className="w-12 border border-gray-400 bg-sky-100 px-3 py-2">
+                      <th className="w-12 border border-gray-400 bg-sky-100 px-0 py-2">
                         <span className="sr-only">Pilih</span>
                       </th>
                     )}
 
-                    {activeFeatureColumns.map((column) => (
+                    {activeFeatureColumns.map((column, columnIndex) => (
                       <th
                         key={column}
-                        className="min-w-44 border border-gray-400 bg-sky-100 px-3 py-2 whitespace-normal break-words"
+                        onDragOver={(event) => {
+                          if (action !== "list" || !draggedFeatureColumn) return;
+                          event.preventDefault();
+                          const bounds =
+                            event.currentTarget.getBoundingClientRect();
+                          setFeatureColumnDropTarget({
+                            column,
+                            position:
+                              event.clientX < bounds.left + bounds.width / 2
+                                ? "before"
+                                : "after",
+                          });
+                        }}
+                        onDrop={(event) =>
+                          dropFeatureColumn(
+                            event,
+                            column,
+                            featureColumnDropTarget?.column === column
+                              ? featureColumnDropTarget.position
+                              : "before",
+                          )
+                        }
+                        className={`min-w-44 border border-gray-400 bg-sky-100 px-0 py-2 whitespace-normal break-words ${
+                          draggedFeatureColumn === column
+                            ? "lg:opacity-50"
+                            : ""
+                        } ${
+                          featureColumnDropTarget?.column === column &&
+                          featureColumnDropTarget.position === "before"
+                            ? "lg:shadow-[inset_4px_0_0_#0369a1]"
+                            : ""
+                        } ${
+                          featureColumnDropTarget?.column === column &&
+                          featureColumnDropTarget.position === "after"
+                            ? "lg:shadow-[inset_-4px_0_0_#0369a1]"
+                            : ""
+                        }`}
                       >
-                        {renderFeatureHeaderMenu(column)}
+                        {renderFeatureHeaderMenu(column, columnIndex)}
                       </th>
                     ))}
                   </tr>

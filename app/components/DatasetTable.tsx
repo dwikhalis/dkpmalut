@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ClipboardEvent, HTMLInputTypeAttribute } from "react";
+import type {
+  ClipboardEvent,
+  DragEvent,
+  HTMLInputTypeAttribute,
+} from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useUrlTableState } from "@/lib/hooks/useUrlTableState";
 import AlertNotif from "./AlertNotif";
 import SpinnerLoading from "./SpinnerLoading";
 import {
   DownChevron,
+  Draggable,
+  Delete,
   LeftChevron,
   RightChevron,
 } from "@/public/icons/iconSets";
@@ -40,12 +46,42 @@ export type FilterConfig = {
 type DatasetDbRow = {
   id: string;
   data: unknown;
+  created_at: string;
+  user_id: string | null;
 };
 
 type TableSort = {
   key: string;
   direction: "asc" | "desc";
 } | null;
+
+type DatasetImportBatch = {
+  id: string;
+  dataset_id: string;
+  created_by: string | null;
+  created_by_name: string;
+  row_ids: string[];
+  row_count: number;
+  created_at: string;
+};
+
+const LEGACY_IMPORT_BATCH_ID = "__existing_rows__";
+
+const formatImportBatchLabel = (batch: DatasetImportBatch) => {
+  const dateParts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Asia/Jayapura",
+  })
+    .format(new Date(batch.created_at))
+    .replace(",", "");
+
+  return `${dateParts} WIT - ${batch.created_by_name}`;
+};
 
 const isMissingValue = (value: DatasetValue) => {
   return value === null || value === undefined || value === "";
@@ -124,6 +160,9 @@ interface Props {
   columns: ColumnConfig[];
   filters?: FilterConfig[];
   defaultSortKey?: string;
+  duplicateKeys?: string[];
+  role?: "admin" | "partner" | null;
+  canAdd?: boolean;
 }
 
 export default function DatasetTable({
@@ -135,6 +174,9 @@ export default function DatasetTable({
   columns,
   filters = [],
   defaultSortKey,
+  duplicateKeys = [],
+  role = null,
+  canAdd = false,
 }: Props) {
   const [allRows, setAllRows] = useState<DatasetRow[]>([]);
   const [dataset, setDataset] = useState<DatasetRow[]>([]);
@@ -166,11 +208,29 @@ export default function DatasetTable({
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() =>
     columns.map((column) => column.key),
   );
+  const [draggedColumnKey, setDraggedColumnKey] = useState<string | null>(null);
+  const [columnDropTarget, setColumnDropTarget] = useState<{
+    key: string;
+    position: "before" | "after";
+  } | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},
   );
   const [tableSort, setTableSort] = useState<TableSort>(null);
+  const [importBatches, setImportBatches] = useState<DatasetImportBatch[]>([]);
+  const [initialImport, setInitialImport] = useState<{
+    createdAt: string;
+    createdByName: string;
+    createdBy: string | null;
+  } | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [pendingDeleteBatchId, setPendingDeleteBatchId] = useState<
+    string | null
+  >(null);
+  const [selectedImportBatchIds, setSelectedImportBatchIds] = useState<
+    string[] | null
+  >(null);
 
   const [saving, setSaving] = useState(false);
   const lastHandledSave = useRef(0);
@@ -182,9 +242,11 @@ export default function DatasetTable({
     | "confirm-update"
     | "confirm-add"
     | "confirm-delete"
+    | "confirm-delete-batch"
     | "success-update"
     | "success-add"
     | "success-delete"
+    | "success-delete-batch"
     | "no-update"
     | "no-add"
     | "no-delete"
@@ -194,14 +256,56 @@ export default function DatasetTable({
   const tableColumns = useMemo(() => {
     if (action !== "list") return columns;
 
-    const visibleKeys = new Set(visibleColumnKeys);
-    return columns.filter((column) => visibleKeys.has(column.key));
+    const columnMap = new Map(columns.map((column) => [column.key, column]));
+    return visibleColumnKeys
+      .map((key) => columnMap.get(key))
+      .filter((column): column is ColumnConfig => Boolean(column));
   }, [action, columns, visibleColumnKeys]);
 
   const importColumns = useMemo(
     () => columns.filter((column) => column.key !== "id"),
     [columns],
   );
+
+  const importBatchOptions = useMemo(() => {
+    const importedRowIds = new Set(
+      importBatches.flatMap((batch) => batch.row_ids),
+    );
+    const existingRowCount = allRows.filter(
+      (row) => !importedRowIds.has(row.id),
+    ).length;
+    const options = importBatches.map((batch) => ({
+      id: batch.id,
+      label: formatImportBatchLabel(batch),
+      rowCount: batch.row_count,
+      createdBy: batch.created_by,
+      isInitial: false,
+    }));
+
+    if (existingRowCount > 0) {
+      const initialBatchLabel = initialImport
+        ? formatImportBatchLabel({
+            id: LEGACY_IMPORT_BATCH_ID,
+            dataset_id: datasetId,
+            created_by: null,
+            created_by_name: initialImport.createdByName,
+            row_ids: [],
+            row_count: existingRowCount,
+            created_at: initialImport.createdAt,
+          })
+        : "Data impor awal";
+
+      options.push({
+        id: LEGACY_IMPORT_BATCH_ID,
+        label: initialBatchLabel,
+        rowCount: existingRowCount,
+        createdBy: initialImport?.createdBy ?? null,
+        isInitial: true,
+      });
+    }
+
+    return options;
+  }, [allRows, datasetId, importBatches, initialImport]);
 
   const csvTemplateHref = useMemo(() => {
     const header = importColumns
@@ -236,6 +340,26 @@ export default function DatasetTable({
 
   const applyFiltersAndSort = (rows: DatasetRow[]) => {
     let result = [...rows];
+
+    if (selectedImportBatchIds !== null) {
+      const allImportedRowIds = new Set(
+        importBatches.flatMap((batch) => batch.row_ids),
+      );
+      const selectedRowIds = new Set(
+        importBatches
+          .filter((batch) => selectedImportBatchIds.includes(batch.id))
+          .flatMap((batch) => batch.row_ids),
+      );
+      const includeExistingRows = selectedImportBatchIds.includes(
+        LEGACY_IMPORT_BATCH_ID,
+      );
+
+      result = result.filter(
+        (row) =>
+          selectedRowIds.has(row.id) ||
+          (includeExistingRows && !allImportedRowIds.has(row.id)),
+      );
+    }
 
     Object.entries(columnFilters).forEach(([key, selectedValues]) => {
       if (selectedValues === undefined) return;
@@ -296,12 +420,14 @@ export default function DatasetTable({
         setDataset([]);
         setTotalRows(0);
         setFilterOptions({});
+        setInitialImport(null);
+        setImportBatches([]);
         return;
       }
 
       const { data, error } = await supabase
         .from("datasets")
-        .select("id, data")
+        .select("id, data, created_at, user_id")
         .eq("id", datasetId)
         .maybeSingle();
 
@@ -309,8 +435,65 @@ export default function DatasetTable({
 
       const dbRow = data as DatasetDbRow | null;
       const rows = normalizeJsonbRows(dbRow?.data);
+      let initialCreatedByName = "Pengguna";
+
+      if (dbRow?.user_id) {
+        const { data: uploaderName, error: uploaderError } = await supabase.rpc(
+          "get_dataset_uploader_name",
+          { p_dataset_id: datasetId },
+        );
+
+        if (uploaderError) {
+          console.warn("Dataset uploader name is unavailable:", uploaderError);
+        } else if (typeof uploaderName === "string" && uploaderName.trim()) {
+          initialCreatedByName = uploaderName.trim();
+        }
+      }
+
+      const { data: batchRows, error: batchError } = await supabase
+        .from("dataset_import_batches")
+        .select(
+          "id, dataset_id, created_by, created_by_name, row_ids, row_count, created_at",
+        )
+        .eq("dataset_id", datasetId)
+        .order("created_at", { ascending: false });
+
+      if (batchError) {
+        console.warn("Dataset import history is unavailable:", batchError);
+      }
+
+      const { data: tablePreference, error: preferenceError } = await supabase
+        .from("table_view_preferences")
+        .select("column_order")
+        .eq("resource_kind", "dataset")
+        .eq("resource_id", datasetId)
+        .maybeSingle();
+
+      if (preferenceError) {
+        console.warn("Dataset column order is unavailable:", preferenceError);
+      } else if (Array.isArray(tablePreference?.column_order)) {
+        const availableKeys = columns.map((column) => column.key);
+        const savedKeys = tablePreference.column_order.filter((key: string) =>
+          availableKeys.includes(key),
+        );
+        setVisibleColumnKeys([
+          ...savedKeys,
+          ...availableKeys.filter((key) => !savedKeys.includes(key)),
+        ]);
+      }
 
       setAllRows(rows);
+      setInitialImport(
+        dbRow?.created_at
+          ? {
+              createdAt: dbRow.created_at,
+              createdByName: initialCreatedByName,
+              createdBy: dbRow.user_id,
+            }
+          : null,
+      );
+      setImportBatches((batchRows ?? []) as DatasetImportBatch[]);
+      setSelectedImportBatchIds(null);
       buildFilterOptions(rows);
       applyRowsToPage(rows);
     } catch (err) {
@@ -319,24 +502,11 @@ export default function DatasetTable({
       setDataset([]);
       setTotalRows(0);
       setFilterOptions({});
+      setInitialImport(null);
+      setImportBatches([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const saveDatasetRows = async (rows: DatasetRow[]) => {
-    if (!datasetId) {
-      throw new Error("datasetId is required.");
-    }
-
-    const { error } = await supabase
-      .from("datasets")
-      .update({
-        data: rows,
-      })
-      .eq("id", datasetId);
-
-    if (error) throw error;
   };
 
   useEffect(() => {
@@ -377,9 +547,29 @@ export default function DatasetTable({
   }, [datasetId]);
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id ?? null);
+    };
+
+    void fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
     applyRowsToPage(allRows);
     buildFilterOptions(allRows);
-  }, [allRows, columnFilters, tableSort, page, pageSize, columns]);
+  }, [
+    allRows,
+    columnFilters,
+    tableSort,
+    page,
+    pageSize,
+    columns,
+    importBatches,
+    selectedImportBatchIds,
+  ]);
 
   useEffect(() => {
     if (action === "add") {
@@ -433,6 +623,109 @@ export default function DatasetTable({
 
   const setAllVisibleColumns = (selected: boolean) => {
     setVisibleColumnKeys(selected ? columns.map((column) => column.key) : []);
+    setPage(0);
+  };
+
+  const persistColumnOrder = async (visibleOrder: string[]) => {
+    const allKeys = columns.map((column) => column.key);
+    const columnOrder = [
+      ...visibleOrder,
+      ...allKeys.filter((key) => !visibleOrder.includes(key)),
+    ];
+    const { error } = await supabase.from("table_view_preferences").upsert(
+      {
+        resource_kind: "dataset",
+        resource_id: datasetId,
+        column_order: columnOrder,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,resource_kind,resource_id" },
+    );
+
+    if (error) {
+      console.error("Failed to save dataset column order:", error);
+    }
+  };
+
+  const moveVisibleColumn = (key: string, direction: -1 | 1) => {
+    const index = visibleColumnKeys.indexOf(key);
+    const targetIndex = index + direction;
+    if (
+      index < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= visibleColumnKeys.length
+    ) {
+      return;
+    }
+
+    const next = [...visibleColumnKeys];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    setVisibleColumnKeys(next);
+    void persistColumnOrder(next);
+  };
+
+  const handleColumnDragStart = (
+    event: DragEvent<HTMLElement>,
+    key: string,
+  ) => {
+    if (!window.matchMedia("(min-width: 1024px)").matches) {
+      event.preventDefault();
+      return;
+    }
+
+    setDraggedColumnKey(key);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", key);
+  };
+
+  const handleColumnDrop = (
+    event: DragEvent<HTMLTableCellElement>,
+    targetKey: string,
+    position: "before" | "after",
+  ) => {
+    event.preventDefault();
+    const sourceKey =
+      draggedColumnKey || event.dataTransfer.getData("text/plain");
+
+    if (!sourceKey || sourceKey === targetKey) {
+      setDraggedColumnKey(null);
+      setColumnDropTarget(null);
+      return;
+    }
+
+    const sourceIndex = visibleColumnKeys.indexOf(sourceKey);
+    const targetIndex = visibleColumnKeys.indexOf(targetKey);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const next = [...visibleColumnKeys];
+    const [moved] = next.splice(sourceIndex, 1);
+    const adjustedTargetIndex =
+      sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    next.splice(
+      position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex,
+      0,
+      moved,
+    );
+    setVisibleColumnKeys(next);
+    void persistColumnOrder(next);
+    setDraggedColumnKey(null);
+    setColumnDropTarget(null);
+  };
+
+  const toggleImportBatch = (id: string) => {
+    setSelectedImportBatchIds((prev) => {
+      const current = prev ?? importBatchOptions.map((option) => option.id);
+      const next = current.includes(id)
+        ? current.filter((batchId) => batchId !== id)
+        : [...current, id];
+
+      return next.length === importBatchOptions.length ? null : next;
+    });
+    setPage(0);
+  };
+
+  const setAllImportBatches = (selected: boolean) => {
+    setSelectedImportBatchIds(selected ? null : []);
     setPage(0);
   };
 
@@ -560,6 +853,47 @@ export default function DatasetTable({
 
     if (parsedRows.length === 0 && errors.length === 0) {
       errors.push("CSV tidak berisi baris data. Isi minimal satu baris.");
+    }
+
+    if (errors.length === 0 && duplicateKeys.length > 0) {
+      const normalizeKeyValue = (value: DatasetValue) =>
+        String(value ?? "")
+          .trim()
+          .toLocaleLowerCase("id-ID");
+      const compositeKey = (row: DatasetRow) =>
+        JSON.stringify(
+          duplicateKeys.map((key) => normalizeKeyValue(row[key])),
+        );
+      const describeKey = (row: DatasetRow) =>
+        duplicateKeys
+          .map((key) => {
+            const label =
+              columns.find((column) => column.key === key)?.label ?? key;
+            return `${label}: ${displayValue(row[key])}`;
+          })
+          .join(", ");
+      const existingKeys = new Map(
+        allRows.map((row) => [compositeKey(row), row] as const),
+      );
+      const uploadedKeys = new Map<string, number>();
+
+      parsedRows.forEach((row, index) => {
+        const key = compositeKey(row);
+        const existingRow = existingKeys.get(key);
+        const previousUploadRow = uploadedKeys.get(key);
+
+        if (existingRow) {
+          errors.push(
+            `Baris ${index + 2} duplikat dengan data yang sudah tersimpan (${describeKey(row)}).`,
+          );
+        } else if (previousUploadRow !== undefined) {
+          errors.push(
+            `Baris ${index + 2} duplikat dengan baris ${previousUploadRow + 2} dalam CSV ini (${describeKey(row)}).`,
+          );
+        } else {
+          uploadedKeys.set(key, index);
+        }
+      });
     }
 
     return {
@@ -744,7 +1078,16 @@ export default function DatasetTable({
         return changes ? { ...row, ...changes } : row;
       });
 
-      await saveDatasetRows(nextRows);
+      const changes = Object.entries(editedRows).map(([id, rowChanges]) => ({
+        id,
+        ...rowChanges,
+      }));
+      const { error } = await supabase.rpc("update_dataset_data_rows", {
+        p_dataset_id: datasetId,
+        p_changes: changes,
+      });
+
+      if (error) throw error;
 
       setAllRows(nextRows);
       applyRowsToPage(nextRows);
@@ -781,11 +1124,26 @@ export default function DatasetTable({
         ...row,
       })) as DatasetRow[];
 
+      const { data: createdBatchData, error } = await supabase.rpc(
+        "append_dataset_rows_with_batch",
+        {
+          p_dataset_id: datasetId,
+          p_rows: rowsWithIds,
+        },
+      );
+
+      if (error) throw error;
+
+      const createdBatch = (Array.isArray(createdBatchData)
+        ? createdBatchData[0]
+        : createdBatchData) as DatasetImportBatch | null;
       const nextRows = [...allRows, ...rowsWithIds];
 
-      await saveDatasetRows(nextRows);
-
       setAllRows(nextRows);
+      if (createdBatch) {
+        setImportBatches((prev) => [createdBatch, ...prev]);
+      }
+      setSelectedImportBatchIds(null);
       applyRowsToPage(nextRows);
       buildFilterOptions(nextRows);
 
@@ -819,7 +1177,12 @@ export default function DatasetTable({
         (row) => !selectedDeleteIds.includes(row.id),
       );
 
-      await saveDatasetRows(nextRows);
+      const { error } = await supabase.rpc("delete_dataset_data_rows", {
+        p_dataset_id: datasetId,
+        p_row_ids: selectedDeleteIds,
+      });
+
+      if (error) throw error;
 
       setAllRows(nextRows);
       applyRowsToPage(nextRows);
@@ -829,6 +1192,75 @@ export default function DatasetTable({
       setAlertType("success-delete");
     } catch (err) {
       console.error("Failed to delete data:", err);
+      setAlertType("failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canDeleteImportBatch = (createdBy: string | null) => {
+    if (role === "admin") return true;
+
+    return (
+      role === "partner" &&
+      canAdd &&
+      Boolean(currentUserId) &&
+      createdBy === currentUserId
+    );
+  };
+
+  const requestDeleteImportBatch = (batchId: string) => {
+    setPendingDeleteBatchId(batchId);
+    setOpenMenu(null);
+    setAlertType("confirm-delete-batch");
+  };
+
+  const handleConfirmDeleteBatch = async (confirmation: boolean) => {
+    if (!confirmation) {
+      setPendingDeleteBatchId(null);
+      setAlertType("none");
+      return;
+    }
+    if (!pendingDeleteBatchId) return;
+
+    setSaving(true);
+
+    try {
+      const isInitial = pendingDeleteBatchId === LEGACY_IMPORT_BATCH_ID;
+      const targetBatch = importBatches.find(
+        (batch) => batch.id === pendingDeleteBatchId,
+      );
+      const allImportedRowIds = new Set(
+        importBatches.flatMap((batch) => batch.row_ids),
+      );
+      const removedRowIds = new Set(targetBatch?.row_ids ?? []);
+      const nextRows = allRows.filter((row) =>
+        isInitial
+          ? allImportedRowIds.has(row.id)
+          : !removedRowIds.has(row.id),
+      );
+
+      const { error } = await supabase.rpc("delete_dataset_import_batch", {
+        p_dataset_id: datasetId,
+        p_batch_id: isInitial ? null : pendingDeleteBatchId,
+        p_delete_initial: isInitial,
+      });
+
+      if (error) throw error;
+
+      setAllRows(nextRows);
+      if (isInitial) {
+        setInitialImport(null);
+      } else {
+        setImportBatches((current) =>
+          current.filter((batch) => batch.id !== pendingDeleteBatchId),
+        );
+      }
+      setSelectedImportBatchIds(null);
+      setPendingDeleteBatchId(null);
+      setAlertType("success-delete-batch");
+    } catch (error) {
+      console.error("Failed to delete import batch:", error);
       setAlertType("failed");
     } finally {
       setSaving(false);
@@ -915,7 +1347,7 @@ export default function DatasetTable({
     selectedDeleteIds.length,
   ]);
 
-  const renderColumnHeaderMenu = (col: ColumnConfig) => {
+  const renderColumnHeaderMenu = (col: ColumnConfig, columnIndex: number) => {
     const options = filterOptions[col.key] ?? [];
     const selectedValues = columnFilters[col.key] ?? options;
     const allSelected =
@@ -923,13 +1355,60 @@ export default function DatasetTable({
 
     return (
       <div className="relative" data-table-menu-root>
+        <div className="flex items-center justify-between lg:hidden">
+          <button
+            type="button"
+            aria-label={`Geser ${col.label} ke kiri`}
+            disabled={columnIndex === 0}
+            onClick={() => moveVisibleColumn(col.key, -1)}
+            className="shrink-0 rounded p-1 hover:bg-sky-200 disabled:opacity-25"
+          >
+            <LeftChevron className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setOpenMenu((prev) => (prev === col.key ? null : col.key))
+            }
+            className="min-w-0 grow rounded py-1 text-center hover:bg-sky-200"
+          >
+            {col.label}
+          </button>
+          <button
+            type="button"
+            aria-label={`Geser ${col.label} ke kanan`}
+            disabled={columnIndex === tableColumns.length - 1}
+            onClick={() => moveVisibleColumn(col.key, 1)}
+            className="shrink-0 rounded p-1 hover:bg-sky-200 disabled:opacity-25"
+          >
+            <RightChevron className="size-4" />
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() =>
             setOpenMenu((prev) => (prev === col.key ? null : col.key))
           }
-          className="flex w-full items-center justify-center gap-2 rounded px-2 py-1 text-left hover:bg-sky-200 [&_.text-xs]:hidden"
+          className="relative hidden w-full items-center justify-center gap-2 rounded px-7 py-1 text-left hover:bg-sky-200 lg:flex [&_.text-xs]:hidden"
         >
+          <span
+            draggable
+            aria-label={`Geser kolom ${col.label}`}
+            title="Geser kolom"
+            onClick={(event) => event.stopPropagation()}
+            onDragStart={(event) => {
+              event.stopPropagation();
+              handleColumnDragStart(event, col.key);
+            }}
+            onDragEnd={() => {
+              setDraggedColumnKey(null);
+              setColumnDropTarget(null);
+            }}
+            className="absolute left-0 cursor-grab rounded p-0.5 active:cursor-grabbing"
+          >
+            <Draggable className="size-4" />
+          </span>
           <span>{col.label}</span>
           <DownChevron className="h-3 w-3 shrink-0" />
           <span className="text-xs">▾</span>
@@ -1170,10 +1649,10 @@ export default function DatasetTable({
             //! TABLE : NORMAL AND EDIT, UPDATE, DELETE
             <div className="w-full">
               {action === "list" && (
-                <div className="mb-4 flex min-w-0 flex-wrap gap-3">
+                <div className="mb-4 flex w-full min-w-0 flex-wrap gap-3">
                   <details
                     open={openMenu === "columns"}
-                    className="group relative min-w-0 flex-1 text-xs md:max-w-xs"
+                    className="group relative min-w-64 grow text-xs"
                     data-table-menu-root
                   >
                     <summary
@@ -1230,6 +1709,100 @@ export default function DatasetTable({
                       </div>
                     )}
                   </details>
+
+                  {importBatchOptions.length > 0 && (
+                    <details
+                      open={openMenu === "imports"}
+                      className="group relative min-w-64 grow text-xs"
+                      data-table-menu-root
+                    >
+                      <summary
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setOpenMenu((prev) =>
+                            prev === "imports" ? null : "imports",
+                          );
+                        }}
+                        className="cursor-pointer rounded-sm border border-gray-400 bg-white px-3 py-2 text-xs group-open:border-2 group-open:border-black"
+                      >
+                        Riwayat Data (
+                        {selectedImportBatchIds?.length ??
+                          importBatchOptions.length}
+                        /{importBatchOptions.length})
+                      </summary>
+
+                      {openMenu === "imports" && (
+                        <div className="absolute left-0 top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-300 bg-white p-3 text-xs text-gray-700 shadow-lg">
+                          <div className="mb-2 flex gap-2">
+                            {selectedImportBatchIds !== null && (
+                              <button
+                                type="button"
+                                onClick={() => setAllImportBatches(true)}
+                                className="rounded border border-gray-300 px-2 py-1 hover:bg-gray-100"
+                              >
+                                Pilih Semua
+                              </button>
+                            )}
+
+                            {(selectedImportBatchIds?.length ??
+                              importBatchOptions.length) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setAllImportBatches(false)}
+                                className="rounded border border-gray-300 px-2 py-1 hover:bg-gray-100"
+                              >
+                                Hapus Semua
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                            {importBatchOptions.map((option) => (
+                              <div
+                                key={option.id}
+                                className="flex items-start justify-between gap-2"
+                              >
+                                <label className="flex min-w-0 grow items-start gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      selectedImportBatchIds === null ||
+                                      selectedImportBatchIds.includes(option.id)
+                                    }
+                                    onChange={() =>
+                                      toggleImportBatch(option.id)
+                                    }
+                                    className="mt-0.5"
+                                  />
+                                  <span className="min-w-0">
+                                    {option.label}
+                                    <span className="ml-1 text-gray-500">
+                                      ({option.rowCount} baris)
+                                    </span>
+                                  </span>
+                                </label>
+
+                                {canDeleteImportBatch(option.createdBy) && (
+                                  <button
+                                    type="button"
+                                    aria-label={`Hapus riwayat ${option.label}`}
+                                    title="Hapus batch dan datanya"
+                                    disabled={saving}
+                                    onClick={() =>
+                                      requestDeleteImportBatch(option.id)
+                                    }
+                                    className="shrink-0 rounded p-1 text-red-600 hover:bg-red-50 hover:text-red-800 disabled:opacity-50"
+                                  >
+                                    <Delete className="size-4" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </details>
+                  )}
                 </div>
               )}
 
@@ -1239,7 +1812,7 @@ export default function DatasetTable({
                     <thead>
                       <tr>
                         {action === "delete" && (
-                          <th className="px-3 py-2 border border-gray-400 text-center">
+                          <th className="px-0 py-2 border border-gray-400 text-center">
                             <input
                               type="checkbox"
                               checked={
@@ -1254,15 +1827,51 @@ export default function DatasetTable({
                           </th>
                         )}
 
-                        {tableColumns.map((col) => (
+                        {tableColumns.map((col, columnIndex) => (
                           <th
                             key={col.key}
+                            onDragOver={(event) => {
+                              if (action !== "list" || !draggedColumnKey) return;
+                              event.preventDefault();
+                              const bounds =
+                                event.currentTarget.getBoundingClientRect();
+                              setColumnDropTarget({
+                                key: col.key,
+                                position:
+                                  event.clientX < bounds.left + bounds.width / 2
+                                    ? "before"
+                                    : "after",
+                              });
+                            }}
+                            onDrop={(event) =>
+                              handleColumnDrop(
+                                event,
+                                col.key,
+                                columnDropTarget?.key === col.key
+                                  ? columnDropTarget.position
+                                  : "before",
+                              )
+                            }
                             className={`${
                               col.color ? col.color : "bg-sky-100"
-                            } px-3 py-2 border border-gray-400 whitespace-normal break-words`}
+                            } px-0 py-2 border border-gray-400 whitespace-normal break-words ${
+                              draggedColumnKey === col.key
+                                ? "lg:opacity-50"
+                                : ""
+                            } ${
+                              columnDropTarget?.key === col.key &&
+                              columnDropTarget.position === "before"
+                                ? "lg:shadow-[inset_4px_0_0_#0369a1]"
+                                : ""
+                            } ${
+                              columnDropTarget?.key === col.key &&
+                              columnDropTarget.position === "after"
+                                ? "lg:shadow-[inset_-4px_0_0_#0369a1]"
+                                : ""
+                            }`}
                           >
                             {action === "list"
-                              ? renderColumnHeaderMenu(col)
+                              ? renderColumnHeaderMenu(col, columnIndex)
                               : col.label}
                           </th>
                         ))}
@@ -1347,7 +1956,7 @@ export default function DatasetTable({
           )}
         </div>
 
-        {action !== "add" && (
+        {action !== "add" && totalRows > pageSize && (
           <div className="mb-20 flex items-center justify-between gap-3 text-sm">
             <button
               disabled={page === 0}
@@ -1420,6 +2029,18 @@ export default function DatasetTable({
         />
       )}
 
+      {alertType === "confirm-delete-batch" && (
+        <AlertNotif
+          type="double"
+          msg="Hapus batch riwayat ini beserta seluruh data yang ditambahkan melalui batch tersebut?"
+          yesText="Hapus"
+          noText="Batal"
+          icon="warning"
+          loading={saving}
+          confirm={handleConfirmDeleteBatch}
+        />
+      )}
+
       {alertType === "success-update" && (
         <AlertNotif
           type="single"
@@ -1444,6 +2065,16 @@ export default function DatasetTable({
         <AlertNotif
           type="single"
           msg="Data telah dihapus"
+          yesText="OK"
+          icon="success"
+          confirm={handleResultAlert}
+        />
+      )}
+
+      {alertType === "success-delete-batch" && (
+        <AlertNotif
+          type="single"
+          msg="Batch riwayat dan datanya telah dihapus"
           yesText="OK"
           icon="success"
           confirm={handleResultAlert}

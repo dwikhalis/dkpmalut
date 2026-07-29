@@ -33,6 +33,9 @@ ChartJS.register(
 type BarChartProps = BaseChartProps & {
   stacked: boolean;
   yAxis?: boolean;
+  xAxisTitle?: string;
+  showLegend?: boolean;
+  histogram?: boolean;
   rotateXLabels?: number;
   heightClassName?: string;
 };
@@ -47,6 +50,9 @@ const BarCharts = forwardRef<ChartJS<"bar"> | undefined, BarChartProps>(
       tooltipLabels,
       datalabel = false,
       yAxis = true,
+      xAxisTitle = "",
+      showLegend = true,
+      histogram = false,
       rotateXLabels = 0,
       unit,
       heightClassName = "h-[60vh]",
@@ -70,6 +76,7 @@ const BarCharts = forwardRef<ChartJS<"bar"> | undefined, BarChartProps>(
       layout: { padding: { top: 16 } },
       plugins: {
         legend: {
+          display: showLegend,
           position: "bottom",
           labels: { font: { size: 10 } },
         },
@@ -101,14 +108,18 @@ const BarCharts = forwardRef<ChartJS<"bar"> | undefined, BarChartProps>(
       },
       datasets: {
         bar: {
-          categoryPercentage: 0.9,
-          barPercentage: 0.9,
-          borderRadius: 3,
+          categoryPercentage: histogram ? 1 : 0.9,
+          barPercentage: histogram ? 1 : 0.9,
+          borderRadius: histogram ? 0 : 3,
         },
       },
       scales: {
         x: {
           stacked,
+          title: {
+            display: Boolean(xAxisTitle),
+            text: xAxisTitle,
+          },
           ticks: {
             minRotation: rotateXLabels,
             maxRotation: rotateXLabels,

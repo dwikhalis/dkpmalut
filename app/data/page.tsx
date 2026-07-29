@@ -165,6 +165,7 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
               image={getImagePreviewUrl(dataset.image) ?? ""}
               link={dataset.pathRedirect || `/data/${dataset.slug}`}
               external={Boolean(dataset.pathRedirect)}
+              resourceId={dataset.id}
             />
           </div>
         ))}

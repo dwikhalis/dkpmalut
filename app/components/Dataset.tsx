@@ -21,10 +21,12 @@ import {
   type PublishedConfig,
   type PublishedTableConfig,
 } from "@/lib/utils/publishedConfig";
+import { invalidateDatasetListCache } from "@/lib/utils/datasetListCache";
 import DatasetTable, {
   type ColumnConfig,
   type FilterConfig,
 } from "./DatasetTable";
+import DatasetConfiguration from "./DatasetConfiguration";
 import DataChart from "./DataChart";
 import AlertNotif from "./AlertNotif";
 import Button from "./Button";
@@ -51,7 +53,11 @@ type PublicationAlertType =
   | "failed";
 
 type EditablePublicationStatus = "requested" | "approved" | "rejected";
-type DatasetView = "dataset" | "visualization" | "publication";
+type DatasetView =
+  | "dataset"
+  | "visualization"
+  | "publication"
+  | "configuration";
 
 type DatasetPublicationRow = {
   label: string | null;
@@ -124,6 +130,10 @@ function getSafeView(value: string | null): DatasetView {
     return "publication";
   }
 
+  if (value === "configuration") {
+    return "configuration";
+  }
+
   return "dataset";
 }
 
@@ -162,6 +172,8 @@ export default function Dataset({
   onSignalAction,
   onChangeCountChange,
   role,
+  canAdd = false,
+  previewOnly = false,
   linkMode = false,
 }: {
   datasetId: string;
@@ -170,6 +182,8 @@ export default function Dataset({
   onSignalAction: (signal: string) => void;
   onChangeCountChange?: (count: number) => void;
   role: "admin" | "partner" | null;
+  canAdd?: boolean;
+  previewOnly?: boolean;
   linkMode?: boolean;
 }) {
   const router = useRouter();
@@ -181,6 +195,7 @@ export default function Dataset({
   const [err, setErr] = useState<string | null>(null);
 
   const [columns, setColumns] = useState<ColumnConfig[]>([]);
+  const [duplicateKeys, setDuplicateKeys] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterConfig[]>([]);
   const [publishedConfig, setPublishedConfig] = useState<
     Partial<PublishedConfig>
@@ -223,6 +238,9 @@ export default function Dataset({
   const [publicationSaving, setPublicationSaving] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [publicationMessage, setPublicationMessage] = useState("");
+  const [publicationRedirectPath, setPublicationRedirectPath] = useState<
+    string | null
+  >(null);
   const [publicationAlert, setPublicationAlert] =
     useState<PublicationAlertType>("none");
   const [pendingPublicationStatus, setPendingPublicationStatus] =
@@ -304,10 +322,28 @@ export default function Dataset({
         );
 
         const parsedTags = parseJsonArray<string>(row.tag);
+        const { data: validationConfig, error: validationError } =
+          await supabase
+            .from("dataset_validation_configs")
+            .select("duplicate_keys")
+            .eq("dataset_id", datasetId)
+            .maybeSingle();
+
+        if (validationError) {
+          console.warn(
+            "Dataset duplicate validation is unavailable:",
+            validationError,
+          );
+        }
 
         if (cancelled) return;
 
         setColumns(columnConfig);
+        setDuplicateKeys(
+          Array.isArray(validationConfig?.duplicate_keys)
+            ? validationConfig.duplicate_keys
+            : [],
+        );
         setFilters(filterConfig);
         setPublishedConfig(parsedPublishedConfig);
         setTableConfig(normalizedTableConfig);
@@ -347,6 +383,7 @@ export default function Dataset({
         setPublicationImageFile(null);
         setPendingImageFile(null);
         setPublicationMessage("");
+        setPublicationRedirectPath(null);
         setShowPublicationForm(row.published !== null);
 
         await fetchImageUrl(row.image_path ?? null);
@@ -568,6 +605,14 @@ export default function Dataset({
       return false;
     }
 
+    if (publicationDataRegencies.length === 0) {
+      setPublicationMessage(
+        "Pilih minimal satu Wilayah Administratif Kabupaten / Kota.",
+      );
+      setPublicationAlert("invalid-form");
+      return false;
+    }
+
     if (!publicationImagePath && !publicationImageFile) {
       setPublicationMessage("Gambar publikasi wajib diunggah.");
       setPublicationAlert("invalid-form");
@@ -654,6 +699,8 @@ export default function Dataset({
       setPublicationImageEditing(false);
       setPublicationImageFile(null);
       setShowPublicationForm(true);
+      setPublicationMessage("");
+      invalidateDatasetListCache();
 
       await fetchImageUrl(imagePath ?? null);
 
@@ -661,6 +708,10 @@ export default function Dataset({
         router.replace(
           `/profile/data/${toSlug(publicationTitle.trim())}?view=publication`,
           { scroll: false },
+        );
+      } else {
+        setPublicationRedirectPath(
+          `/profile/data/${toSlug(publicationTitle.trim())}?view=publication`,
         );
       }
 
@@ -773,8 +824,19 @@ export default function Dataset({
             columns={columns}
             filters={filters}
             defaultSortKey={defaultSortKey}
+            duplicateKeys={duplicateKeys}
+            role={role}
+            canAdd={canAdd}
           />
         </>
+      )}
+
+      {activeView === "configuration" && role === "admin" && (
+        <DatasetConfiguration
+          datasetId={datasetId}
+          columns={columns}
+          onValidationChange={setDuplicateKeys}
+        />
       )}
 
       {activeView === "visualization" && (
@@ -791,13 +853,14 @@ export default function Dataset({
               : "Simpan Visualisasi"
           }
           showSaveChangeCount={publicationStatus !== null}
+          previewOnly={previewOnly}
           onSave={(chartConfig, snapshotDataUrl, nextTableConfig) =>
             void saveChartConfig(chartConfig, snapshotDataUrl, nextTableConfig)
           }
         />
       )}
 
-      {activeView === "publication" && (
+      {activeView === "publication" && !previewOnly && (
         <div className="min-h-[70vh] space-y-4">
           <div className={`rounded border p-3 text-sm ${statusBar.className}`}>
             <div className="flex items-center justify-between gap-2">
@@ -996,7 +1059,10 @@ export default function Dataset({
 
               <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
                 <legend className="px-1 text-sm font-semibold text-gray-900">
-                  Wilayah Administratif — Kabupaten / Kota
+                  Wilayah Administratif — Kabupaten / Kota{" "}
+                  <span className="text-red-600" aria-hidden="true">
+                    *
+                  </span>
                 </legend>
 
                 <div className="flex flex-wrap gap-2">
@@ -1026,7 +1092,8 @@ export default function Dataset({
                 </div>
 
                 <p className="text-xs leading-relaxed text-gray-500">
-                  Pilih kabupaten atau kota yang dicakup oleh dataset.
+                  Wajib pilih minimal satu kabupaten atau kota yang dicakup
+                  oleh dataset.
                 </p>
               </fieldset>
 
@@ -1217,7 +1284,14 @@ export default function Dataset({
           msg="Publikasi berhasil diajukan dan menunggu persetujuan admin."
           yesText="OK"
           icon="success"
-          confirm={() => setPublicationAlert("none")}
+          confirm={() => {
+            if (publicationRedirectPath) {
+              window.location.assign(publicationRedirectPath);
+              return;
+            }
+
+            setPublicationAlert("none");
+          }}
         />
       )}
 

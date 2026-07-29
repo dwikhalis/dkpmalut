@@ -396,6 +396,7 @@ export default function DataPublishTable({
         </table>
       </div>
 
+      {totalPages > 1 && (
       <div className="mt-6 flex items-center justify-between gap-3 text-sm">
         <button
           disabled={page === 0}
@@ -432,6 +433,7 @@ export default function DataPublishTable({
           <RightChevron className="size-6" />
         </button>
       </div>
+      )}
     </div>
   );
 }

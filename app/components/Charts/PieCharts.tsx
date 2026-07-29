@@ -21,6 +21,7 @@ ChartJS.register(ArcElement, Title, Tooltip, Legend, ChartDataLabels);
 
 type PieChartProps = BaseChartProps & {
   heightClassName?: string;
+  showLegend?: boolean;
 };
 
 const PieCharts = forwardRef<ChartJS<"pie"> | undefined, PieChartProps>(
@@ -31,6 +32,7 @@ const PieCharts = forwardRef<ChartJS<"pie"> | undefined, PieChartProps>(
       chartTitle,
       tooltipLabels,
       datalabel = false,
+      showLegend = true,
       unit,
       heightClassName = "h-[60vh]",
     },
@@ -62,6 +64,7 @@ const PieCharts = forwardRef<ChartJS<"pie"> | undefined, PieChartProps>(
       layout: { padding: { top: 16 } },
       plugins: {
         legend: {
+          display: showLegend,
           position: "bottom",
           labels: { font: { size: 10 } },
         },

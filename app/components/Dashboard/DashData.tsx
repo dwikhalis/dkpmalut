@@ -18,6 +18,10 @@ import {
   isFeatureCollection,
 } from "@/lib/utils/mapConfig";
 import { useCollapsibleMount } from "@/lib/hooks/useCollapsibleMount";
+import {
+  getDatasetListCache,
+  setDatasetListCache,
+} from "@/lib/utils/datasetListCache";
 
 const DatasetConfig = dynamic(() => import("../DatasetConfig"), {
   loading: () => (
@@ -36,6 +40,7 @@ type ActionType = "add" | "edit" | "list" | "delete";
 type MainPage = "main" | "add" | "edit" | "delete" | "mapadd" | "linkadd";
 type DetailView =
   | "dataset"
+  | "configuration"
   | "visualization"
   | "publication"
   | "link"
@@ -55,6 +60,8 @@ type DatasetPage = {
   import_status?: "draft" | "ready" | null;
   draft_expires_at?: string | null;
   kind: "dataset" | "map" | "link";
+  view_count?: number;
+  download_count?: number;
 };
 
 function downloadText(filename: string, content: string) {
@@ -98,6 +105,12 @@ type OwnerRow = {
   role: string | null;
 };
 
+type DatasetAccess = {
+  can_add: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+};
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -132,6 +145,10 @@ function getSafeView(value: string | null): DetailView {
 
   if (value === "publication") {
     return "publication";
+  }
+
+  if (value === "configuration") {
+    return "configuration";
   }
 
   if (value === "link") {
@@ -215,6 +232,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const [actionChangeCount, setActionChangeCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [addDataReady, setAddDataReady] = useState(false);
+  const [grantedAccess, setGrantedAccess] = useState<DatasetAccess | null>(null);
   const mountedRef = useRef(false);
 
   const editDataset: EditSource = "datasets";
@@ -258,6 +276,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const isDetailPage = Boolean(currentSlug);
   const isMapDetail = selectedDataset?.kind === "map" || isNewMapPage;
   const isLinkDetail = selectedDataset?.kind === "link";
+  const ownsSelectedDataset = selectedDataset?.user_id === userId;
+  const datasetAccess = {
+    can_add: role === "admin" || ownsSelectedDataset || grantedAccess?.can_add,
+    can_edit:
+      role === "admin" || ownsSelectedDataset || grantedAccess?.can_edit,
+    can_delete:
+      role === "admin" || ownsSelectedDataset || grantedAccess?.can_delete,
+  };
+  const isSharedPartnerDataset =
+    role === "partner" && Boolean(selectedDataset) && !ownsSelectedDataset;
   const detailPageLabel = isMapDetail
     ? action === "add" || detailView === "mapadd"
       ? "Tambah Layer"
@@ -273,7 +301,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     : isLinkDetail
       ? "Publikasi"
     : detailView === "visualization"
-      ? "Visualisasi"
+      ? isSharedPartnerDataset
+        ? "Preview"
+        : "Visualisasi"
+      : detailView === "configuration"
+        ? "Pengaturan"
       : detailView === "publication"
         ? "Publikasi"
         : "Dataset";
@@ -289,14 +321,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         : null
     : detailView === "dataset"
       ? "visualization"
-      : detailView === "visualization"
+      : detailView === "visualization" && !isSharedPartnerDataset
         ? "publication"
         : null;
   const nextDetailLabel =
     nextDetailView === "mapdataset"
       ? "Layer"
       : nextDetailView === "mapvisualization"
-        ? "Visualisasi"
+      ? "Visualisasi"
+      : nextDetailView === "visualization" && isSharedPartnerDataset
+        ? "Preview"
         : nextDetailView === "visualization"
           ? "Visualisasi"
           : nextDetailView === "publication"
@@ -329,9 +363,12 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const getOwnerName = (ownerId: string | null) => {
     if (!ownerId) return "Tanpa Pemilik";
-    if (role === "admin" && ownerId === userId) return "Admin";
+    if (role === "partner") {
+      return ownerId === userId ? "Dataset Saya" : "Dataset Dibagikan";
+    }
+    if (role === "admin" && ownerId === userId) return "Dataset Saya";
 
-    return ownerNameMap[ownerId] ?? "Pengguna tanpa nama";
+    return ownerNameMap[ownerId] ?? "Dataset Dibagikan";
   };
 
   const ownerGroups = useMemo(() => {
@@ -345,7 +382,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     >();
 
     datasetPages.forEach((dataset) => {
-      const ownerId = dataset.user_id ?? "";
+      const ownerId =
+        role === "partner" && dataset.user_id !== userId
+          ? "__shared__"
+          : (dataset.user_id ?? "");
       const ownerName = getOwnerName(dataset.user_id);
 
       if (!groups.has(ownerId)) {
@@ -362,7 +402,12 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     if (groups.size === 0 && userId) {
       groups.set(userId, {
         ownerId: userId,
-        ownerName: role === "admin" ? "Admin" : userName || "Data",
+        ownerName:
+          role === "admin"
+            ? "Dataset Saya"
+            : role === "partner"
+              ? "Dataset Saya"
+              : userName || "Data",
         datasets: [],
       });
     }
@@ -413,6 +458,63 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   }, [mainPage, action, detailView]);
 
   useEffect(() => {
+    if (
+      !selectedDataset ||
+      selectedDataset.kind !== "dataset" ||
+      role !== "partner" ||
+      ownsSelectedDataset
+    ) {
+      setGrantedAccess(null);
+      return;
+    }
+
+    const fetchGrant = async () => {
+      const { data, error } = await supabase
+        .from("dataset_access_grants")
+        .select("can_add, can_edit, can_delete")
+        .eq("dataset_id", selectedDataset.id)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Failed to fetch dataset access:", error);
+        setGrantedAccess(null);
+        return;
+      }
+
+      setGrantedAccess(data as DatasetAccess | null);
+    };
+
+    void fetchGrant();
+  }, [ownsSelectedDataset, role, selectedDataset, userId]);
+
+  useEffect(() => {
+    if (
+      !isSharedPartnerDataset || !selectedDataset
+    ) {
+      return;
+    }
+
+    if (
+      detailView === "publication"
+    ) {
+      setAction("list");
+      setShowMobileAction(false);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("action");
+      params.set("view", "visualization");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [
+    detailView,
+    isSharedPartnerDataset,
+    pathname,
+    router,
+    searchParams,
+    selectedDataset,
+  ]);
+
+  useEffect(() => {
     if (!isDetailPage || selectedDataset?.kind !== "link") return;
     if (searchParams.get("view") === "publication") return;
 
@@ -426,11 +528,52 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     if (loading || !userId) return;
     if (role !== "admin" && role !== "partner") return;
 
+    const cacheScope = `${role}:${role === "admin" ? "all" : userId}`;
+
+    if (refreshKey === 0) {
+      const cached = getDatasetListCache<DatasetPage, OwnerRow>(cacheScope);
+
+      if (
+        cached &&
+        role === "admin" &&
+        cached.datasets.every(
+          (dataset) =>
+            typeof dataset.view_count === "number" &&
+            typeof dataset.download_count === "number",
+        )
+      ) {
+        setDatasetPages(cached.datasets);
+        setOwnerRows(cached.owners);
+      }
+    }
+
     const fetchDatasetPages = async () => {
       try {
-        const result = await getDatasetPages(
-          role === "admin" ? "all" : userId,
-        );
+        const result = await getDatasetPages("all");
+        let visibleDatasetRows = result;
+
+        if (role === "partner") {
+          const { data: grantRows, error: grantError } = await supabase
+            .from("dataset_access_grants")
+            .select("dataset_id")
+            .eq("user_id", userId);
+
+          if (grantError) {
+            console.warn(
+              "Dataset grants are unavailable; showing owned datasets only:",
+              grantError,
+            );
+          }
+
+          const grantedDatasetIds = new Set(
+            (grantRows ?? []).map((grant) => grant.dataset_id),
+          );
+
+          visibleDatasetRows = result.filter(
+            (dataset) =>
+              dataset.user_id === userId || grantedDatasetIds.has(dataset.id),
+          );
+        }
 
         let mapQuery = supabase
           .from("map_datasets")
@@ -467,8 +610,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           mapError = null;
         }
 
-        setDatasetPages([
-          ...result.map((item) => ({
+        let nextDatasetPages: DatasetPage[] = [
+          ...visibleDatasetRows.map((item) => ({
             ...item,
             kind: item.kind === "link" ? "link" as const : "dataset" as const,
           })),
@@ -477,23 +620,56 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             label: item.label || "Peta Tanpa Nama",
             kind: "map" as const,
           })),
-        ]);
+        ];
 
-        let ownersQuery = supabase
+        const metricResourceIds = nextDatasetPages.map((item) => item.id);
+        if (metricResourceIds.length > 0) {
+          const { data: metricRows, error: metricError } = await supabase
+            .from("dataset_public_metrics")
+            .select(
+              "resource_kind, resource_id, view_count, download_count",
+            )
+            .in("resource_id", metricResourceIds);
+
+          if (metricError) {
+            console.warn("Dataset public metrics are unavailable:", metricError);
+          } else {
+            const metricMap = new Map(
+              (metricRows ?? []).map((metric) => [
+                `${metric.resource_kind}:${metric.resource_id}`,
+                metric,
+              ]),
+            );
+
+            nextDatasetPages = nextDatasetPages.map((item) => {
+              const metric = metricMap.get(
+                `${item.kind === "map" ? "map" : "dataset"}:${item.id}`,
+              );
+
+              return {
+                ...item,
+                view_count: Number(metric?.view_count ?? 0),
+                download_count: Number(metric?.download_count ?? 0),
+              };
+            });
+          }
+        }
+
+        const ownersQuery = supabase
           .from("users")
           .select("id, username, organization, role")
           .in("role", ["admin", "partner"])
           .order("organization", { ascending: true });
 
-        if (role === "partner") {
-          ownersQuery = ownersQuery.eq("id", userId);
-        }
-
         const { data: owners, error: ownersError } = await ownersQuery;
 
         if (ownersError) throw ownersError;
 
-        setOwnerRows((owners ?? []) as OwnerRow[]);
+        const nextOwnerRows = (owners ?? []) as OwnerRow[];
+
+        setDatasetPages(nextDatasetPages);
+        setOwnerRows(nextOwnerRows);
+        setDatasetListCache(cacheScope, nextDatasetPages, nextOwnerRows);
       } catch (err) {
         console.error("Fetching datasets:", err);
       }
@@ -740,6 +916,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       return;
     }
 
+    if (detailView === "configuration") {
+      setDetailStep("dataset");
+      return;
+    }
+
     resetToHome();
   };
 
@@ -916,27 +1097,6 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                         <>
                           <button
                             className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailStep("mapdataset")}
-                          >
-                            Layer
-                          </button>
-
-                          <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailStep("mapvisualization")}
-                          >
-                            Visualisasi
-                          </button>
-
-                          <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailStep("publication")}
-                          >
-                            Publikasi
-                          </button>
-
-                          <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
                             onClick={() => setDetailAction("edit")}
                           >
                             Edit Layer
@@ -962,50 +1122,30 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           >
                             Download CSV
                           </button>
+
                         </>
                       ) : (
                         <>
-                          <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailStep("dataset")}
-                          >
-                            Dataset
-                          </button>
-
-                          <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailStep("visualization")}
-                          >
-                            Visualisasi
-                          </button>
-
-                          <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailStep("publication")}
-                          >
-                            Publikasi
-                          </button>
-
-                          <button
+                          {datasetAccess.can_edit && <button
                             className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
                             onClick={() => setDetailAction("edit")}
                           >
                             Edit Data
-                          </button>
+                          </button>}
 
-                          <button
+                          {datasetAccess.can_add && <button
                             className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
                             onClick={() => setDetailAction("add")}
                           >
                             Tambah Data
-                          </button>
+                          </button>}
 
-                          <button
+                          {datasetAccess.can_delete && <button
                             className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
                             onClick={() => setDetailAction("delete")}
                           >
                             Hapus Data
-                          </button>
+                          </button>}
 
                           <button
                             className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
@@ -1013,6 +1153,15 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           >
                             Download CSV
                           </button>
+
+                          {role === "admin" && (
+                            <button
+                              className="whitespace-nowrap p-2 px-2 text-left text-sm hover:bg-sky-200"
+                              onClick={() => setDetailView("configuration")}
+                            >
+                              Pengaturan
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -1106,7 +1255,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                       {group.ownerName}
                     </h2>
 
-                    {renderGroupActions(group.ownerId)}
+                    {(role === "admin" || group.ownerId === userId) &&
+                      renderGroupActions(group.ownerId)}
                   </div>
 
                   {group.datasets.length === 0 ? (
@@ -1123,7 +1273,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                         <button
                           key={dataset.id}
                           type="button"
-                          className="flex w-full items-center justify-between gap-3 rounded-2xl border-1 border-stone-200 bg-white p-3 text-left shadow-xl hover:bg-sky-800 hover:text-white cursor-pointer"
+                          className="group flex w-full items-center justify-between gap-3 rounded-2xl border-1 border-stone-200 bg-white p-3 text-left shadow-xl hover:bg-sky-800 hover:text-white cursor-pointer"
                           onClick={() => {
                             setMainPage("main");
                             setAction("list");
@@ -1147,7 +1297,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           }}
                         >
                           <span className="min-w-0 flex-1 text-left">
-                            {dataset.label}
+                            <span className="block">{dataset.label}</span>
+                            <span className="mt-0.5 block text-xs text-gray-500 group-hover:text-white/80">
+                              Dilihat: {dataset.view_count ?? 0}
+                              {dataset.kind !== "link" && (
+                                <>
+                                  {" "}
+                                  | Diunduh: {dataset.download_count ?? 0}
+                                </>
+                              )}
+                            </span>
                           </span>
 
                           {dataset.kind === "map" && (
@@ -1184,6 +1343,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               onSignalAction={handleSignalAction}
               onChangeCountChange={handleActionChangeCount}
               role={role}
+              canAdd={Boolean(datasetAccess.can_add)}
+              previewOnly={isSharedPartnerDataset}
             />
           )}
           {isDetailPage && selectedDataset?.kind === "link" && (
@@ -1355,64 +1516,47 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           <div className="flex w-full flex-col gap-2">
             <button
               className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={() =>
-                setDetailStep(isMapDetail ? "mapdataset" : "dataset")
-              }
-            >
-              {isMapDetail ? "Layer" : "Dataset"}
-            </button>
-
-            <button
-              className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={() =>
-                setDetailStep(isMapDetail ? "mapvisualization" : "visualization")
-              }
-            >
-              Visualisasi
-            </button>
-
-            <button
-              className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={() => setDetailStep("publication")}
-            >
-              Publikasi
-            </button>
-
-            <button
-              className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
               onClick={handleDownloadCsv}
             >
               Download CSV
             </button>
+            {role === "admin" && selectedDataset?.kind === "dataset" && (
+              <button
+                className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
+                onClick={() => setDetailView("configuration")}
+              >
+                Pengaturan
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2 w-full">
-            <button
+            {datasetAccess.can_edit && <button
               className="w-full bg-sky-800 rounded-xl border-2 border-white py-2 text-md text-white"
               onClick={() => {
                 setDetailAction("edit");
               }}
             >
               Edit
-            </button>
+            </button>}
 
-            <button
+            {datasetAccess.can_add && <button
               className="w-full bg-green-600 rounded-xl border-2 border-white py-2 text-md text-white"
               onClick={() => {
                 setDetailAction("add");
               }}
             >
               Tambah
-            </button>
+            </button>}
 
-            <button
+            {datasetAccess.can_delete && <button
               className="w-full bg-red-600 rounded-xl border-2 border-white py-2 text-md text-white"
               onClick={() => {
                 setDetailAction("delete");
               }}
             >
               Hapus
-            </button>
+            </button>}
           </div>
           </div>
         </div>
@@ -1421,7 +1565,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       {saveCancelActions.mounted && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`${saveCancelActions.closing ? "bottom-menu-collapse" : "bottom-menu-expand"} fixed bottom-0 left-0 z-40 flex w-full flex-col justify-center gap-3 rounded-t-2xl bg-stone-900 p-5 lg:hidden`}
+          className={`${saveCancelActions.closing ? "bottom-menu-collapse" : "bottom-menu-expand"} fixed bottom-0 left-0 z-40 flex w-full flex-col justify-center gap-3 rounded-t-2xl bg-stone-900 p-5 md:hidden`}
         >
           <button
             className="w-full rounded-xl bg-gray-600 border-2 border-white py-2 text-md text-white"

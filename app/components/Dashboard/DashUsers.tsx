@@ -7,6 +7,10 @@ import { useUrlQueryState } from "@/lib/hooks/useUrlQueryState";
 import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 import AuthAdminAccess from "@/app/Auth/AuthAdminAccess";
+import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+
+const USERS_CACHE_KEY = "dashboard-users";
+const USERS_CACHE_TTL = 2 * 60 * 1000;
 
 type UserRow = {
   id: string;
@@ -111,7 +115,7 @@ function formatDateTime(value: string | null) {
   if (Number.isNaN(date.getTime())) return "-";
 
   const formatter = new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jayapura", // WIT / UTC+9
+    timeZone: "Asia/Jayapura", // WIT
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
@@ -243,6 +247,15 @@ export default function DashUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      const cached = getSessionCache<UserRow[]>(
+        USERS_CACHE_KEY,
+        USERS_CACHE_TTL,
+      );
+
+      if (cached) {
+        setUsers(cached);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("users")
@@ -253,7 +266,9 @@ export default function DashUsers() {
 
       if (error) throw error;
 
-      setUsers((data ?? []) as UserRow[]);
+      const nextUsers = (data ?? []) as UserRow[];
+      setUsers(nextUsers);
+      setSessionCache(USERS_CACHE_KEY, nextUsers);
     } catch (error) {
       console.error("Failed to fetch users:", error);
       setErrorMsg(
@@ -372,6 +387,14 @@ export default function DashUsers() {
                 ...user,
                 role: pendingRoleChange.newRole,
               }
+            : user,
+        ),
+      );
+      setSessionCache(
+        USERS_CACHE_KEY,
+        users.map((user) =>
+          user.id === pendingRoleChange.userId
+            ? { ...user, role: pendingRoleChange.newRole }
             : user,
         ),
       );

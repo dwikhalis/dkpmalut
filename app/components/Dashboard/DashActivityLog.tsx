@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import SpinnerLoading from "../SpinnerLoading";
+import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+
+const ACTIVITY_LOG_CACHE_KEY = "dashboard-activity-log";
+const ACTIVITY_LOG_CACHE_TTL = 30 * 1000;
 
 type ActivityLog = {
   id: string;
@@ -39,6 +43,9 @@ const entityLabels: Record<string, string> = {
   map_layers: "Layer peta",
   map_legend_items: "Legenda peta",
   table_config: "Konfigurasi tabel",
+  dataset_import_batches: "Batch data",
+  dataset_access_grants: "Hak akses dataset",
+  dataset_validation_configs: "Validasi data",
 };
 
 const entityPageLabels: Record<string, string> = {
@@ -49,6 +56,9 @@ const entityPageLabels: Record<string, string> = {
   map_layers: "Peta",
   map_legend_items: "Peta",
   table_config: "Dashboard",
+  dataset_import_batches: "Data",
+  dataset_access_grants: "Data",
+  dataset_validation_configs: "Data",
 };
 
 const cmsPageLabels: Record<string, string> = {
@@ -79,6 +89,21 @@ function changedFields(metadata: Record<string, unknown> | null) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+const operationLabels: Record<string, string> = {
+  UPLOAD_BATCH: "Upload batch data",
+  DELETE_BATCH: "Hapus batch data",
+  UPDATE_ACCESS: "Ubah hak akses",
+  UPDATE_DUPLICATE_VALIDATION: "Ubah validasi duplikasi",
+};
+
+function metadataNumber(
+  metadata: Record<string, unknown> | null,
+  key: string,
+) {
+  const value = metadata?.[key];
+  return typeof value === "number" ? value : 0;
 }
 
 function impactedPage(log: ActivityLog) {
@@ -125,6 +150,17 @@ export default function DashActivityLog() {
 
   useEffect(() => {
     async function loadLogs() {
+      const cached = getSessionCache<ActivityLog[]>(
+        ACTIVITY_LOG_CACHE_KEY,
+        ACTIVITY_LOG_CACHE_TTL,
+      );
+
+      if (cached) {
+        setLogs(cached);
+        setLoading(false);
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -142,7 +178,11 @@ export default function DashActivityLog() {
 
       if (!response.ok)
         setError(result.message || "Log aktivitas gagal dimuat.");
-      else setLogs(result.logs ?? []);
+      else {
+        const nextLogs = result.logs ?? [];
+        setLogs(nextLogs);
+        setSessionCache(ACTIVITY_LOG_CACHE_KEY, nextLogs);
+      }
       setLoading(false);
     }
 
@@ -285,7 +325,7 @@ export default function DashActivityLog() {
                     <span className="flex items-center gap-1.5 text-xs text-stone-500">
                       <span>{timeFormatter.format(new Date(log.created_at))}</span>
                       <span className="text-[10px] font-medium text-stone-400">
-                        UTC + 9
+                        WIT
                       </span>
                     </span>
                   </td>
@@ -332,6 +372,45 @@ export default function DashActivityLog() {
                         Kolom: {changedFields(log.metadata).join(", ")}
                       </span>
                     )}
+                    {metadataText(log.metadata, "operation") && (
+                      <span className="block text-xs font-medium text-sky-700">
+                        {operationLabels[
+                          metadataText(log.metadata, "operation") ?? ""
+                        ] ?? metadataText(log.metadata, "operation")}
+                      </span>
+                    )}
+                    {metadataNumber(log.metadata, "row_count") > 0 && (
+                      <span className="block text-xs text-stone-500">
+                        Jumlah baris:{" "}
+                        {metadataNumber(log.metadata, "row_count")}
+                      </span>
+                    )}
+                    {log.metadata?.row_changes != null &&
+                      typeof log.metadata.row_changes === "object" && (
+                        <span className="block text-xs text-stone-500">
+                          Baris: +
+                          {metadataNumber(
+                            log.metadata.row_changes as Record<string, unknown>,
+                            "added_count",
+                          )}{" "}
+                          / diubah{" "}
+                          {metadataNumber(
+                            log.metadata.row_changes as Record<string, unknown>,
+                            "updated_count",
+                          )}{" "}
+                          / dihapus{" "}
+                          {metadataNumber(
+                            log.metadata.row_changes as Record<string, unknown>,
+                            "removed_count",
+                          )}
+                        </span>
+                      )}
+                    {metadataText(log.metadata, "granted_user_name") && (
+                      <span className="block text-xs text-stone-500">
+                        Partner:{" "}
+                        {metadataText(log.metadata, "granted_user_name")}
+                      </span>
+                    )}
                     {log.entity_id && (
                       <span className="block max-w-64 truncate text-xs text-stone-500">
                         {log.entity_id}
@@ -351,7 +430,7 @@ export default function DashActivityLog() {
           </table>
           </div>
 
-          {filteredLogs.length > 0 && (
+          {filteredLogs.length > 0 && totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm shadow-sm">
               <span className="text-stone-600">
                 Halaman {currentPage} dari {totalPages}

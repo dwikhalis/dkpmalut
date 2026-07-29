@@ -8,6 +8,8 @@ import {
   normalizeChartConfig,
   normalizeTableConfig,
   parsePublishedConfig,
+  type ChartSortField,
+  type ChartSortMode,
   type PublishedConfig,
 } from "@/lib/utils/publishedConfig";
 import type { ColumnConfig } from "./DataPublishTable";
@@ -167,7 +169,31 @@ export default function ChartGeneric({ slug, pages }: Props) {
   }, [columns, filters, publishedConfig.table]);
 
   const chartConfig = useMemo(() => {
-    return normalizeChartConfig(publishedConfig.chart, columns, tableConfig);
+    const normalized = normalizeChartConfig(
+      publishedConfig.chart,
+      columns,
+      tableConfig,
+    );
+    const sortField: ChartSortField =
+      tableConfig.sortKey === normalized.categoryKey
+        ? "group"
+        : tableConfig.sortKey === normalized.seriesKey
+          ? "series"
+          : "value";
+    const sortMode: ChartSortMode =
+      sortField === "value"
+        ? tableConfig.sortDirection === "asc"
+          ? "value-asc"
+          : "value-desc"
+        : tableConfig.sortDirection === "asc"
+          ? "label-asc"
+          : "label-desc";
+
+    return {
+      ...normalized,
+      sortField,
+      sortMode,
+    };
   }, [columns, publishedConfig.chart, tableConfig]);
 
   const publicColumns = useMemo(() => {
@@ -188,6 +214,27 @@ export default function ChartGeneric({ slug, pages }: Props) {
     setPublicSortBy(defaultSortKey);
   }, [dataset?.id, defaultSortKey]);
 
+  useEffect(() => {
+    if (!dataset?.id) return;
+
+    const storageKey = `public-dataset-view:dataset:${dataset.id}`;
+    if (window.sessionStorage.getItem(storageKey)) return;
+
+    window.sessionStorage.setItem(storageKey, "1");
+    void supabase
+      .rpc("record_public_dataset_metric", {
+        p_resource_kind: "dataset",
+        p_resource_id: dataset.id,
+        p_metric: "view",
+      })
+      .then(({ error }) => {
+        if (error) {
+          window.sessionStorage.removeItem(storageKey);
+          console.warn("Failed to record dataset view:", error);
+        }
+      });
+  }, [dataset?.id]);
+
   const updatePublicFilter = (key: string, value: string) => {
     setPublicFiltersState((prev) => ({
       ...prev,
@@ -197,6 +244,16 @@ export default function ChartGeneric({ slug, pages }: Props) {
 
   const downloadCsv = () => {
     if (!dataset || !canDownloadCsv) return;
+
+    void supabase
+      .rpc("record_public_dataset_metric", {
+        p_resource_kind: "dataset",
+        p_resource_id: dataset.id,
+        p_metric: "download",
+      })
+      .then(({ error }) => {
+        if (error) console.warn("Failed to record dataset download:", error);
+      });
 
     const csv = toCsv(publicCsvData.headers, publicCsvData.rows);
     const blob = new Blob(["\uFEFF", csv], {

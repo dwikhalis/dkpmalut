@@ -46,11 +46,19 @@ export async function GET(request: Request) {
   const actorIds = [
     ...new Set((logs ?? []).map((log) => log.actor_id).filter(Boolean)),
   ];
-  const { data: actors } = actorIds.length
+  const relatedUserIds = [
+    ...new Set(
+      (logs ?? [])
+        .map((log) => log.metadata?.granted_user_id)
+        .filter((id): id is string => typeof id === "string"),
+    ),
+  ];
+  const userIds = [...new Set([...actorIds, ...relatedUserIds])];
+  const { data: actors } = userIds.length
     ? await supabaseAdmin
         .from("users")
-        .select("id, username, email, role")
-        .in("id", actorIds)
+        .select("id, username, email, organization, role")
+        .in("id", userIds)
     : { data: [] };
   const actorMap = new Map((actors ?? []).map((actor) => [actor.id, actor]));
   return NextResponse.json(
@@ -58,6 +66,18 @@ export async function GET(request: Request) {
       logs: (logs ?? []).map((log) => ({
         ...log,
         actor: actorMap.get(log.actor_id) ?? null,
+        metadata: {
+          ...(log.metadata ?? {}),
+          ...(typeof log.metadata?.granted_user_id === "string"
+            ? {
+                granted_user_name:
+                  actorMap.get(log.metadata.granted_user_id)?.username ||
+                  actorMap.get(log.metadata.granted_user_id)?.organization ||
+                  actorMap.get(log.metadata.granted_user_id)?.email ||
+                  log.metadata.granted_user_id,
+              }
+            : {}),
+        },
       })),
     },
     { headers: { "Cache-Control": "no-store" } },

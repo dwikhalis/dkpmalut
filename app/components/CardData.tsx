@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase/supabaseClient";
 
 interface Props {
   tag?: string | null;
@@ -9,11 +10,46 @@ interface Props {
   image: string;
   link: string;
   external?: boolean;
+  resourceId?: string;
 }
 
-export default function CardData({ tag, title, image, link, external = false }: Props) {
+export default function CardData({
+  tag,
+  title,
+  image,
+  link,
+  external = false,
+  resourceId,
+}: Props) {
+  const recordExternalView = () => {
+    if (!external || !resourceId) return;
+
+    const storageKey = `public-dataset-view:dataset:${resourceId}`;
+    if (window.sessionStorage.getItem(storageKey)) return;
+
+    window.sessionStorage.setItem(storageKey, "1");
+    void supabase
+      .rpc("record_public_dataset_metric", {
+        p_resource_kind: "dataset",
+        p_resource_id: resourceId,
+        p_metric: "view",
+      })
+      .then(({ error }) => {
+        if (error) {
+          window.sessionStorage.removeItem(storageKey);
+          console.warn("Failed to record link dataset view:", error);
+        }
+      });
+  };
+
   return (
-    <Link href={link} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="block h-full">
+    <Link
+      href={link}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+      onClick={recordExternalView}
+      className="block h-full"
+    >
       <article className="h-full overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-stone-200 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
         <div className="flex h-50 items-center justify-center overflow-hidden bg-stone-100">
           <Image

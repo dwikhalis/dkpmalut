@@ -1,9 +1,20 @@
 import type { ColumnConfig, FilterConfig } from "@/app/components/DatasetTable";
 
 export type SortDirection = "asc" | "desc";
-export type ChartType = "bar" | "line" | "pie" | "stacked-bar" | "multiple-bar" | "multiple-line";
-export type ChartValueMode = "count_rows" | "sum_column";
-export type ChartSortMode = "value-desc" | "value-asc" | "label-asc" | "label-desc";
+export type ChartType =
+  | "bar"
+  | "line"
+  | "pie"
+  | "histogram"
+  | "stacked-bar"
+  | "multiple-bar"
+  | "multiple-line";
+export type ChartValueMode = "count_rows" | "sum_column" | "show_value";
+export type ChartSortMode =
+  | "value-desc"
+  | "value-asc"
+  | "label-asc"
+  | "label-desc";
 export type ChartSortField = "value" | "group" | "series";
 
 export type PublishedTableConfig = {
@@ -18,6 +29,7 @@ export type PublishedChartConfig = {
   type: ChartType;
   categoryKey: string;
   categoryLabel: string;
+  showLegend: boolean;
   seriesKey: string | null;
   seriesLabel: string;
   valueMode: ChartValueMode;
@@ -32,6 +44,7 @@ export type PublishedChartConfig = {
   sortField: ChartSortField;
   sortMode: ChartSortMode;
   showSortDirectionControl: boolean;
+  histogramBins: number;
   limit: number;
 };
 
@@ -133,7 +146,9 @@ export function createDefaultChartConfig(
   return {
     type: "bar",
     categoryKey: categoryColumns[0]?.key ?? visibleColumns[0]?.key ?? "",
-    categoryLabel: categoryColumns[0]?.label ?? visibleColumns[0]?.label ?? "Kelompok",
+    categoryLabel:
+      categoryColumns[0]?.label ?? visibleColumns[0]?.label ?? "Kelompok",
+    showLegend: true,
     seriesKey: categoryColumns[1]?.key ?? null,
     seriesLabel: categoryColumns[1]?.label ?? "Pembanding",
     valueMode: "count_rows",
@@ -148,6 +163,7 @@ export function createDefaultChartConfig(
     sortField: "value",
     sortMode: "value-desc",
     showSortDirectionControl: false,
+    histogramBins: 10,
     limit: 20,
   };
 }
@@ -157,6 +173,9 @@ export function normalizeChartConfig(
   columns: ColumnConfig[],
   tableConfig: PublishedTableConfig,
 ): PublishedChartConfig {
+  const legacyValue = value as
+    | (Partial<PublishedChartConfig> & { showXAxisLabel?: boolean })
+    | undefined;
   const defaultConfig = createDefaultChartConfig(columns, tableConfig);
   const visibleColumnKeys = new Set(tableConfig.visibleColumnKeys);
   const availableColumns = columns.filter((column) =>
@@ -168,8 +187,10 @@ export function normalizeChartConfig(
     .map((column) => column.key);
   const tableFilterKeys = new Set(tableConfig.filterKeys);
 
-  const valueMode =
-    value?.valueMode === "sum_column" ? "sum_column" : "count_rows";
+  const valueMode: ChartValueMode =
+    value?.valueMode === "sum_column" || value?.valueMode === "show_value"
+      ? value.valueMode
+      : "count_rows";
   const yKey =
     value?.yKey && availableColumnKeys.includes(value.yKey)
       ? value.yKey
@@ -183,20 +204,27 @@ export function normalizeChartConfig(
     (column) => column.key === categoryKey,
   );
 
+  // `null` is a deliberate "Tidak Ada" selection. Only use the default for
+  // configs that predate seriesKey; otherwise normalizing another field (for
+  // example Perhitungan) would unexpectedly restore Pembanding.
   const seriesKey =
-    value?.seriesKey && availableColumnKeys.includes(value.seriesKey)
-      ? value.seriesKey
-      : defaultConfig.seriesKey;
+    value?.seriesKey === null
+      ? null
+      : value?.seriesKey && availableColumnKeys.includes(value.seriesKey)
+        ? value.seriesKey
+        : value?.seriesKey === undefined
+          ? defaultConfig.seriesKey
+          : null;
   const seriesColumn = availableColumns.find(
     (column) => column.key === seriesKey,
   );
 
   const valueKey =
-    valueMode === "sum_column" &&
+    valueMode !== "count_rows" &&
     value?.valueKey &&
     numericKeys.includes(value.valueKey)
       ? value.valueKey
-      : valueMode === "sum_column"
+      : valueMode !== "count_rows"
         ? defaultConfig.valueKey
         : null;
   const countValues = Array.isArray(value?.countValues)
@@ -218,6 +246,7 @@ export function normalizeChartConfig(
   const chartType: ChartType =
     value?.type === "line" ||
     value?.type === "pie" ||
+    value?.type === "histogram" ||
     value?.type === "stacked-bar" ||
     value?.type === "multiple-bar" ||
     value?.type === "multiple-line"
@@ -232,12 +261,18 @@ export function normalizeChartConfig(
         ? value.categoryLabel
         : typeof value?.xLabel === "string" && value.xLabel.trim()
           ? value.xLabel
-          : categoryColumn?.label ?? defaultConfig.categoryLabel,
+          : (categoryColumn?.label ?? defaultConfig.categoryLabel),
+    showLegend:
+      typeof value?.showLegend === "boolean"
+        ? value.showLegend
+        : typeof legacyValue?.showXAxisLabel === "boolean"
+          ? legacyValue.showXAxisLabel
+          : defaultConfig.showLegend,
     seriesKey,
     seriesLabel:
       typeof value?.seriesLabel === "string" && value.seriesLabel.trim()
         ? value.seriesLabel
-        : seriesColumn?.label ?? defaultConfig.seriesLabel,
+        : (seriesColumn?.label ?? defaultConfig.seriesLabel),
     valueMode,
     yKey,
     countValues,
@@ -247,8 +282,8 @@ export function normalizeChartConfig(
       value?.yLabel ??
       (valueMode === "count_rows"
         ? "Jumlah Data"
-        : availableColumns.find((column) => column.key === valueKey)?.label ??
-          defaultConfig.yLabel),
+        : (availableColumns.find((column) => column.key === valueKey)?.label ??
+          defaultConfig.yLabel)),
     colors:
       value?.colors && typeof value.colors === "object" ? value.colors : {},
     sliceColors:
@@ -261,6 +296,11 @@ export function normalizeChartConfig(
     sortField,
     sortMode,
     showSortDirectionControl: Boolean(value?.showSortDirectionControl),
+    histogramBins:
+      Number.isFinite(Number(value?.histogramBins)) &&
+      Number(value?.histogramBins) >= 2
+        ? Math.min(Number(value?.histogramBins), 50)
+        : defaultConfig.histogramBins,
     limit: Number.isFinite(limit) && limit >= 0 ? limit : defaultConfig.limit,
   };
 }

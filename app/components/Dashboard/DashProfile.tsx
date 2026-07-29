@@ -14,6 +14,15 @@ import { useAuthStore } from "@/app/Stores/authStores";
 import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 import Link from "next/link";
+import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+
+const PROFILE_CACHE_TTL = 2 * 60 * 1000;
+
+type ProfileCache = {
+  profile: UserProfile;
+  uploaded: number;
+  published: number;
+};
 
 type UserProfile = {
   id: string;
@@ -223,6 +232,22 @@ export default function DashProfile() {
         setLoading(true);
         setErrorMsg(null);
 
+        if (authStoreUserId) {
+          const cached = getSessionCache<ProfileCache>(
+            `dashboard-profile:${authStoreUserId}`,
+            PROFILE_CACHE_TTL,
+          );
+
+          if (cached) {
+            setResolvedUserId(authStoreUserId);
+            setProfile(cached.profile);
+            resetFormFromProfile(cached.profile);
+            setUploadedDataCount(cached.uploaded);
+            setPublishedDataCount(cached.published);
+            return;
+          }
+        }
+
         const {
           data: { session },
           error: sessionError,
@@ -274,11 +299,22 @@ export default function DashProfile() {
         setProfile(userProfile);
         resetFormFromProfile(userProfile);
 
+        let uploaded = 0;
+        let published = 0;
+
         if (userProfile.role !== "user") {
           const counts = await getOwnedDataCounts(currentUserId);
+          uploaded = counts.uploaded;
+          published = counts.published;
           setUploadedDataCount(counts.uploaded);
           setPublishedDataCount(counts.published);
         }
+
+        setSessionCache<ProfileCache>(`dashboard-profile:${currentUserId}`, {
+          profile: userProfile,
+          uploaded,
+          published,
+        });
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         setErrorMsg(
@@ -442,6 +478,8 @@ export default function DashProfile() {
       if (error) throw error;
 
       const updatedProfile = data as UserProfile;
+      let uploaded = uploadedDataCount;
+      let published = publishedDataCount;
 
       setProfile(updatedProfile);
       resetFormFromProfile(updatedProfile);
@@ -455,8 +493,21 @@ export default function DashProfile() {
 
       if (resolvedUserId && updatedProfile.role !== "user") {
         const counts = await getOwnedDataCounts(resolvedUserId);
+        uploaded = counts.uploaded;
+        published = counts.published;
         setUploadedDataCount(counts.uploaded);
         setPublishedDataCount(counts.published);
+      }
+
+      if (resolvedUserId) {
+        setSessionCache<ProfileCache>(
+          `dashboard-profile:${resolvedUserId}`,
+          {
+            profile: updatedProfile,
+            uploaded,
+            published,
+          },
+        );
       }
 
       setEditMode(false);
@@ -499,6 +550,12 @@ export default function DashProfile() {
       <div className="flex w-full max-w-4xl flex-col items-center">
         {!editMode && (
           <div className="relative flex w-full flex-col items-center rounded-2xl border border-stone-200 bg-white p-6 shadow-xl md:p-10">
+            {profile?.role === "partner" && (
+              <span className="absolute left-3 top-3 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200">
+                Mitra
+              </span>
+            )}
+
             <div ref={actionMenuRef} className="absolute right-3 top-3 z-20">
               <button
                 type="button"
@@ -594,9 +651,15 @@ export default function DashProfile() {
 
         {editMode && (
           <form
-            className="flex w-full flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-xl md:p-10"
+            className="relative flex w-full flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-xl md:p-10"
             onSubmit={handleSubmit}
           >
+            {profile?.role === "partner" && (
+              <span className="absolute left-3 top-3 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200">
+                Mitra
+              </span>
+            )}
+
             <button
               type="button"
               className="mx-auto mb-6 flex flex-col items-center"

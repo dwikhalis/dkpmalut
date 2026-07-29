@@ -9,6 +9,8 @@ import { getNumUnreadMessages } from "@/lib/supabase/supabaseHelper";
 import { useMessageStore } from "@/app/Stores/messageStores";
 import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
+import { clearSessionCaches } from "@/lib/utils/sessionCache";
+import { invalidateDatasetListCache } from "@/lib/utils/datasetListCache";
 
 interface Props {
   slug: string;
@@ -113,6 +115,8 @@ export default function DashSideMenu({
       if (error) {
         console.error("Error signing out:", error.message);
       } else {
+        clearSessionCaches();
+        invalidateDatasetListCache();
         router.push("/");
       }
 

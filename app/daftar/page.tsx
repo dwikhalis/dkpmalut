@@ -6,6 +6,7 @@ import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import SpinnerLoading from "../components/SpinnerLoading";
+import { EyeClosed, EyeOpen } from "@/public/icons/iconSets";
 
 const GENERIC_SUCCESS_MESSAGE =
   "Jika alamat email dapat digunakan, kami akan mengirimkan email konfirmasi.";
@@ -50,6 +51,10 @@ export default function Page() {
   const [email, setEmail] = useState("");
   const [organization, setOrganization] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] =
+    useState(false);
 
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
@@ -91,7 +96,8 @@ export default function Page() {
         !cleanUsername ||
         !normalizedEmail ||
         !cleanOrganization ||
-        !password
+        !password ||
+        !passwordConfirmation
       ) {
         setErrorMsg("Semua field wajib diisi.");
         return;
@@ -104,6 +110,11 @@ export default function Page() {
 
       if (password.length < 6) {
         setErrorMsg("Password minimal 6 karakter.");
+        return;
+      }
+
+      if (password !== passwordConfirmation) {
+        setErrorMsg("Konfirmasi password tidak sama dengan password.");
         return;
       }
 
@@ -174,6 +185,9 @@ export default function Page() {
       setEmail("");
       setOrganization("");
       setPassword("");
+      setPasswordConfirmation("");
+      setShowPassword(false);
+      setShowPasswordConfirmation(false);
 
       setSignupComplete(true);
       setSuccessMsg(GENERIC_SUCCESS_MESSAGE);
@@ -196,6 +210,9 @@ export default function Page() {
     setEmail("");
     setOrganization("");
     setPassword("");
+    setPasswordConfirmation("");
+    setShowPassword(false);
+    setShowPasswordConfirmation(false);
 
     clearMessages();
     resetCaptcha();
@@ -322,22 +339,107 @@ export default function Page() {
                   Password
                 </label>
 
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={6}
-                  autoComplete="new-password"
-                  className="rounded-xl bg-stone-100 p-2 disabled:cursor-not-allowed disabled:opacity-60"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    disabled={loading}
+                    minLength={6}
+                    autoComplete="new-password"
+                    className="w-full rounded-xl bg-stone-100 p-2 pr-11 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    aria-label={
+                      showPassword
+                        ? "Sembunyikan password"
+                        : "Tampilkan password"
+                    }
+                    title={
+                      showPassword
+                        ? "Sembunyikan password"
+                        : "Tampilkan password"
+                    }
+                    disabled={loading}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-stone-600 hover:text-stone-900 disabled:opacity-50"
+                  >
+                    {showPassword ? (
+                      <EyeOpen className="size-5" />
+                    ) : (
+                      <EyeClosed className="size-5" />
+                    )}
+                  </button>
+                </div>
 
                 <p className="text-xs text-stone-500">
                   Password minimal 6 karakter.
                 </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="password-confirmation"
+                  className="text-sm text-stone-700"
+                >
+                  Konfirmasi Password
+                </label>
+
+                <div className="relative">
+                  <input
+                    id="password-confirmation"
+                    type={showPasswordConfirmation ? "text" : "password"}
+                    placeholder="Ketik ulang password"
+                    value={passwordConfirmation}
+                    onChange={(event) =>
+                      setPasswordConfirmation(event.target.value)
+                    }
+                    required
+                    disabled={loading}
+                    minLength={6}
+                    autoComplete="new-password"
+                    aria-invalid={
+                      passwordConfirmation.length > 0 &&
+                      passwordConfirmation !== password
+                    }
+                    className="w-full rounded-xl bg-stone-100 p-2 pr-11 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    aria-label={
+                      showPasswordConfirmation
+                        ? "Sembunyikan konfirmasi password"
+                        : "Tampilkan konfirmasi password"
+                    }
+                    title={
+                      showPasswordConfirmation
+                        ? "Sembunyikan konfirmasi password"
+                        : "Tampilkan konfirmasi password"
+                    }
+                    disabled={loading}
+                    onClick={() =>
+                      setShowPasswordConfirmation((visible) => !visible)
+                    }
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-stone-600 hover:text-stone-900 disabled:opacity-50"
+                  >
+                    {showPasswordConfirmation ? (
+                      <EyeOpen className="size-5" />
+                    ) : (
+                      <EyeClosed className="size-5" />
+                    )}
+                  </button>
+                </div>
+
+                {passwordConfirmation.length > 0 &&
+                  passwordConfirmation !== password && (
+                    <p className="text-xs text-red-600">
+                      Konfirmasi password belum sama.
+                    </p>
+                  )}
               </div>
 
               {turnstileSiteKey ? (

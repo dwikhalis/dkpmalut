@@ -55,3 +55,11 @@ migrations
 !migrations/
 migrations/*
 !migrations/20260728000000_add_dataset_path_redirect.sql
+!migrations/20260730000000_add_dataset_import_batches.sql
+!migrations/20260730010000_add_dataset_configuration.sql
+!migrations/20260730020000_add_table_view_preferences.sql
+!migrations/20260730040000_add_delete_dataset_import_batch.sql
+!migrations/20260730050000_expand_dataset_activity_logs.sql
+!migrations/20260730060000_add_dataset_public_metrics.sql
+!migrations/20260730070000_exclude_admin_from_public_metrics.sql
+!migrations/20260730080000_ensure_dataset_public_metrics.sql
