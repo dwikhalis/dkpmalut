@@ -10,7 +10,12 @@ import {
   type DragEvent,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { FeatureCollection } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  GeoJsonProperties,
+  Geometry,
+} from "geojson";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { getUploadTimestamp } from "@/lib/utils/uploadTimestamp";
 import {
@@ -41,6 +46,7 @@ import {
   type MapGeometryType,
   type MapLayerGroupConfig,
   type MapLegendDraft,
+  type MapLayerTableConfig,
   type MapPopupField,
 } from "@/lib/utils/mapConfig";
 import AlertNotif from "../AlertNotif";
@@ -354,12 +360,10 @@ function DeferredCheckbox({
 }
 
 function DeferredColumnDropdown({
-  layerId,
   columns,
   selectedColumns,
   onToggleColumn,
 }: {
-  layerId: string;
   columns: string[];
   selectedColumns: string[];
   onToggleColumn: (column: string, checked: boolean) => void;
@@ -411,12 +415,13 @@ function DeferredColumnDropdown({
 
             return (
               <label key={column} className="flex items-center gap-2 text-sm">
-                <DeferredCheckbox
-                  key={`column-field-${layerId}-${column}-${checked}`}
+                <input
+                  type="checkbox"
                   checked={checked}
-                  onCommit={(nextChecked) =>
-                    onToggleColumn(column, nextChecked)
+                  onChange={(event) =>
+                    onToggleColumn(column, event.target.checked)
                   }
+                  aria-label={column}
                 />
                 {column}
               </label>
@@ -600,6 +605,39 @@ async function createGeoJsonUploadBlob(file: File) {
   return new Blob([await file.arrayBuffer()], {
     type: getGeoJsonContentType(file),
   });
+}
+
+async function uploadGeoJson(path: string, file: Blob) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error("Sesi login telah berakhir. Silakan masuk kembali.");
+  }
+
+  const formData = new FormData();
+  formData.set("path", path);
+  formData.set(
+    "file",
+    file,
+    path.split("/").pop() || "map.geojson",
+  );
+
+  const response = await fetch("/api/map-files", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: formData,
+  });
+  const result = (await response.json().catch(() => null)) as {
+    message?: string;
+  } | null;
+
+  if (!response.ok) {
+    throw new Error(result?.message || "Gagal mengunggah data peta.");
+  }
 }
 
 function getPublicImageUrl(path: string | null) {
@@ -806,6 +844,10 @@ async function loadGeoJsonFromStorage(path: string | null) {
 }
 
 function getSelectedLegendFields(config: MapLayerGroupConfig) {
+  if (config.legendItemMode === "none") {
+    return [];
+  }
+
   if (config.legendItemMode === "columns") {
     return config.columnLegendFields;
   }
@@ -829,10 +871,10 @@ function createDefaultLayerGroupConfig(keys: string[]): MapLayerGroupConfig {
   const subGroupField = getDefaultSubGroupField(keys, mainGroupField);
 
   return {
-    legendItemMode: "rows",
+    legendItemMode: "none",
     mainGroupField,
     subGroupField,
-    useMainGroup: true,
+    useMainGroup: false,
     useSubGroup: false,
     columnLegendFields: [],
     mainGroupAliases: {},
@@ -862,6 +904,72 @@ function getLayerGroupConfig(
       legendItemMainValues: {},
     }
   );
+}
+
+function getLayerTableConfig(
+  mapConfig: MapConfig,
+  layer: Pick<LoadedMapLayer, "id" | "property_keys">,
+): MapLayerTableConfig {
+  const keys = layer.property_keys ?? [];
+  const selectorField =
+    keys.find((key) => ["name", "nama"].includes(key.trim().toLowerCase())) ??
+    keys[0] ??
+    "";
+  const metadataFields = new Set([
+    "no",
+    "type",
+    "tipe",
+    "level",
+    "name",
+    "nama",
+    "lat",
+    "latitude",
+    "lon",
+    "lng",
+    "longitude",
+    "desc",
+    "description",
+    "deskripsi",
+  ]);
+  const selectedFields = keys.filter((key) => {
+    const normalized = key.trim().toLowerCase();
+
+    return (
+      !metadataFields.has(normalized) &&
+      !normalized.startsWith("unnamed:")
+    );
+  });
+
+  const savedConfig = mapConfig.layerTableConfigs[layer.id];
+
+  if (savedConfig) {
+    const usedInitialAllFieldsDefault =
+      savedConfig.selectedFields.length === keys.length &&
+      keys.every((key) => savedConfig.selectedFields.includes(key));
+    const usedInitialFirstKeySelector =
+      Boolean(keys[0]) && savedConfig.selectorField === keys[0];
+
+    return {
+      ...savedConfig,
+      selectorField: usedInitialFirstKeySelector
+        ? selectorField
+        : savedConfig.selectorField,
+      selectedFields: usedInitialAllFieldsDefault
+        ? selectedFields
+        : savedConfig.selectedFields,
+    };
+  }
+
+  return {
+      enabled: false,
+      mode: "rows",
+      dataLabel: "Data",
+      valueLabel: "Nilai",
+      dataField: keys[0] ?? "",
+      valueField: keys[1] ?? keys[0] ?? "",
+      selectorField,
+      selectedFields,
+  };
 }
 
 function getCompositeLegendValue(mainValue: string, subValue: string) {
@@ -924,7 +1032,8 @@ function isColumnLegendValueActive(value: unknown) {
 function getLegendItemMode(useRows: boolean, useColumns: boolean) {
   if (useRows && useColumns) return "both";
   if (useColumns) return "columns";
-  return "rows";
+  if (useRows) return "rows";
+  return "none";
 }
 
 function getColumnLegendDrafts(
@@ -1118,6 +1227,14 @@ function createLayerLegendDrafts(
   collection: FeatureCollection,
   config: MapLayerGroupConfig,
 ) {
+  if (config.legendItemMode === "none") {
+    return {
+      legends: [],
+      legendItemSources: {},
+      legendItemMainValues: {},
+    };
+  }
+
   if (config.legendItemMode === "columns") {
     return getColumnLegendDrafts(collection, config);
   }
@@ -1603,6 +1720,10 @@ export default function MapDataset({
   const [showGabungConfig, setShowGabungConfig] = useState(false);
   const [showGabungLayerSection, setShowGabungLayerSection] = useState(false);
   const [selectedPreviewLayerId, setSelectedPreviewLayerId] = useState("");
+  const [selectedPreviewFeature, setSelectedPreviewFeature] = useState<{
+    layerId: string;
+    feature: Feature<Geometry, GeoJsonProperties>;
+  } | null>(null);
   const [selectedPreviewLegendFilterIds, setSelectedPreviewLegendFilterIds] =
     useState<string[]>([]);
   const [previewMapBoundsTrigger, setPreviewMapBoundsTrigger] = useState(0);
@@ -1659,7 +1780,7 @@ export default function MapDataset({
         (layer.property_keys ?? []).forEach((key) => set.add(key));
         return set;
       }, new Set()),
-    ).sort((a, b) => a.localeCompare(b));
+    );
   }, [layers]);
 
   const orderedPopupFields = useMemo<MapPopupField[]>(() => {
@@ -1939,6 +2060,17 @@ export default function MapDataset({
     () => setPreviewRefreshing(false),
     [],
   );
+  const handlePreviewFeatureSelect = useCallback(
+    (
+      layerId: string | null,
+      feature: Feature<Geometry, GeoJsonProperties> | null,
+    ) => {
+      setSelectedPreviewFeature(
+        layerId && feature ? { layerId, feature } : null,
+      );
+    },
+    [],
+  );
 
   const activeGabungGroups = mapConfig.globalLegend.groups;
   const visiblePreviewLayerIds = useMemo(
@@ -1965,7 +2097,7 @@ export default function MapDataset({
             subGroupField: appliedPreviewConfig.subGroupField,
             useMainGroup: true,
             useSubGroup: appliedPreviewConfig.useSubGroup,
-            legendItemMode: "rows",
+            legendItemMode: "none",
             columnLegendFields: [],
             mainGroupAliases: {},
             legendItemSources: {},
@@ -2041,6 +2173,101 @@ export default function MapDataset({
       appliedPreviewLayers,
       selectedPreviewLayerId,
     ],
+  );
+  const selectedPreviewTable = useMemo(() => {
+    if (!selectedPreviewFeature) return null;
+
+    const layer = layers.find(
+      (item) => item.id === selectedPreviewFeature.layerId,
+    );
+    if (!layer) return null;
+
+    const config = getLayerTableConfig(mapConfig, layer);
+    if (!config.enabled) return null;
+
+    // The map click already gives us the exact feature. Re-querying the
+    // collection by a non-unique/empty selector can accidentally select a
+    // different row from the one displayed in the callout.
+    const properties = selectedPreviewFeature.feature.properties ?? {};
+    const isVisibleTableValue = (rawValue: unknown) => {
+      const value = String(rawValue ?? "").trim().toLowerCase();
+
+      return value !== "" && value !== "0" && value !== "null" && value !== "-";
+    };
+    const rows =
+      config.mode === "rows"
+        ? [
+            {
+              data: String(properties[config.dataField] ?? ""),
+              value: String(properties[config.valueField] ?? ""),
+            },
+          ]
+        : Array.from(
+            config.selectedFields.reduce<
+              Map<string, Array<{ field: string; value: string }>>
+            >((groups, field) => {
+              const groupName = field.replace(
+                /_(?:jum_unit|jum|kondisi|tahun)$/i,
+                "",
+              );
+              const items = groups.get(groupName) ?? [];
+              items.push({
+                field,
+                value: String(properties[field] ?? ""),
+              });
+              groups.set(groupName, items);
+              return groups;
+            }, new Map()),
+          ).map(([groupName, items]) => {
+            const baseItem = items.find((item) => item.field === groupName);
+            const details = items
+              .filter((item) => isVisibleTableValue(item.value))
+              .map((item) => {
+                if (item.field === groupName) return item.value.trim();
+
+                const detailLabel = item.field
+                  .slice(groupName.length + 1)
+                  .replace(/_/g, " ");
+                return `${detailLabel}: ${item.value.trim()}`;
+              });
+
+            return {
+              data: groupName,
+              value:
+                baseItem && isVisibleTableValue(baseItem.value)
+                  ? details.join(" | ")
+                  : "",
+            };
+          });
+    const visibleRows = rows.filter((row) => {
+      const value = row.value.trim().toLowerCase();
+
+      return value !== "" && value !== "0" && value !== "null" && value !== "-";
+    });
+
+    return {
+      selectorValue:
+        String(
+          properties.name ??
+            properties.nama ??
+            properties.Name ??
+            properties.Nama ??
+            properties[config.selectorField] ??
+            "",
+        ).trim() || layer.name,
+      dataLabel: config.dataLabel || "Data",
+      valueLabel: config.valueLabel || "Nilai",
+      rows: visibleRows,
+    };
+  }, [layers, mapConfig, selectedPreviewFeature]);
+  const hasEnabledPreviewTable = useMemo(
+    () =>
+      layers.some(
+        (layer) =>
+          !mapConfig.hiddenMapLayerIds.includes(layer.id) &&
+          getLayerTableConfig(mapConfig, layer).enabled,
+      ),
+    [layers, mapConfig],
   );
 
   const publicationSnapshotMapConfig = useMemo(
@@ -2193,6 +2420,15 @@ export default function MapDataset({
           return {
             ...layer,
             collection,
+            // `property_keys` stores the source header order. Prefer it over
+            // deriving keys again so CSV columns are displayed exactly as
+            // arranged in the uploaded file.
+            property_keys:
+              layer.property_keys && layer.property_keys.length > 0
+                ? layer.property_keys
+                : collection
+                  ? getFeaturePropertyKeys(collection)
+                  : layer.property_keys,
             legends: rowLegends,
           };
         }),
@@ -2344,7 +2580,7 @@ export default function MapDataset({
     setMapConfig({
       mainGroupField,
       subGroupField,
-      useMainGroup: true,
+            useMainGroup: false,
       useSubGroup: false,
       selectedFeatureColor: DEFAULT_SELECTED_FEATURE_COLOR,
       selectedFeatureFillColor: DEFAULT_SELECTED_FEATURE_COLOR,
@@ -2356,6 +2592,7 @@ export default function MapDataset({
       globalLegend: DEFAULT_GLOBAL_LEGEND_CONFIG,
       popupFields: getDefaultPopupFields(allPropertyKeys),
       layerPopupFields: {},
+      layerTableConfigs: {},
     });
   }, [allPropertyKeys, mapConfig.mainGroupField]);
 
@@ -2457,14 +2694,7 @@ export default function MapDataset({
       )}-${getUploadTimestamp()}.${getFileExtension(file)}`;
       const uploadBody = await createGeoJsonUploadBlob(file);
 
-      const { error: uploadError } = await supabase.storage
-        .from("geojsons")
-        .upload(storagePath, uploadBody, {
-          upsert: true,
-          contentType: getGeoJsonContentType(file),
-        });
-
-      if (uploadError) throw uploadError;
+      await uploadGeoJson(storagePath, uploadBody);
 
       const mainGroupField = getDefaultGroupField(propertyKeys);
       const subGroupField = getDefaultSubGroupField(propertyKeys, mainGroupField);
@@ -2483,6 +2713,7 @@ export default function MapDataset({
         globalLegend: DEFAULT_GLOBAL_LEGEND_CONFIG,
         popupFields: getDefaultPopupFields(propertyKeys),
         layerPopupFields: {},
+        layerTableConfigs: {},
       };
 
       const { data: inserted, error: insertError } = await supabase
@@ -2740,7 +2971,9 @@ export default function MapDataset({
       longitudeColumn,
     );
     const geoJsonFile = createGeoJsonFileFromCsv(pendingCsvFile, collection);
-    const propertyKeys = getFeaturePropertyKeys(collection);
+    // Papa Parse preserves the CSV header sequence in `pendingCsvColumns`.
+    // Keep that sequence as the canonical horizontal table order.
+    const propertyKeys = [...pendingCsvColumns];
     const nextDraft: PendingGeoJson = {
       file: geoJsonFile,
       collection,
@@ -2827,14 +3060,7 @@ export default function MapDataset({
       )}-${getUploadTimestamp()}.${getFileExtension(file)}`;
       const uploadBody = await createGeoJsonUploadBlob(file);
 
-      const { error: uploadError } = await supabase.storage
-        .from("geojsons")
-        .upload(storagePath, uploadBody, {
-          upsert: true,
-          contentType: getGeoJsonContentType(file),
-        });
-
-      if (uploadError) throw uploadError;
+      await uploadGeoJson(storagePath, uploadBody);
 
       let targetDatasetId = dataset?.id ?? mapDatasetId;
       const targetBounds = mergeBounds(dataset?.bounds ?? null, nextBounds);
@@ -2857,6 +3083,7 @@ export default function MapDataset({
           globalLegend: DEFAULT_GLOBAL_LEGEND_CONFIG,
           popupFields: getDefaultPopupFields(propertyKeys),
           layerPopupFields: {},
+          layerTableConfigs: {},
         };
 
         const { data: inserted, error: insertError } = await supabase
@@ -3970,14 +4197,7 @@ export default function MapDataset({
       type: "application/geo+json",
     });
 
-    const { error } = await supabase.storage
-      .from("geojsons")
-      .upload(layer.source_path, blob, {
-        upsert: true,
-        contentType: "application/geo+json",
-      });
-
-    if (error) throw error;
+    await uploadGeoJson(layer.source_path, blob);
   };
 
   const refreshMapDatasetSummary = async (
@@ -4363,6 +4583,24 @@ export default function MapDataset({
       },
     }));
     regenerateLayerLegends(layer.id, nextConfig);
+  };
+
+  const updateLayerTableConfig = (
+    layer: LoadedMapLayer,
+    changes: Partial<MapLayerTableConfig>,
+  ) => {
+    const currentConfig = getLayerTableConfig(mapConfig, layer);
+
+    setMapConfig((prev) => ({
+      ...prev,
+      layerTableConfigs: {
+        ...prev.layerTableConfigs,
+        [layer.id]: {
+          ...currentConfig,
+          ...changes,
+        },
+      },
+    }));
   };
 
   const handleUploadLegendIcon = async (
@@ -5887,6 +6125,7 @@ export default function MapDataset({
             {layers.map((layer, layerIndex) => {
               const isLayerOpen = openLegendLayerId === layer.id;
               const layerGroupConfig = getLayerGroupConfig(mapConfig, layer);
+              const layerTableConfig = getLayerTableConfig(mapConfig, layer);
               const layerPropertyKeys = layer.property_keys ?? [];
               const isColumnLegendMode =
                 layerGroupConfig.legendItemMode === "columns";
@@ -6119,7 +6358,6 @@ export default function MapDataset({
 
                     {useColumnLegendItems && (
                       <DeferredColumnDropdown
-                        layerId={layer.id}
                         columns={layerPropertyKeys}
                         selectedColumns={layerGroupConfig.columnLegendFields}
                         onToggleColumn={(column, checked) => {
@@ -6227,6 +6465,153 @@ export default function MapDataset({
                     )}
                   </div>
 
+                  <div className="flex min-w-0 grow basis-full flex-col gap-3 rounded-md border border-stone-200 p-3">
+                    <p className="text-sm font-semibold">Tabel</p>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={layerTableConfig.enabled}
+                        onChange={(event) =>
+                          updateLayerTableConfig(layer, {
+                            enabled: event.target.checked,
+                          })
+                        }
+                      />
+                      Munculkan tabel layer ini
+                    </label>
+
+                    {layerTableConfig.enabled && (
+                      <>
+                        <label className="flex flex-col gap-2 text-sm">
+                          Susunan Data
+                          <select
+                            value={layerTableConfig.mode}
+                            onChange={(event) =>
+                              updateLayerTableConfig(layer, {
+                                mode:
+                                  event.target.value === "columns"
+                                    ? "columns"
+                                    : "rows",
+                              })
+                            }
+                            className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                          >
+                            <option value="rows">Baris</option>
+                            <option value="columns">Kolom</option>
+                          </select>
+                        </label>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="flex flex-col gap-2 text-sm">
+                            Nama Data
+                            <input
+                              value={layerTableConfig.dataLabel}
+                              onChange={(event) =>
+                                updateLayerTableConfig(layer, {
+                                  dataLabel: event.target.value,
+                                })
+                              }
+                              className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                            />
+                          </label>
+                          <label className="flex flex-col gap-2 text-sm">
+                            Nama Nilai
+                            <input
+                              value={layerTableConfig.valueLabel}
+                              onChange={(event) =>
+                                updateLayerTableConfig(layer, {
+                                  valueLabel: event.target.value,
+                                })
+                              }
+                              className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                            />
+                          </label>
+                        </div>
+
+                        {layerTableConfig.mode === "rows" ? (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <label className="flex flex-col gap-2 text-sm">
+                              Kolom untuk Data
+                              <select
+                                value={layerTableConfig.dataField}
+                                onChange={(event) =>
+                                  updateLayerTableConfig(layer, {
+                                    dataField: event.target.value,
+                                  })
+                                }
+                                className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                              >
+                                {layerPropertyKeys.map((key) => (
+                                  <option key={key} value={key}>{key}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="flex flex-col gap-2 text-sm">
+                              Kolom untuk Nilai
+                              <select
+                                value={layerTableConfig.valueField}
+                                onChange={(event) =>
+                                  updateLayerTableConfig(layer, {
+                                    valueField: event.target.value,
+                                  })
+                                }
+                                className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                              >
+                                {layerPropertyKeys.map((key) => (
+                                  <option key={key} value={key}>{key}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        ) : (
+                          <>
+                            <label className="flex flex-col gap-2 text-sm">
+                              Kolom selector fitur
+                              <select
+                                value={layerTableConfig.selectorField}
+                                onChange={(event) =>
+                                  updateLayerTableConfig(layer, {
+                                    selectorField: event.target.value,
+                                  })
+                                }
+                                className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                              >
+                                {getOrderedLayerPopupFields(layer)
+                                  .filter((field) => field.selected)
+                                  .map((field) => (
+                                    <option key={field.field} value={field.field}>
+                                      {field.label || field.field}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+                            <div className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-md border border-stone-200 p-3">
+                              <span className="text-sm">Kolom yang ditampilkan</span>
+                              {layerPropertyKeys.map((key) => (
+                                <label key={key} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={layerTableConfig.selectedFields.includes(key)}
+                                    onChange={(event) =>
+                                      updateLayerTableConfig(layer, {
+                                        selectedFields: event.target.checked
+                                          ? [...layerTableConfig.selectedFields, key]
+                                          : layerTableConfig.selectedFields.filter(
+                                              (field) => field !== key,
+                                            ),
+                                      })
+                                    }
+                                  />
+                                  {key}
+                                </label>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   <p className="w-full text-sm font-semibold">Fitur Legenda</p>
 
                   {Array.from(
@@ -6247,8 +6632,10 @@ export default function MapDataset({
                         : layerGroupConfig.legendItemSources[legend.value] ??
                           parsedLegendValue.source;
                       const mainValue =
-                        isColumnLegendMode || source === "column"
-                          ? "Kolom"
+                        isColumnLegendMode
+                          ? legend.value
+                          : source === "column"
+                            ? "Kolom"
                           : parsedLegendValue.rawValue ||
                             layerGroupConfig.legendItemMainValues[legend.value] ||
                             legend.value;
@@ -6271,9 +6658,11 @@ export default function MapDataset({
                     const isLayerLegendGroupOpen =
                       openLayerLegendGroupKey === groupKey;
                     const isColumnLegendGroup =
-                      useColumnLegendItems && legendGroup.mainValue === "Kolom";
+                      useColumnLegendItems && legendGroup.source === "column";
                     const mainAlias =
-                      isColumnLegendGroup
+                      isColumnLegendMode && isColumnLegendGroup
+                        ? legendGroup.legends[0]?.label || legendGroup.mainValue
+                        : isColumnLegendGroup
                         ? "Kolom"
                         : legendGroup.source === "sub"
                           ? legendGroup.legends[0]?.label || legendGroup.mainValue
@@ -6281,7 +6670,8 @@ export default function MapDataset({
                             layerGroupConfig,
                             legendGroup.mainValue,
                           );
-                    const useMainGroupStyling = !isColumnLegendGroup;
+                    const useMainGroupStyling =
+                      isColumnLegendMode || !isColumnLegendGroup;
                     const visibleLegendItems = legendGroup.legends.slice(0, 1);
                     const firstLegendItem = visibleLegendItems[0];
                     const renderLegendItemCard = (
@@ -7637,6 +8027,7 @@ export default function MapDataset({
                       bounds={previewBounds}
                       boundsTrigger={previewMapBoundsTrigger}
                       onRenderComplete={handlePreviewRenderComplete}
+                      onFeatureSelect={handlePreviewFeatureSelect}
                       selectedLegendFilters={
                         previewLegendEnabled ? selectedPreviewLegendFilters : []
                       }
@@ -7645,6 +8036,46 @@ export default function MapDataset({
                     />
                   </div>
                 </div>
+
+                {hasEnabledPreviewTable && (
+                  <div className="mt-4 overflow-x-auto rounded-md border border-stone-300">
+                    {selectedPreviewTable ? (
+                      <>
+                    <div className="border-b border-stone-300 bg-stone-50 px-3 py-2 text-sm font-semibold">
+                      {selectedPreviewTable.selectorValue}
+                    </div>
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="bg-sky-100">
+                          <th className="border border-stone-300 px-3 py-2 text-left">
+                            {selectedPreviewTable.dataLabel}
+                          </th>
+                          <th className="border border-stone-300 px-3 py-2 text-left">
+                            {selectedPreviewTable.valueLabel}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPreviewTable.rows.map((row, index) => (
+                          <tr key={`${row.data}-${index}`}>
+                            <td className="border border-stone-300 px-3 py-2">
+                              {row.data || "-"}
+                            </td>
+                            <td className="border border-stone-300 px-3 py-2">
+                              {row.value || "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                      </>
+                    ) : (
+                      <div className="bg-stone-50 px-4 py-5 text-center text-sm text-stone-600">
+                        Klik fitur pada peta untuk menampilkan data terkait.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
 

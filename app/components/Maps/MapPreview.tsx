@@ -80,6 +80,10 @@ type Props = {
   snapshotTrigger?: number;
   onSnapshot?: (dataUrl: string | null) => void;
   onRenderComplete?: () => void;
+  onFeatureSelect?: (
+    layerId: string | null,
+    feature: Feature<Geometry, GeoJsonProperties> | null,
+  ) => void;
 };
 
 const DEFAULT_CENTER: [number, number] = [0.7893, 127.3842];
@@ -837,18 +841,20 @@ function MapPoint({
     globalLegend?.style.iconPath ?? legend?.icon_path ?? null,
   );
   const pointSize = globalLegend?.style.pointSize ?? legend?.icon_width ?? 16;
+  const pointHeight =
+    globalLegend?.style.pointSize ?? legend?.icon_height ?? pointSize;
 
   const icon = useMemo(() => {
     if (!iconUrl) return undefined;
 
     return L.icon({
       iconUrl,
-      iconSize: [pointSize, globalLegend?.style.pointSize ?? legend?.icon_height ?? pointSize],
-      iconAnchor: [pointSize / 2, globalLegend?.style.pointSize ?? legend?.icon_height ?? pointSize],
-      popupAnchor: [0, -1 * (globalLegend?.style.pointSize ?? legend?.icon_height ?? pointSize)],
+      iconSize: [pointSize, pointHeight],
+      iconAnchor: [pointSize / 2, pointHeight / 2],
+      popupAnchor: [0, -pointHeight / 2],
       crossOrigin: "anonymous",
     });
-  }, [globalLegend?.style.pointSize, iconUrl, legend?.icon_height, pointSize]);
+  }, [iconUrl, pointHeight, pointSize]);
 
   const defaultColor = globalLegend?.style.color || legend?.color || "#0EA5E9";
   const pointStyle: L.PathOptions = isSelected
@@ -892,7 +898,7 @@ function MapPoint({
       {isSelected && (
         <CircleMarker
           center={getPointLatLng(feature)}
-          radius={12}
+          radius={pointSize / 2}
           pathOptions={{
             color: mapConfig.selectedFeatureStrokeColor,
             fillColor: mapConfig.selectedFeatureFillColor,
@@ -1108,6 +1114,7 @@ function MapPreview({
   snapshotTrigger = 0,
   onSnapshot,
   onRenderComplete,
+  onFeatureSelect,
 }: Props) {
   const parsedMapConfig = useMemo(() => parseMapConfig(mapConfig), [mapConfig]);
   const mapRef = useRef<L.Map | null>(null);
@@ -1117,6 +1124,29 @@ function MapPreview({
     null,
   );
   const [showCtrlNotif, setShowCtrlNotif] = useState(false);
+
+  useEffect(() => {
+    if (!onFeatureSelect) return;
+
+    if (!selectedFeatureKey) {
+      onFeatureSelect(null, null);
+      return;
+    }
+
+    for (const layer of layers) {
+      const feature = layer.collection.features.find(
+        (item, index) =>
+          `${layer.id}-${item.id ?? index}` === selectedFeatureKey,
+      );
+
+      if (feature) {
+        onFeatureSelect(layer.id, feature);
+        return;
+      }
+    }
+
+    onFeatureSelect(null, null);
+  }, [layers, onFeatureSelect, selectedFeatureKey]);
 
   useEffect(() => {
     if (!onRenderComplete) return;
@@ -1387,7 +1417,11 @@ function MapPreview({
           active={hasActiveFeatureSelection}
           bounds={selectedFeatureBounds}
         />
-        <ClearSelectionOnMapClick onClear={() => setSelectedFeatureKey(null)} />
+        <ClearSelectionOnMapClick
+          onClear={() => {
+            setSelectedFeatureKey(null);
+          }}
+        />
 
         {layers.filter((layer) => !parsedMapConfig.hiddenMapLayerIds.includes(layer.id)).map((layer) =>
           layer.collection.features.map((feature, index) => ({ feature, index })).filter(({ feature }) => shouldShowFeature(feature, layer.id)).map(({ feature, index }) => {
@@ -1405,7 +1439,9 @@ function MapPreview({
                   layerId={layer.id}
                   selectedLegendFilters={selectedFilters}
                   isSelected={isSelected}
-                  onSelect={() => setSelectedFeatureKey(featureKey)}
+                  onSelect={() => {
+                    setSelectedFeatureKey(featureKey);
+                  }}
                   onUnselect={() =>
                     setSelectedFeatureKey((current) =>
                       current === featureKey ? null : current,
@@ -1424,7 +1460,9 @@ function MapPreview({
                 layerId={layer.id}
                 selectedLegendFilters={selectedFilters}
                 isSelected={isSelected}
-                onSelect={() => setSelectedFeatureKey(featureKey)}
+                onSelect={() => {
+                  setSelectedFeatureKey(featureKey);
+                }}
                 onUnselect={() =>
                   setSelectedFeatureKey((current) =>
                     current === featureKey ? null : current,

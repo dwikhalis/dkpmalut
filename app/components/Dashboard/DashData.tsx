@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LeftChevron, RightChevron, VerticalThreeDot } from "@/public/icons/iconSets";
+import {
+  LeftChevron,
+  RightChevron,
+  VerticalThreeDot,
+} from "@/public/icons/iconSets";
 import Button from "../Button";
 import { getDatasetPages } from "@/lib/supabase/supabaseHelper";
 import Dataset from "../Dataset";
@@ -13,10 +17,12 @@ import { useAuthStore } from "@/app/Stores/authStores";
 import type { EditSource } from "../DatasetConfig";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import SpinnerLoading from "../SpinnerLoading";
-import {
-  collectionToCsv,
-  isFeatureCollection,
-} from "@/lib/utils/mapConfig";
+import BiologicalReferenceManager from "../lbi/BiologicalReferenceManager";
+import DashboardTypeSelector from "../fisheries/DashboardTypeSelector";
+import DashboardWorkspace from "../fisheries/DashboardWorkspace";
+import DashboardAnalysisWorkspace from "../fisheries/DashboardAnalysisWorkspace";
+import type { FisheriesAnalysisType } from "@/lib/fisheries/dashboardOrchestration";
+import { collectionToCsv, isFeatureCollection } from "@/lib/utils/mapConfig";
 import { useCollapsibleMount } from "@/lib/hooks/useCollapsibleMount";
 import {
   getDatasetListCache,
@@ -37,13 +43,23 @@ interface Props {
 }
 
 type ActionType = "add" | "edit" | "list" | "delete";
-type MainPage = "main" | "add" | "edit" | "delete" | "mapadd" | "linkadd";
+type MainPage =
+  | "main"
+  | "add"
+  | "edit"
+  | "delete"
+  | "mapadd"
+  | "linkadd"
+  | "dashboardadd"
+  | "dashboardedit"
+  | "dashboardanalysis";
 type DetailView =
   | "dataset"
   | "configuration"
   | "visualization"
   | "publication"
   | "link"
+  | "dashboard"
   | "mapadd"
   | "mapdataset"
   | "mapvisualization"
@@ -59,7 +75,7 @@ type DatasetPage = {
   published: "approved" | "requested" | "rejected" | null;
   import_status?: "draft" | "ready" | null;
   draft_expires_at?: string | null;
-  kind: "dataset" | "map" | "link";
+  kind: "dataset" | "map" | "link" | "dashboard";
   view_count?: number;
   download_count?: number;
 };
@@ -94,7 +110,9 @@ function tableRowsToCsv(rows: Record<string, unknown>[]) {
 
   return [
     headers.join(","),
-    ...rows.map((row) => headers.map((header) => escapeValue(row[header])).join(",")),
+    ...rows.map((row) =>
+      headers.map((header) => escapeValue(row[header])).join(","),
+    ),
   ].join("\n");
 }
 
@@ -123,6 +141,10 @@ function toSlug(value: string) {
 }
 
 function getSafeView(value: string | null): DetailView {
+  if (value === "dashboard") {
+    return "dashboard";
+  }
+
   if (value === "mapadd") {
     return "mapadd";
   }
@@ -167,9 +189,7 @@ function formatDraftExpiry(value?: string | null) {
   }).format(new Date(value))}.`;
 }
 
-function getPublicationStatus(
-  dataset: DatasetPage,
-): {
+function getPublicationStatus(dataset: DatasetPage): {
   label: string;
   className: string;
   title?: string;
@@ -186,7 +206,7 @@ function getPublicationStatus(
 
   if (status === "requested") {
     return {
-      label: "requested",
+      label: "pending",
       className: "bg-amber-100 text-amber-800",
     };
   }
@@ -194,14 +214,14 @@ function getPublicationStatus(
   if (status === "approved") {
     return {
       label: "published",
-      className: "bg-emerald-100 text-emerald-800",
+      className: "bg-green-100 text-green-800",
     };
   }
 
   if (status === "rejected") {
     return {
       label: "rejected",
-      className: "bg-rose-100 text-rose-800",
+      className: "bg-red-100 text-red-800",
     };
   }
 
@@ -232,7 +252,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const [actionChangeCount, setActionChangeCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [addDataReady, setAddDataReady] = useState(false);
-  const [grantedAccess, setGrantedAccess] = useState<DatasetAccess | null>(null);
+  const [grantedAccess, setGrantedAccess] = useState<DatasetAccess | null>(
+    null,
+  );
   const mountedRef = useRef(false);
 
   const editDataset: EditSource = "datasets";
@@ -276,6 +298,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const isDetailPage = Boolean(currentSlug);
   const isMapDetail = selectedDataset?.kind === "map" || isNewMapPage;
   const isLinkDetail = selectedDataset?.kind === "link";
+  const isDashboardDetail =
+    selectedDataset?.kind === "dashboard" && detailView === "dashboard";
   const ownsSelectedDataset = selectedDataset?.user_id === userId;
   const datasetAccess = {
     can_add: role === "admin" || ownsSelectedDataset || grantedAccess?.can_add,
@@ -300,46 +324,50 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               : "Layer"
     : isLinkDetail
       ? "Publikasi"
-    : detailView === "visualization"
-      ? isSharedPartnerDataset
-        ? "Preview"
-        : "Visualisasi"
-      : detailView === "configuration"
-        ? "Pengaturan"
-      : detailView === "publication"
-        ? "Publikasi"
-        : "Dataset";
+      : detailView === "visualization"
+        ? isSharedPartnerDataset
+          ? "Preview"
+          : "Visualisasi"
+        : detailView === "configuration"
+          ? "Pengaturan"
+          : detailView === "publication"
+            ? "Publikasi"
+            : "Dataset";
   const nextDetailView = isLinkDetail
     ? null
     : isMapDetail
-    ? detailView === "mapadd"
-      ? "mapdataset"
-      : detailView === "mapdataset"
-        ? "mapvisualization"
-        : detailView === "mapvisualization"
-        ? "publication"
-        : null
-    : detailView === "dataset"
-      ? "visualization"
-      : detailView === "visualization" && !isSharedPartnerDataset
-        ? "publication"
-        : null;
+      ? detailView === "mapadd"
+        ? "mapdataset"
+        : detailView === "mapdataset"
+          ? "mapvisualization"
+          : detailView === "mapvisualization"
+            ? "publication"
+            : null
+      : detailView === "dataset"
+        ? "visualization"
+        : detailView === "visualization" && !isSharedPartnerDataset
+          ? "publication"
+          : null;
   const nextDetailLabel =
     nextDetailView === "mapdataset"
       ? "Layer"
       : nextDetailView === "mapvisualization"
-      ? "Visualisasi"
-      : nextDetailView === "visualization" && isSharedPartnerDataset
-        ? "Preview"
-        : nextDetailView === "visualization"
-          ? "Visualisasi"
-          : nextDetailView === "publication"
-            ? "Publikasi"
-            : "";
+        ? "Visualisasi"
+        : nextDetailView === "visualization" && isSharedPartnerDataset
+          ? "Preview"
+          : nextDetailView === "visualization"
+            ? "Visualisasi"
+            : nextDetailView === "publication"
+              ? "Publikasi"
+              : "";
 
   const selectedActionOwnerId =
     selectedOwnerId || searchParams.get("owner") || userId;
-  const isAddMode = mainPage === "add" || mainPage === "mapadd" || mainPage === "linkadd";
+  const isAddMode =
+    mainPage === "add" ||
+    mainPage === "mapadd" ||
+    mainPage === "linkadd" ||
+    mainPage === "dashboardadd";
   const showOuterActionButtons =
     mainPage === "linkadd" || !isAddMode || addDataReady;
   const actionCountLabel =
@@ -429,20 +457,38 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       });
   }, [getOwnerName, datasetPages, role, userId, userName]);
 
-  const pageTitle =
-    isNewMapPage
-      ? "Tambah Peta"
-      : mainPage === "mapadd"
-        ? labels.add
-        : mainPage === "linkadd"
-          ? "Tambah Link"
-        : mainPage === "add"
-          ? labels.add
-          : mainPage === "edit"
-            ? labels.edit
-            : mainPage === "delete"
-              ? labels.delete
-              : selectedDataset?.label || labels.home;
+  const pageTitle = isNewMapPage
+    ? "Tambah Peta"
+    : mainPage === "mapadd"
+      ? labels.add
+      : mainPage === "linkadd"
+        ? "Tambah Link"
+        : mainPage === "dashboardadd"
+          ? searchParams.get("type") === "lbi" &&
+            searchParams.get("manage") === "references"
+            ? "Referensi Biologis"
+            : searchParams.get("type") === "lbi"
+              ? "Buat Dashboard LBI"
+              : searchParams.get("type") === "cpue"
+                ? "Catch per Unit Effort (CPUE)"
+                : searchParams.get("type") === "total-landing"
+                  ? "Total Pendaratan"
+                  : searchParams.get("type") === "landing-frequency"
+                    ? "Frekuensi Pendaratan"
+                    : searchParams.get("type") === "catch-composition"
+                      ? "Komposisi Hasil Tangkapan"
+                      : searchParams.get("type") === "multiple"
+                        ? "Buat Beberapa Analisis"
+                        : "Buat Dashboard"
+          : mainPage === "dashboardedit"
+            ? "Workspace Dashboard"
+            : mainPage === "add"
+              ? labels.add
+              : mainPage === "edit"
+                ? labels.edit
+                : mainPage === "delete"
+                  ? labels.delete
+                  : selectedDataset?.label || labels.home;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -489,15 +535,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   }, [ownsSelectedDataset, role, selectedDataset, userId]);
 
   useEffect(() => {
-    if (
-      !isSharedPartnerDataset || !selectedDataset
-    ) {
+    if (!isSharedPartnerDataset || !selectedDataset) {
       return;
     }
 
-    if (
-      detailView === "publication"
-    ) {
+    if (detailView === "publication") {
       setAction("list");
       setShowMobileAction(false);
       const params = new URLSearchParams(searchParams.toString());
@@ -577,7 +619,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
         let mapQuery = supabase
           .from("map_datasets")
-          .select("id, label, user_id, published, import_status, draft_expires_at")
+          .select(
+            "id, label, user_id, published, import_status, draft_expires_at",
+          )
           .order("label", { ascending: true });
 
         if (role !== "admin") {
@@ -587,7 +631,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         let { data: mapRows, error: mapError } = await mapQuery;
 
         if (mapError) {
-          console.warn("Map draft columns unavailable, using legacy query:", mapError);
+          console.warn(
+            "Map draft columns unavailable, using legacy query:",
+            mapError,
+          );
 
           let fallbackMapQuery = supabase
             .from("map_datasets")
@@ -613,7 +660,12 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         let nextDatasetPages: DatasetPage[] = [
           ...visibleDatasetRows.map((item) => ({
             ...item,
-            kind: item.kind === "link" ? "link" as const : "dataset" as const,
+            kind:
+              item.kind === "link"
+                ? ("link" as const)
+                : item.kind === "dashboard"
+                  ? ("dashboard" as const)
+                  : ("dataset" as const),
           })),
           ...((mapRows ?? []) as Omit<DatasetPage, "kind">[]).map((item) => ({
             ...item,
@@ -626,13 +678,14 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         if (metricResourceIds.length > 0) {
           const { data: metricRows, error: metricError } = await supabase
             .from("dataset_public_metrics")
-            .select(
-              "resource_kind, resource_id, view_count, download_count",
-            )
+            .select("resource_kind, resource_id, view_count, download_count")
             .in("resource_id", metricResourceIds);
 
           if (metricError) {
-            console.warn("Dataset public metrics are unavailable:", metricError);
+            console.warn(
+              "Dataset public metrics are unavailable:",
+              metricError,
+            );
           } else {
             const metricMap = new Map(
               (metricRows ?? []).map((metric) => [
@@ -740,6 +793,21 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       return;
     }
 
+    if (urlAction === "dashboardadd") {
+      setSelectedOwnerId(searchParams.get("owner") || userId);
+      setMainPage("dashboardadd");
+      setAction("list");
+      onSignal("dataset");
+      return;
+    }
+
+    if (urlAction === "dashboardedit" || urlAction === "dashboardanalysis") {
+      setMainPage(urlAction);
+      setAction("list");
+      onSignal("dataset");
+      return;
+    }
+
     if (urlAction === "tableadd" || urlAction === "addtable") {
       setSelectedOwnerId(searchParams.get("owner") || userId);
       setMainPage("add");
@@ -764,7 +832,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const showSaveCancelAction =
     !showMobileAction &&
-    ((mainPage === "linkadd") ||
+    (mainPage === "linkadd" ||
       (isAddMode && addDataReady) ||
       (!isAddMode &&
         (action === "edit" ||
@@ -792,6 +860,18 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     setSelectedOwnerId(null);
     onSignal("all");
     router.push("/profile/data");
+  };
+
+  const handleCreatePageBack = () => {
+    if (mainPage === "dashboardadd" && searchParams.get("type")) {
+      setMainPage("dashboardadd");
+      setAction("list");
+      setShowMobileAction(false);
+      router.push("/profile/data?action=dashboardadd");
+      return;
+    }
+
+    resetToHome();
   };
 
   const setDetailView = (view: DetailView) => {
@@ -999,6 +1079,18 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     router.replace(`/profile/data?${params.toString()}`, { scroll: false });
   };
 
+  const setDashboardAddAction = (ownerId: string | null) => {
+    setMainPage("dashboardadd");
+    setAction("list");
+    setShowMobileAction(false);
+    setSelectedOwnerId(ownerId);
+    onSignal("dataset");
+    const params = new URLSearchParams();
+    params.set("action", "dashboardadd");
+    if (ownerId) params.set("owner", ownerId);
+    router.replace(`/profile/data?${params.toString()}`, { scroll: false });
+  };
+
   const handleSignalAction = () => {
     if (isDetailPage) {
       setDetailAction("list");
@@ -1076,10 +1168,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             {isDetailPage && selectedDataset && !isLinkDetail && (
               <>
                 <div className="hidden shrink-0 items-center justify-end md:flex">
-                  <details
-                    three-dot-menu="true"
-                    className="group relative"
-                  >
+                  <details three-dot-menu="true" className="group relative">
                     <summary
                       className={`list-none cursor-pointer rounded-sm border-2 border-white hover:border-black bg-white px-1 py-1 text-xs group-open:border-2 group-open:border-black ${
                         action === "edit" ||
@@ -1122,30 +1211,35 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           >
                             Download CSV
                           </button>
-
                         </>
                       ) : (
                         <>
-                          {datasetAccess.can_edit && <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailAction("edit")}
-                          >
-                            Edit Data
-                          </button>}
+                          {datasetAccess.can_edit && (
+                            <button
+                              className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                              onClick={() => setDetailAction("edit")}
+                            >
+                              Edit Data
+                            </button>
+                          )}
 
-                          {datasetAccess.can_add && <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailAction("add")}
-                          >
-                            Tambah Data
-                          </button>}
+                          {datasetAccess.can_add && (
+                            <button
+                              className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                              onClick={() => setDetailAction("add")}
+                            >
+                              Tambah Data
+                            </button>
+                          )}
 
-                          {datasetAccess.can_delete && <button
-                            className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
-                            onClick={() => setDetailAction("delete")}
-                          >
-                            Hapus Data
-                          </button>}
+                          {datasetAccess.can_delete && (
+                            <button
+                              className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
+                              onClick={() => setDetailAction("delete")}
+                            >
+                              Hapus Data
+                            </button>
+                          )}
 
                           <button
                             className="whitespace-nowrap text-left text-sm hover:bg-sky-200 px-2 p-2"
@@ -1265,9 +1359,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                     </p>
                   ) : (
                     group.datasets.map((dataset) => {
-                      const publicationStatus = getPublicationStatus(
-                        dataset,
-                      );
+                      const publicationStatus = getPublicationStatus(dataset);
 
                       return (
                         <button
@@ -1290,7 +1382,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                                     ? "?view=mapdataset"
                                     : dataset.kind === "link"
                                       ? "?view=publication"
-                                      : ""
+                                      : dataset.kind === "dashboard"
+                                        ? "?view=dashboard"
+                                        : ""
                                 }`,
                               );
                             }, 500);
@@ -1301,22 +1395,29 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                             <span className="mt-0.5 block text-xs text-gray-500 group-hover:text-white/80">
                               Dilihat: {dataset.view_count ?? 0}
                               {dataset.kind !== "link" && (
-                                <>
-                                  {" "}
-                                  | Diunduh: {dataset.download_count ?? 0}
-                                </>
+                                <> | Diunduh: {dataset.download_count ?? 0}</>
                               )}
                             </span>
                           </span>
 
                           {dataset.kind === "map" && (
-                            <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
+                            <span className="shrink-0 rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-800">
                               peta
                             </span>
                           )}
                           {dataset.kind === "link" && (
-                            <span className="shrink-0 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-800">
+                            <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-900">
                               link
+                            </span>
+                          )}
+                          {dataset.kind === "dashboard" && (
+                            <span className="shrink-0 rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-semibold text-fuchsia-800">
+                              dashboard
+                            </span>
+                          )}
+                          {dataset.kind === "dataset" && (
+                            <span className="shrink-0 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800">
+                              table
                             </span>
                           )}
 
@@ -1347,6 +1448,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               previewOnly={isSharedPartnerDataset}
             />
           )}
+          {isDetailPage && isDashboardDetail && (
+            <DashboardWorkspace id={selectedDataset.id} />
+          )}
           {isDetailPage && selectedDataset?.kind === "link" && (
             <Dataset
               datasetId={selectedDataset.id}
@@ -1362,7 +1466,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           {isDetailPage &&
             (selectedDataset?.kind === "map" || isNewMapPage) && (
               <MapDataset
-                mapDatasetId={selectedDataset?.kind === "map" ? selectedDataset.id : null}
+                mapDatasetId={
+                  selectedDataset?.kind === "map" ? selectedDataset.id : null
+                }
                 ownerId={
                   selectedDataset?.user_id ||
                   searchParams.get("owner") ||
@@ -1373,10 +1479,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                   action === "add" || detailView === "mapadd"
                     ? "mapadd"
                     : detailView === "mapdataset" ||
-                      detailView === "mapvisualization" ||
-                      detailView === "publication"
-                    ? detailView
-                    : "mapdataset"
+                        detailView === "mapvisualization" ||
+                        detailView === "publication"
+                      ? detailView
+                      : "mapdataset"
                 }
                 action={action}
                 saveData={saveData}
@@ -1386,11 +1492,14 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                 mobileActionMenuOpen={mobileActions.mounted}
               />
             )}
-          {isDetailPage && !selectedDataset && !isNewMapPage && datasetPages.length > 0 && (
-            <div className="w-full rounded-2xl border border-stone-200 bg-white p-4 text-center text-[2.8vw] text-gray-600 shadow-md md:text-[1.5vw] lg:text-sm">
-              Dataset tidak ditemukan.
-            </div>
-          )}
+          {isDetailPage &&
+            !selectedDataset &&
+            !isNewMapPage &&
+            datasetPages.length > 0 && (
+              <div className="w-full rounded-2xl border border-stone-200 bg-white p-4 text-center text-[2.8vw] text-gray-600 shadow-md md:text-[1.5vw] lg:text-sm">
+                Dataset tidak ditemukan.
+              </div>
+            )}
         </div>
       )}
 
@@ -1402,7 +1511,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               size="custom"
               aria-label="Kembali"
               className="rounded-sm py-3 pr-3 text-stone-900 hover:bg-transparent"
-              onClick={resetToHome}
+              onClick={handleCreatePageBack}
             >
               <LeftChevron className="size-6" />
             </Button>
@@ -1426,10 +1535,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
                 {showOuterActionButtons && (
                   <div>
-                      <Button
-                        color={action === "delete" ? "red" : "green"}
-                        size="lg"
-                        textSize="sm"
+                    <Button
+                      color={action === "delete" ? "red" : "green"}
+                      size="lg"
+                      textSize="sm"
                       text={actionCountLabel}
                       link="none"
                       onClick={() => setSaveData((prev) => prev + 1)}
@@ -1441,35 +1550,66 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           </div>
 
           <div className="flex min-h-0 flex-col gap-6 mb-6">
-            {(mainPage === "add" || mainPage === "mapadd" || mainPage === "linkadd") && (
-              <div className="flex w-full flex-wrap gap-3">
-                <Button
-                  variant={mainPage === "add" ? "outline" : "primary"}
-                  size="md"
-                  onClick={() => setDatasetConfigAction("add", selectedActionOwnerId)}
-                >
-                  Tabel
-                </Button>
+            {(mainPage === "add" ||
+              mainPage === "mapadd" ||
+              mainPage === "linkadd" ||
+              mainPage === "dashboardadd") &&
+              !(mainPage === "dashboardadd" && searchParams.get("type")) && (
+                <div className="flex w-full flex-wrap gap-3">
+                  <Button
+                    variant={mainPage === "add" ? "outline" : "primary"}
+                    size="md"
+                    onClick={() =>
+                      setDatasetConfigAction("add", selectedActionOwnerId)
+                    }
+                  >
+                    Tabel
+                  </Button>
 
-                <Button
-                  variant={mainPage === "mapadd" ? "outline" : "primary"}
-                  size="md"
-                  onClick={() => setMapAddAction(selectedActionOwnerId)}
-                >
-                  Peta
-                </Button>
+                  <Button
+                    variant={mainPage === "mapadd" ? "outline" : "primary"}
+                    size="md"
+                    onClick={() => setMapAddAction(selectedActionOwnerId)}
+                  >
+                    Peta
+                  </Button>
 
-                <Button
-                  variant={mainPage === "linkadd" ? "outline" : "primary"}
-                  size="md"
-                  onClick={() => setLinkAddAction(selectedActionOwnerId)}
-                >
-                  Link
-                </Button>
-              </div>
-            )}
+                  <Button
+                    variant={mainPage === "linkadd" ? "outline" : "primary"}
+                    size="md"
+                    onClick={() => setLinkAddAction(selectedActionOwnerId)}
+                  >
+                    Link
+                  </Button>
 
-            {mainPage === "linkadd" ? (
+                  <Button
+                    variant={
+                      mainPage === "dashboardadd" ? "outline" : "primary"
+                    }
+                    size="md"
+                    onClick={() => setDashboardAddAction(selectedActionOwnerId)}
+                  >
+                    Buat Dashboard
+                  </Button>
+                </div>
+              )}
+
+            {mainPage === "dashboardanalysis" ? (
+              <DashboardAnalysisWorkspace
+                dashboardId={searchParams.get("id") ?? ""}
+                type={searchParams.get("type") as FisheriesAnalysisType}
+              />
+            ) : mainPage === "dashboardedit" ? (
+              <DashboardWorkspace id={searchParams.get("id") ?? ""} />
+            ) : mainPage === "dashboardadd" ? (
+              searchParams.get("type") === "lbi" &&
+              searchParams.get("manage") === "references" &&
+              role === "admin" ? (
+                <BiologicalReferenceManager />
+              ) : (
+                <DashboardTypeSelector />
+              )
+            ) : mainPage === "linkadd" ? (
               <LinkDatasetCreate
                 ownerId={selectedActionOwnerId}
                 saveData={saveData}
@@ -1513,51 +1653,57 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             onClick={(e) => e.stopPropagation()}
             className={`${mobileActions.closing ? "bottom-menu-collapse" : "bottom-menu-expand"} fixed bottom-0 left-0 z-[1200] flex w-full flex-col items-center justify-center gap-3 rounded-t-2xl bg-stone-900 p-5`}
           >
-          <div className="flex w-full flex-col gap-2">
-            <button
-              className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={handleDownloadCsv}
-            >
-              Download CSV
-            </button>
-            {role === "admin" && selectedDataset?.kind === "dataset" && (
+            <div className="flex w-full flex-col gap-2">
               <button
                 className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
-                onClick={() => setDetailView("configuration")}
+                onClick={handleDownloadCsv}
               >
-                Pengaturan
+                Download CSV
               </button>
-            )}
-          </div>
+              {role === "admin" && selectedDataset?.kind === "dataset" && (
+                <button
+                  className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
+                  onClick={() => setDetailView("configuration")}
+                >
+                  Pengaturan
+                </button>
+              )}
+            </div>
 
-          <div className="flex gap-2 w-full">
-            {datasetAccess.can_edit && <button
-              className="w-full bg-sky-800 rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={() => {
-                setDetailAction("edit");
-              }}
-            >
-              Edit
-            </button>}
+            <div className="flex gap-2 w-full">
+              {datasetAccess.can_edit && (
+                <button
+                  className="w-full bg-sky-800 rounded-xl border-2 border-white py-2 text-md text-white"
+                  onClick={() => {
+                    setDetailAction("edit");
+                  }}
+                >
+                  Edit
+                </button>
+              )}
 
-            {datasetAccess.can_add && <button
-              className="w-full bg-green-600 rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={() => {
-                setDetailAction("add");
-              }}
-            >
-              Tambah
-            </button>}
+              {datasetAccess.can_add && (
+                <button
+                  className="w-full bg-green-600 rounded-xl border-2 border-white py-2 text-md text-white"
+                  onClick={() => {
+                    setDetailAction("add");
+                  }}
+                >
+                  Tambah
+                </button>
+              )}
 
-            {datasetAccess.can_delete && <button
-              className="w-full bg-red-600 rounded-xl border-2 border-white py-2 text-md text-white"
-              onClick={() => {
-                setDetailAction("delete");
-              }}
-            >
-              Hapus
-            </button>}
-          </div>
+              {datasetAccess.can_delete && (
+                <button
+                  className="w-full bg-red-600 rounded-xl border-2 border-white py-2 text-md text-white"
+                  onClick={() => {
+                    setDetailAction("delete");
+                  }}
+                >
+                  Hapus
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1586,7 +1732,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             Batal
           </button>
 
-          {((mainPage === "linkadd") ||
+          {(mainPage === "linkadd" ||
             (isAddMode && addDataReady) ||
             (!isAddMode &&
               (action === "edit" || (action === "add" && addDataReady)))) && (

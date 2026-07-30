@@ -41,7 +41,7 @@ export type MapPopupField = {
 };
 
 export type MapLayerGroupConfig = {
-  legendItemMode: "rows" | "columns" | "both";
+  legendItemMode: "none" | "rows" | "columns" | "both";
   mainGroupField: string;
   subGroupField: string;
   useMainGroup: boolean;
@@ -50,6 +50,17 @@ export type MapLayerGroupConfig = {
   mainGroupAliases: Record<string, string>;
   legendItemSources: Record<string, "main" | "sub">;
   legendItemMainValues: Record<string, string>;
+};
+
+export type MapLayerTableConfig = {
+  enabled: boolean;
+  mode: "rows" | "columns";
+  dataLabel: string;
+  valueLabel: string;
+  dataField: string;
+  valueField: string;
+  selectorField: string;
+  selectedFields: string[];
 };
 
 export type MapGlobalLegendGeometryType = Exclude<MapGeometryType, "mixed">;
@@ -129,6 +140,7 @@ export type MapConfig = {
   hiddenMapLayerIds: string[];
   popupFields: MapPopupField[];
   layerPopupFields: Record<string, MapPopupField[]>;
+  layerTableConfigs: Record<string, MapLayerTableConfig>;
 };
 
 export type MapLegendDraft = {
@@ -228,7 +240,9 @@ function parseLayerGroupConfig(value: unknown): MapLayerGroupConfig {
 
   return {
     legendItemMode:
-      config.legendItemMode === "columns" || config.legendItemMode === "both"
+      config.legendItemMode === "none" ||
+      config.legendItemMode === "columns" ||
+      config.legendItemMode === "both"
         ? config.legendItemMode
         : "rows",
     mainGroupField: cleanText(config.mainGroupField),
@@ -478,6 +492,7 @@ export function parseMapConfig(value: unknown): MapConfig {
       hiddenMapLayerIds: [],
       popupFields: [],
       layerPopupFields: {},
+      layerTableConfigs: {},
     };
   }
 
@@ -567,6 +582,30 @@ export function parseMapConfig(value: unknown): MapConfig {
             return acc;
           }, {})
         : {},
+    layerTableConfigs:
+      typeof config.layerTableConfigs === "object" &&
+      config.layerTableConfigs !== null
+        ? Object.entries(config.layerTableConfigs).reduce<
+            Record<string, MapLayerTableConfig>
+          >((acc, [layerId, tableConfig]) => {
+            const cleanLayerId = cleanText(layerId);
+
+            if (!cleanLayerId || !tableConfig) return acc;
+
+            acc[cleanLayerId] = {
+              enabled: tableConfig.enabled === true,
+              mode: tableConfig.mode === "columns" ? "columns" : "rows",
+              dataLabel: cleanText(tableConfig.dataLabel) || "Data",
+              valueLabel: cleanText(tableConfig.valueLabel) || "Nilai",
+              dataField: cleanText(tableConfig.dataField),
+              valueField: cleanText(tableConfig.valueField),
+              selectorField: cleanText(tableConfig.selectorField),
+              selectedFields: cleanStringArray(tableConfig.selectedFields),
+            };
+
+            return acc;
+          }, {})
+        : {},
   };
 }
 
@@ -621,7 +660,7 @@ export function getFeaturePropertyKeys(collection: FeatureCollection) {
     Object.keys(feature.properties ?? {}).forEach((key) => keys.add(key));
   });
 
-  return Array.from(keys).sort((a, b) => a.localeCompare(b));
+  return Array.from(keys);
 }
 
 export function getDefaultGroupField(keys: string[]) {

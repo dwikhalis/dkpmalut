@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import ChartGeneric from "@/app/components/ChartGeneric";
 import MapPublic from "@/app/components/Maps/MapPublic";
+import PublicFisheriesDashboard from "@/app/components/fisheries/PublicFisheriesDashboard";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -12,7 +13,9 @@ type PageOption = {
 };
 
 type PublishedMitraDataset = {
+  id: string;
   label: string | null;
+  kind: string;
 };
 
 type PublishedMapDataset = {
@@ -63,7 +66,7 @@ async function getPublishedMitraPages(): Promise<PageOption[]> {
 async function getPublishedMapPages(): Promise<PageOption[]> {
   const { data, error } = await supabase
     .from("map_datasets")
-    .select("label")
+    .select("id,label,kind")
     .eq("published", "approved")
     .order("label", { ascending: true });
 
@@ -107,6 +110,16 @@ export default async function Page({ params }: Props) {
     ...publishedMitraPages,
     ...publishedMapPages,
   ]);
+  const { data: dashboards } = await supabase
+    .from("datasets")
+    .select("id,label")
+    .eq("kind", "dashboard")
+    .eq("published", "approved");
+  const dashboard = dashboards?.find(
+    (item) => item.label && toSlug(item.label) === slug,
+  );
+  if (dashboard?.label && toSlug(dashboard.label) === slug)
+    return <PublicFisheriesDashboard dashboardId={dashboard.id} />;
 
   if (publishedMapPages.some((page) => page.slug === slug)) {
     return <MapPublic slug={slug} pages={pages} />;

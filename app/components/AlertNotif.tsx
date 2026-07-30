@@ -26,15 +26,15 @@ export default function AlertNotif({
     <div className="flex fixed inset-0 z-[2000] justify-center items-center bg-black/50 w-[100vw] h-[100vh]">
       <div className="mx-4 flex max-w-[calc(100vw-2rem)] flex-col items-center justify-center rounded-2xl bg-stone-100 p-8 md:mx-24 md:max-w-[calc(100vw-12rem)] md:p-12 2xl:p-20">
         {icon === "warning" ? (
-          <div className="h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
+          <div className="flex justify-center items-center h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
             <Warning className="stroke-2 text-amber-600" />
           </div>
         ) : icon === "success" ? (
-          <div className="h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
+          <div className="flex justify-center items-center h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
             <Success className="stroke-2 text-teal-600" />
           </div>
         ) : icon === "failed" ? (
-          <div className="h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
+          <div className="flex justify-center items-center h-20 w-20 2xl:h-35 2xl:w-35 mb-2">
             <Failed className="size-12 stroke-2 text-rose-600" />
           </div>
         ) : null}

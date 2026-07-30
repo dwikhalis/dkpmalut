@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "check": "npm run lint && npm run build",
-    "validate:production-env": "node scripts/validate-production-env.mjs"
+    "test": "node --experimental-strip-types --experimental-test-isolation=none --test lib/fisheries/*.test.ts",
+    "validate:production-env": "node scripts/validate-production-env.mjs",
+    "validate:fisheries-schema": "node scripts/validate-fisheries-schema.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.5.3",

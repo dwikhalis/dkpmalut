@@ -32,6 +32,14 @@ type PublishedMapDataset = {
   tag: string[] | string | null;
 };
 
+type PublishedLbiDataset = {
+  id: string;
+  dataset_name: string;
+  slug: string;
+  image_path: string | null;
+  tag: string[] | string | null;
+};
+
 const STATIC_PAGES: DataPageOption[] = [];
 
 function normalizeTags(value: string[] | string | null): string[] {
@@ -79,14 +87,25 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
 
   const rows = (data ?? []) as PublishedMitraDataset[];
 
-  const { data: mapData, error: mapError } = await supabase
-    .from("map_datasets")
-    .select("id, label, image_path, tag")
-    .eq("published", "approved")
-    .order("label", { ascending: true });
+  const [{ data: mapData, error: mapError }, { data: lbiData, error: lbiError }] =
+    await Promise.all([
+      supabase
+        .from("map_datasets")
+        .select("id, label, image_path, tag")
+        .eq("published", "approved")
+        .order("label", { ascending: true }),
+      supabase
+        .from("lbi_datasets")
+        .select("id, dataset_name, slug, image_path, tag")
+        .eq("published", "approved")
+        .order("dataset_name", { ascending: true }),
+    ]);
 
   if (mapError) {
     console.error("Failed to fetch published map datasets:", mapError);
+  }
+  if (lbiError) {
+    console.error("Failed to fetch published LBI datasets:", lbiError);
   }
 
   const publishedDatasets: DataPageOption[] = rows
@@ -118,6 +137,16 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
       tag: normalizeTags(row.tag),
     }));
 
+  const publishedLbi: DataPageOption[] = (
+    (lbiData ?? []) as PublishedLbiDataset[]
+  ).map((row) => ({
+    id: row.id,
+    title: row.dataset_name,
+    slug: `lbi/${row.slug}`,
+    image: row.image_path || "charts/pic_data_perikanan_kelas.png",
+    tag: normalizeTags(row.tag),
+  }));
+
   function mergePages(
     staticPages: DataPageOption[],
     dynamicPages: DataPageOption[],
@@ -136,12 +165,17 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
   const pages = mergePages(STATIC_PAGES, [
     ...publishedDatasets,
     ...publishedMaps,
+    ...publishedLbi,
   ]);
   const filteredPages = selectedTag
     ? pages.filter((page) => page.tag.includes(selectedTag))
     : pages;
 
-  if (publishedDatasets.length === 0 && publishedMaps.length === 0) {
+  if (
+    publishedDatasets.length === 0 &&
+    publishedMaps.length === 0 &&
+    publishedLbi.length === 0
+  ) {
     return <p className="mt-10">Belum ada data terpublikasi.</p>;
   }
 

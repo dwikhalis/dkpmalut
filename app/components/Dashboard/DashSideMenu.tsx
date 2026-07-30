@@ -195,7 +195,6 @@ export default function DashSideMenu({
                   </Link>
 
                   {partnerMenus.map(renderMenuLink)}
-
                 </>
               )}
 
@@ -208,7 +207,6 @@ export default function DashSideMenu({
                       Profil Akun
                     </span>
                   </Link>
-
                 </>
               )}
             </div>
