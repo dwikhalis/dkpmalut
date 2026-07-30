@@ -1,12 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LeftChevron,
   RightChevron,
   VerticalThreeDot,
+  Warning,
 } from "@/public/icons/iconSets";
 import Button from "../Button";
 import { getDatasetPages } from "@/lib/supabase/supabaseHelper";
@@ -18,6 +26,7 @@ import type { EditSource } from "../DatasetConfig";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import SpinnerLoading from "../SpinnerLoading";
 import BiologicalReferenceManager from "../lbi/BiologicalReferenceManager";
+import DatasetConfiguration from "../DatasetConfiguration";
 import DashboardTypeSelector from "../fisheries/DashboardTypeSelector";
 import DashboardWorkspace from "../fisheries/DashboardWorkspace";
 import DashboardAnalysisWorkspace from "../fisheries/DashboardAnalysisWorkspace";
@@ -78,6 +87,10 @@ type DatasetPage = {
   kind: "dataset" | "map" | "link" | "dashboard";
   view_count?: number;
   download_count?: number;
+  updated_at?: string | null;
+  last_updated_by?: string | null;
+  last_updated_at?: string | null;
+  publication_changed_at?: string | null;
 };
 
 function downloadText(filename: string, content: string) {
@@ -140,6 +153,22 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function formatWitDate(value: string | null | undefined) {
+  if (!value) return "-";
+
+  return `${new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jayapura",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(new Date(value))
+    .replace(",", "")} WIT`;
+}
+
 function getSafeView(value: string | null): DetailView {
   if (value === "dashboard") {
     return "dashboard";
@@ -181,12 +210,21 @@ function getSafeView(value: string | null): DetailView {
 }
 
 function formatDraftExpiry(value?: string | null) {
-  if (!value) return "Draft ini belum memiliki tanggal kedaluwarsa.";
+  if (!value) return "Tanggal kedaluwarsa belum tersedia";
 
-  return `Draft otomatis dihapus pada ${new Intl.DateTimeFormat("id-ID", {
+  return `${new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jayapura",
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(value))}.`;
+  }).format(new Date(value))} WIT`;
+}
+
+function publicationCalloutMessage(
+  status: DatasetPage["published"],
+) {
+  if (status === "requested") return "Diajukan pada";
+  if (status === "rejected") return "Ditolak pada";
+  return "Dipublikasikan pada";
 }
 
 function getPublicationStatus(dataset: DatasetPage): {
@@ -246,16 +284,29 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const [datasetPages, setDatasetPages] = useState<DatasetPage[]>([]);
   const [ownerRows, setOwnerRows] = useState<OwnerRow[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [kindFilter, setKindFilter] = useState("all");
+  const [publicationFilter, setPublicationFilter] = useState("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [activeDraftCalloutId, setActiveDraftCalloutId] = useState<
+    string | null
+  >(null);
+  const [dismissedCalloutId, setDismissedCalloutId] = useState<string | null>(
+    null,
+  );
   const [showMobileAction, setShowMobileAction] = useState(false);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
   const [saveData, setSaveData] = useState(0);
   const [actionChangeCount, setActionChangeCount] = useState(0);
+  const [contentSaving, setContentSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [addDataReady, setAddDataReady] = useState(false);
   const [grantedAccess, setGrantedAccess] = useState<DatasetAccess | null>(
     null,
   );
   const mountedRef = useRef(false);
+  const saveCancelMenuRef = useRef<HTMLDivElement | null>(null);
+  const [saveCancelMenuHeight, setSaveCancelMenuHeight] = useState(0);
 
   const editDataset: EditSource = "datasets";
 
@@ -382,8 +433,13 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const ownerNameMap = useMemo(() => {
     return ownerRows.reduce<Record<string, string>>((acc, owner) => {
+      const username = owner.username?.trim();
+      const organization = owner.organization?.trim();
+
       acc[owner.id] =
-        owner.organization || owner.username || "Pengguna tanpa nama";
+        username && organization
+          ? `${username} - ${organization}`
+          : username || organization || "Pengguna tanpa nama";
 
       return acc;
     }, {});
@@ -399,6 +455,39 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     return ownerNameMap[ownerId] ?? "Dataset Dibagikan";
   };
 
+  const filteredDatasetPages = useMemo(
+    () =>
+      datasetPages.filter((dataset) => {
+        const matchesKind =
+          kindFilter === "all" || dataset.kind === kindFilter;
+        const matchesPublication =
+          publicationFilter === "all" ||
+          (publicationFilter === "not-published"
+            ? dataset.published === null
+            : dataset.published === publicationFilter);
+
+        return matchesKind && matchesPublication;
+      }),
+    [datasetPages, kindFilter, publicationFilter],
+  );
+
+  const pendingDatasetCount = useMemo(
+    () =>
+      datasetPages.filter((dataset) => dataset.published === "requested")
+        .length,
+    [datasetPages],
+  );
+
+  const ownersWithData = useMemo(() => {
+    const ownerIds = new Set(
+      datasetPages.flatMap((dataset) =>
+        dataset.user_id ? [dataset.user_id] : [],
+      ),
+    );
+
+    return ownerRows.filter((owner) => ownerIds.has(owner.id));
+  }, [datasetPages, ownerRows]);
+
   const ownerGroups = useMemo(() => {
     const groups = new Map<
       string,
@@ -409,7 +498,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       }
     >();
 
-    datasetPages.forEach((dataset) => {
+    filteredDatasetPages.forEach((dataset) => {
       const ownerId =
         role === "partner" && dataset.user_id !== userId
           ? "__shared__"
@@ -427,7 +516,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       groups.get(ownerId)?.datasets.push(dataset);
     });
 
-    if (groups.size === 0 && userId) {
+    if (
+      userId &&
+      (groups.size === 0 || (role === "partner" && !groups.has(userId)))
+    ) {
       groups.set(userId, {
         ownerId: userId,
         ownerName:
@@ -441,6 +533,12 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     }
 
     return Array.from(groups.values())
+      .filter(
+        (group) =>
+          role !== "admin" ||
+          ownerFilter === "all" ||
+          group.ownerId === ownerFilter,
+      )
       .map((group) => ({
         ...group,
         datasets: [...group.datasets].sort((a, b) =>
@@ -448,14 +546,21 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         ),
       }))
       .sort((a, b) => {
-        if (role === "admin") {
+        if (role === "admin" || role === "partner") {
           if (a.ownerId === userId) return -1;
           if (b.ownerId === userId) return 1;
         }
 
         return a.ownerName.localeCompare(b.ownerName);
       });
-  }, [getOwnerName, datasetPages, role, userId, userName]);
+  }, [
+    filteredDatasetPages,
+    getOwnerName,
+    ownerFilter,
+    role,
+    userId,
+    userName,
+  ]);
 
   const pageTitle = isNewMapPage
     ? "Tambah Peta"
@@ -506,7 +611,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   useEffect(() => {
     if (
       !selectedDataset ||
-      selectedDataset.kind !== "dataset" ||
+      (selectedDataset.kind !== "dataset" && selectedDataset.kind !== "map") ||
       role !== "partner" ||
       ownsSelectedDataset
     ) {
@@ -515,10 +620,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     }
 
     const fetchGrant = async () => {
+      const grantDatasetColumn =
+        selectedDataset.kind === "map" ? "map_dataset_id" : "dataset_id";
       const { data, error } = await supabase
-        .from("dataset_access_grants")
+        .from(
+          selectedDataset.kind === "map"
+            ? "map_dataset_access_grants"
+            : "dataset_access_grants",
+        )
         .select("can_add, can_edit, can_delete")
-        .eq("dataset_id", selectedDataset.id)
+        .eq(grantDatasetColumn, selectedDataset.id)
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -590,6 +701,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     }
 
     const fetchDatasetPages = async () => {
+      setListLoading(true);
+
       try {
         const result = await getDatasetPages("all");
         let visibleDatasetRows = result;
@@ -617,16 +730,12 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           );
         }
 
-        let mapQuery = supabase
+        const mapQuery = supabase
           .from("map_datasets")
           .select(
-            "id, label, user_id, published, import_status, draft_expires_at",
+            "id, label, user_id, published, import_status, draft_expires_at, updated_at",
           )
           .order("label", { ascending: true });
-
-        if (role !== "admin") {
-          mapQuery = mapQuery.eq("user_id", userId);
-        }
 
         let { data: mapRows, error: mapError } = await mapQuery;
 
@@ -636,14 +745,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             mapError,
           );
 
-          let fallbackMapQuery = supabase
+          const fallbackMapQuery = supabase
             .from("map_datasets")
-            .select("id, label, user_id, published")
+            .select("id, label, user_id, published, updated_at")
             .order("label", { ascending: true });
-
-          if (role !== "admin") {
-            fallbackMapQuery = fallbackMapQuery.eq("user_id", userId);
-          }
 
           const fallbackMapResult = await fallbackMapQuery;
 
@@ -655,6 +760,19 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             draft_expires_at: null,
           }));
           mapError = null;
+        }
+
+        if (role === "partner") {
+          const { data: mapGrantRows } = await supabase
+            .from("map_dataset_access_grants")
+            .select("map_dataset_id")
+            .eq("user_id", userId);
+          const grantedMapIds = new Set(
+            (mapGrantRows ?? []).map((grant) => grant.map_dataset_id),
+          );
+          mapRows = (mapRows ?? []).filter(
+            (map) => map.user_id === userId || grantedMapIds.has(map.id),
+          );
         }
 
         let nextDatasetPages: DatasetPage[] = [
@@ -719,12 +837,65 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         if (ownersError) throw ownersError;
 
         const nextOwnerRows = (owners ?? []) as OwnerRow[];
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const updateResponse = session?.access_token
+          ? await fetch("/api/dataset-last-updates", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                resources: nextDatasetPages.map((item) => ({
+                  id: item.id,
+                  kind: item.kind === "map" ? "map" : "dataset",
+                })),
+              }),
+            })
+          : null;
+        const updateResult = updateResponse?.ok
+          ? ((await updateResponse.json()) as { updates?: unknown[] })
+          : null;
+        const updateRows = updateResult?.updates ?? [];
+
+        const updateMap = new Map(
+          (
+            updateRows as {
+              resource_kind: "dataset" | "map";
+              resource_id: string;
+              updated_by: string | null;
+              updated_at: string;
+              publication_changed_at: string | null;
+            }[]
+          ).map((update) => [
+            `${update.resource_kind}:${update.resource_id}`,
+            update,
+          ]),
+        );
+
+        nextDatasetPages = nextDatasetPages.map((item) => {
+          const update = updateMap.get(
+            `${item.kind === "map" ? "map" : "dataset"}:${item.id}`,
+          );
+
+          return {
+            ...item,
+            last_updated_by: update?.updated_by ?? null,
+            last_updated_at: update?.updated_at ?? item.updated_at ?? null,
+            publication_changed_at:
+              update?.publication_changed_at ?? null,
+          };
+        });
 
         setDatasetPages(nextDatasetPages);
         setOwnerRows(nextOwnerRows);
         setDatasetListCache(cacheScope, nextDatasetPages, nextOwnerRows);
       } catch (err) {
         console.error("Fetching datasets:", err);
+      } finally {
+        setListLoading(false);
       }
     };
 
@@ -745,6 +916,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             details.open = false;
           }
         });
+
+      if (!target.closest("[data-status-callout]")) {
+        setActiveDraftCalloutId(null);
+      }
     };
 
     document.addEventListener("click", handleDocumentClick);
@@ -840,6 +1015,23 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           (action === "add" && addDataReady))));
   const mobileActions = useCollapsibleMount(showMobileAction);
   const saveCancelActions = useCollapsibleMount(showSaveCancelAction);
+
+  useEffect(() => {
+    const menu = saveCancelMenuRef.current;
+
+    if (!saveCancelActions.mounted || !menu) {
+      setSaveCancelMenuHeight(0);
+      return;
+    }
+
+    const updateHeight = () => setSaveCancelMenuHeight(menu.offsetHeight);
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(menu);
+
+    return () => observer.disconnect();
+  }, [saveCancelActions.mounted]);
 
   if (loading) {
     return (
@@ -1091,6 +1283,15 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     router.replace(`/profile/data?${params.toString()}`, { scroll: false });
   };
 
+  const openDashboardSettings = () => {
+    if (!selectedDataset || selectedDataset.kind !== "dashboard") return;
+
+    setShowMobileAction(false);
+    router.push(
+      `/profile/data?action=dashboardedit&id=${selectedDataset.id}`,
+    );
+  };
+
   const handleSignalAction = () => {
     if (isDetailPage) {
       setDetailAction("list");
@@ -1123,13 +1324,6 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
         <button
           className="whitespace-nowrap px-2 p-2 text-left text-sm hover:bg-sky-200"
-          onClick={() => setDatasetConfigAction("edit", ownerId)}
-        >
-          Atur Dataset
-        </button>
-
-        <button
-          className="whitespace-nowrap px-2 p-2 text-left text-sm hover:bg-sky-200"
           onClick={() => setDatasetConfigAction("delete", ownerId)}
         >
           Hapus Dataset
@@ -1138,9 +1332,28 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     </details>
   );
   return (
-    <div className="flex w-full max-w-full overflow-hidden">
+    <div
+      className={`flex w-full max-w-full ${
+        !isDetailPage && mainPage === "main"
+          ? "overflow-visible"
+          : "overflow-hidden"
+      }`}
+    >
       {mainPage === "main" && (
-        <div className="flex w-full min-w-0 max-w-full flex-col overflow-hidden">
+        <div
+          className={`flex w-full min-w-0 max-w-full flex-col ${
+            isDetailPage
+              ? "overflow-hidden pb-[calc(var(--mobile-action-height)+1rem)] md:pb-0"
+              : "overflow-visible"
+          }`}
+          style={
+            isDetailPage
+              ? ({
+                  "--mobile-action-height": `${saveCancelMenuHeight}px`,
+                } as CSSProperties)
+              : undefined
+          }
+        >
           <div className="mb-6 flex w-full min-w-0 items-center gap-3">
             {isDetailPage && (
               <Button
@@ -1211,6 +1424,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           >
                             Download CSV
                           </button>
+
+                          {role === "admin" &&
+                            selectedDataset.import_status !== "draft" && (
+                              <button
+                                className="whitespace-nowrap p-2 px-2 text-left text-sm hover:bg-sky-200"
+                                onClick={() => setDetailView("configuration")}
+                              >
+                                Pengaturan
+                              </button>
+                            )}
                         </>
                       ) : (
                         <>
@@ -1248,7 +1471,20 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                             Download CSV
                           </button>
 
-                          {role === "admin" && (
+                          {selectedDataset.kind === "dashboard" &&
+                            selectedDataset.import_status !== "draft" &&
+                            datasetAccess.can_edit && (
+                              <button
+                                className="whitespace-nowrap p-2 px-2 text-left text-sm hover:bg-sky-200"
+                                onClick={openDashboardSettings}
+                              >
+                                Pengaturan
+                              </button>
+                            )}
+
+                          {role === "admin" &&
+                            selectedDataset.kind === "dataset" &&
+                            selectedDataset.import_status !== "draft" && (
                             <button
                               className="whitespace-nowrap p-2 px-2 text-left text-sm hover:bg-sky-200"
                               onClick={() => setDetailView("configuration")}
@@ -1277,6 +1513,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                         textSize="sm"
                         text="Batal"
                         link="none"
+                        disabled={contentSaving}
                         onClick={() => setDetailAction("list")}
                       />
                     </div>
@@ -1295,6 +1532,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                         size="lg"
                         textSize="sm"
                         text={actionCountLabel}
+                        loading={contentSaving}
+                        disabled={contentSaving}
                         link="none"
                         onClick={() => setSaveData((prev) => prev + 1)}
                       />
@@ -1342,8 +1581,83 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
           {!isDetailPage && (
             <div className="flex w-full min-w-0 max-w-full flex-col gap-6 mb-6 px-1 py-2">
-              {ownerGroups.map((group) => (
-                <section key={group.ownerId} className="flex flex-col gap-3">
+              {listLoading ? (
+                <div className="flex min-h-48 w-full items-center justify-center rounded-2xl border border-stone-200 bg-white shadow-sm">
+                  <SpinnerLoading size="sm" color="black" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex w-full flex-wrap gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+                <label className="min-w-44 grow text-sm text-stone-600">
+                  <span className="mb-1 block">Jenis data</span>
+                  <select
+                    value={kindFilter}
+                    onChange={(event) => setKindFilter(event.target.value)}
+                    className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 text-stone-900 outline-none focus:ring-2 focus:ring-sky-400"
+                  >
+                    <option value="all">Semua jenis</option>
+                    <option value="dataset">Table</option>
+                    <option value="map">Peta</option>
+                    <option value="link">Link</option>
+                    <option value="dashboard">Dashboard</option>
+                  </select>
+                </label>
+
+                <label className="min-w-44 grow text-sm text-stone-600">
+                  <span className="mb-1 block">Status publikasi</span>
+                  <select
+                    value={publicationFilter}
+                    onChange={(event) =>
+                      setPublicationFilter(event.target.value)
+                    }
+                    className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 text-stone-900 outline-none focus:ring-2 focus:ring-sky-400"
+                  >
+                    <option value="all">Semua status</option>
+                    <option value="not-published">Not published</option>
+                    <option value="requested">Pending</option>
+                    <option value="approved">Published</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+
+                {role === "admin" && (
+                  <label className="min-w-44 grow text-sm text-stone-600">
+                    <span className="mb-1 block">Pemilik data</span>
+                    <select
+                      value={ownerFilter}
+                      onChange={(event) => setOwnerFilter(event.target.value)}
+                      className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 text-stone-900 outline-none focus:ring-2 focus:ring-sky-400"
+                    >
+                      <option value="all">Semua pemilik</option>
+                      {ownersWithData.map((owner) => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.id === userId
+                            ? "Dataset Saya"
+                            : ownerNameMap[owner.id]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                  </div>
+
+                  {role === "admin" && pendingDatasetCount > 0 && (
+                    <div
+                      role="status"
+                      className="flex w-full items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                    >
+                      <Warning className="size-6 shrink-0 text-amber-600" />
+                      <p>
+                        <span className="font-bold">
+                          {pendingDatasetCount} dataset
+                        </span>{" "}
+                        menunggu peninjauan publikasi.
+                      </p>
+                    </div>
+                  )}
+
+                  {ownerGroups.map((group) => (
+                    <section key={group.ownerId} className="flex flex-col gap-3">
                   <div className="relative flex w-full items-center justify-between">
                     <h2 className="mb-1 text-lg font-bold">
                       {group.ownerName}
@@ -1365,7 +1679,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                         <button
                           key={dataset.id}
                           type="button"
-                          className="group flex w-full items-center justify-between gap-3 rounded-2xl border-1 border-stone-200 bg-white p-3 text-left shadow-xl hover:bg-sky-800 hover:text-white cursor-pointer"
+                          className="group flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border-1 border-stone-200 bg-white p-3 text-left shadow-xl hover:bg-sky-800 hover:text-white cursor-pointer"
                           onClick={() => {
                             setMainPage("main");
                             setAction("list");
@@ -1390,7 +1704,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                             }, 500);
                           }}
                         >
-                          <span className="min-w-0 flex-1 text-left">
+                          <span className="min-w-0 grow basis-72 text-left">
                             <span className="block">{dataset.label}</span>
                             <span className="mt-0.5 block text-xs text-gray-500 group-hover:text-white/80">
                               Dilihat: {dataset.view_count ?? 0}
@@ -1398,41 +1712,132 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                                 <> | Diunduh: {dataset.download_count ?? 0}</>
                               )}
                             </span>
+                            {dataset.last_updated_by && (
+                              <span className="mt-0.5 block text-xs text-gray-500 group-hover:text-white/80">
+                                Update terakhir oleh {dataset.last_updated_by}
+                              </span>
+                            )}
+                            <span className="block text-xs text-gray-500 group-hover:text-white/80">
+                              {formatWitDate(
+                                dataset.last_updated_at ?? dataset.updated_at,
+                              )}
+                            </span>
                           </span>
 
-                          {dataset.kind === "map" && (
-                            <span className="shrink-0 rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-800">
-                              peta
-                            </span>
-                          )}
-                          {dataset.kind === "link" && (
-                            <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-900">
-                              link
-                            </span>
-                          )}
-                          {dataset.kind === "dashboard" && (
-                            <span className="shrink-0 rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-semibold text-fuchsia-800">
-                              dashboard
-                            </span>
-                          )}
-                          {dataset.kind === "dataset" && (
-                            <span className="shrink-0 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800">
-                              table
-                            </span>
-                          )}
+                          <span className="flex grow basis-64 flex-wrap items-center justify-end gap-2">
+                            {dataset.kind === "map" && (
+                              <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-800">
+                                peta
+                              </span>
+                            )}
+                            {dataset.kind === "link" && (
+                              <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-900">
+                                link
+                              </span>
+                            )}
+                            {dataset.kind === "dashboard" && (
+                              <span className="rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-semibold text-fuchsia-800">
+                                dashboard
+                              </span>
+                            )}
+                            {dataset.kind === "dataset" && (
+                              <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800">
+                                table
+                              </span>
+                            )}
 
-                          <span
-                            title={publicationStatus.title}
-                            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${publicationStatus.className}`}
-                          >
-                            {publicationStatus.label}
+                            {dataset.import_status === "draft" ||
+                            dataset.published !== null ? (
+                              <span
+                                className="group/draft relative"
+                                data-status-callout
+                                onMouseLeave={() => setDismissedCalloutId(null)}
+                              >
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-expanded={
+                                    activeDraftCalloutId === dataset.id
+                                  }
+                                  className={`block cursor-pointer rounded-full px-3 py-1 text-xs font-semibold ${publicationStatus.className}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setDismissedCalloutId(null);
+                                    setActiveDraftCalloutId((current) =>
+                                      current === dataset.id ? null : dataset.id,
+                                    );
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key !== "Enter" &&
+                                      event.key !== " "
+                                    )
+                                      return;
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setDismissedCalloutId(null);
+                                    setActiveDraftCalloutId((current) =>
+                                      current === dataset.id ? null : dataset.id,
+                                    );
+                                  }}
+                                >
+                                  {publicationStatus.label}
+                                </span>
+                                <span
+                                  role="status"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setDismissedCalloutId(dataset.id);
+                                    setActiveDraftCalloutId(null);
+                                  }}
+                                  className={`absolute right-0 top-full z-40 mt-2 w-64 rounded-lg border border-violet-200 bg-white p-3 text-left text-xs font-normal leading-5 text-stone-700 shadow-xl ${
+                                    activeDraftCalloutId === dataset.id
+                                      ? "block"
+                                      : dismissedCalloutId === dataset.id
+                                        ? "hidden"
+                                        : "hidden group-hover/draft:block group-focus-within/draft:block"
+                                  }`}
+                                >
+                                  <span className="block">
+                                    {dataset.import_status === "draft"
+                                      ? "Draft otomatis akan dihapus"
+                                      : publicationCalloutMessage(
+                                          dataset.published,
+                                        )}
+                                  </span>
+                                  <span className="mt-1 block font-semibold text-violet-800">
+                                    {formatDraftExpiry(
+                                      dataset.import_status === "draft"
+                                        ? dataset.draft_expires_at
+                                        : dataset.publication_changed_at ??
+                                            dataset.updated_at,
+                                    )}
+                                  </span>
+                                </span>
+                              </span>
+                            ) : (
+                              <span
+                                title={publicationStatus.title}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${publicationStatus.className}`}
+                              >
+                                {publicationStatus.label}
+                              </span>
+                            )}
                           </span>
                         </button>
                       );
                     })
                   )}
-                </section>
-              ))}
+                    </section>
+                  ))}
+
+                  {ownerGroups.length === 0 && (
+                    <p className="w-full rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-600 shadow-md">
+                      Tidak ada data yang sesuai dengan filter.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -1464,7 +1869,19 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           )}
 
           {isDetailPage &&
+            selectedDataset?.kind === "map" &&
+            detailView === "configuration" && (
+              <DatasetConfiguration
+                datasetId={selectedDataset.id}
+                columns={[]}
+                resourceKind="map"
+                showValidation={false}
+              />
+            )}
+
+          {isDetailPage &&
             (selectedDataset?.kind === "map" || isNewMapPage) && (
+              detailView !== "configuration" && (
               <MapDataset
                 mapDatasetId={
                   selectedDataset?.kind === "map" ? selectedDataset.id : null
@@ -1488,9 +1905,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                 saveData={saveData}
                 onAddReadyChange={setAddDataReady}
                 onChangeCountChange={handleActionChangeCount}
+                onSavingChange={setContentSaving}
                 onCreated={() => setDetailAction("list")}
                 mobileActionMenuOpen={mobileActions.mounted}
               />
+              )
             )}
           {isDetailPage &&
             !selectedDataset &&
@@ -1504,7 +1923,14 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       )}
 
       {mainPage !== "main" && (
-        <div className="flex min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden">
+        <div
+          className="flex min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden pb-[calc(var(--mobile-action-height)+1rem)] md:pb-0"
+          style={
+            {
+              "--mobile-action-height": `${saveCancelMenuHeight}px`,
+            } as CSSProperties
+          }
+        >
           <div className="relative flex items-center justify-center mb-6">
             <Button
               variant="ghost"
@@ -1528,6 +1954,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                       textSize="sm"
                       text="Batal"
                       link="none"
+                      disabled={contentSaving}
                       onClick={resetToHome}
                     />
                   </div>
@@ -1540,6 +1967,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                       size="lg"
                       textSize="sm"
                       text={actionCountLabel}
+                      loading={contentSaving}
+                      disabled={contentSaving}
                       link="none"
                       onClick={() => setSaveData((prev) => prev + 1)}
                     />
@@ -1625,6 +2054,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                 saveData={saveData}
                 onAddReadyChange={setAddDataReady}
                 onChangeCountChange={handleActionChangeCount}
+                onSavingChange={setContentSaving}
                 onCreated={handleSignalDatasetAction}
               />
             ) : (
@@ -1660,14 +2090,36 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               >
                 Download CSV
               </button>
-              {role === "admin" && selectedDataset?.kind === "dataset" && (
-                <button
-                  className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
-                  onClick={() => setDetailView("configuration")}
-                >
-                  Pengaturan
-                </button>
-              )}
+              {role === "admin" &&
+                selectedDataset?.kind === "dataset" &&
+                selectedDataset.import_status !== "draft" && (
+                  <button
+                    className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
+                    onClick={() => setDetailView("configuration")}
+                  >
+                    Pengaturan
+                  </button>
+                )}
+              {selectedDataset?.kind === "dashboard" &&
+                selectedDataset.import_status !== "draft" &&
+                datasetAccess.can_edit && (
+                  <button
+                    className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
+                    onClick={openDashboardSettings}
+                  >
+                    Pengaturan
+                  </button>
+                )}
+              {role === "admin" &&
+                selectedDataset?.kind === "map" &&
+                selectedDataset.import_status !== "draft" && (
+                  <button
+                    className="w-full rounded-xl border-2 border-white py-2 text-md text-white"
+                    onClick={() => setDetailView("configuration")}
+                  >
+                    Pengaturan
+                  </button>
+                )}
             </div>
 
             <div className="flex gap-2 w-full">
@@ -1710,11 +2162,13 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
       {saveCancelActions.mounted && (
         <div
+          ref={saveCancelMenuRef}
           onClick={(e) => e.stopPropagation()}
           className={`${saveCancelActions.closing ? "bottom-menu-collapse" : "bottom-menu-expand"} fixed bottom-0 left-0 z-40 flex w-full flex-col justify-center gap-3 rounded-t-2xl bg-stone-900 p-5 md:hidden`}
         >
           <button
-            className="w-full rounded-xl bg-gray-600 border-2 border-white py-2 text-md text-white"
+            disabled={contentSaving}
+            className="w-full rounded-xl bg-gray-600 border-2 border-white py-2 text-md text-white disabled:opacity-60"
             onClick={() => {
               if (mainPage !== "main") {
                 resetToHome();
@@ -1737,10 +2191,15 @@ export default function DashData({ onSignal = noopSignal }: Props) {
             (!isAddMode &&
               (action === "edit" || (action === "add" && addDataReady)))) && (
             <button
-              className="w-full rounded-xl bg-green-600 border-2 border-white py-2 text-md text-white"
+              disabled={contentSaving}
+              className="flex w-full items-center justify-center rounded-xl border-2 border-white bg-green-600 py-2 text-md text-white disabled:opacity-60"
               onClick={() => setSaveData((prev) => prev + 1)}
             >
-              Simpan ({actionChangeCount})
+              {contentSaving ? (
+                <SpinnerLoading size="sm" color="white" />
+              ) : (
+                `Simpan (${actionChangeCount})`
+              )}
             </button>
           )}
 

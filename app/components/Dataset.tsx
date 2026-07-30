@@ -471,6 +471,8 @@ export default function Dataset({
         .update({
           published_config: nextPublishedConfig,
           image_path: imagePath,
+          import_status: "ready",
+          draft_expires_at: null,
         })
         .eq("id", datasetId);
 

@@ -66,7 +66,7 @@ async function getPublishedMitraPages(): Promise<PageOption[]> {
 async function getPublishedMapPages(): Promise<PageOption[]> {
   const { data, error } = await supabase
     .from("map_datasets")
-    .select("id,label,kind")
+    .select("label")
     .eq("published", "approved")
     .order("label", { ascending: true });
 

@@ -44,6 +44,8 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const path = formData.get("path");
   const file = formData.get("file");
+  const mapDatasetId = formData.get("mapDatasetId");
+  const requiredPermission = formData.get("permission");
 
   if (typeof path !== "string" || !(file instanceof File)) {
     return NextResponse.json(
@@ -59,9 +61,39 @@ export async function POST(request: Request) {
     !path.includes("\\") &&
     !path.split("/").includes("..");
 
+  let sharedMapAllowed = false;
+
+  if (
+    hasSafePath &&
+    profile.role === "partner" &&
+    ownerId !== user.id &&
+    typeof mapDatasetId === "string"
+  ) {
+    const [{ data: mapDataset }, { data: grant }] = await Promise.all([
+      supabaseAdmin
+        .from("map_datasets")
+        .select("user_id")
+        .eq("id", mapDatasetId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("map_dataset_access_grants")
+        .select("can_add, can_edit")
+        .eq("map_dataset_id", mapDatasetId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
+    const hasPermission =
+      requiredPermission === "add" ? grant?.can_add : grant?.can_edit;
+
+    sharedMapAllowed =
+      mapDataset?.user_id === ownerId && Boolean(hasPermission);
+  }
+
   if (
     !hasSafePath ||
-    (profile.role === "partner" && ownerId !== user.id)
+    (profile.role === "partner" &&
+      ownerId !== user.id &&
+      !sharedMapAllowed)
   ) {
     return NextResponse.json(
       { message: "Lokasi file peta tidak diizinkan." },

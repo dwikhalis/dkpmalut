@@ -56,6 +56,9 @@ export default function DashboardTypeSelector() {
         data: [],
         column_config: [],
         import_status: "draft",
+        draft_expires_at: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         dashboard_config: config,
       });
       if (insertError) throw insertError;

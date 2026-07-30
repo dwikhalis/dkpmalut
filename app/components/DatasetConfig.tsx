@@ -919,13 +919,15 @@ export default function DatasetConfig({
         label: newLabel.trim(),
         data: newDataRows,
         column_config: newColumns,
-        import_status: "ready",
-        draft_expires_at: null,
       };
 
       const { error } = draftDatasetId
         ? await supabase.from("datasets").update(payload).eq("id", draftDatasetId)
-        : await supabase.from("datasets").insert(payload);
+        : await supabase.from("datasets").insert({
+            ...payload,
+            import_status: "draft",
+            draft_expires_at: getDraftExpiryDate(),
+          });
 
       if (error) throw error;
 

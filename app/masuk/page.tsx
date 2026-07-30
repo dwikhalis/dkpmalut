@@ -7,6 +7,7 @@ import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import SpinnerLoading from "../components/SpinnerLoading";
+import { EyeClosed, EyeOpen } from "@/public/icons/iconSets";
 
 const RESET_COOLDOWN_KEY = "resetPasswordCooldownUntil";
 
@@ -46,6 +47,7 @@ export default function Page() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
@@ -85,6 +87,7 @@ export default function Page() {
   useEffect(() => {
     setEmail("");
     setPassword("");
+    setShowPassword(false);
     setCaptchaToken(null);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -370,16 +373,40 @@ export default function Page() {
                 className="rounded-xl bg-stone-100 p-2 disabled:cursor-not-allowed disabled:opacity-60"
               />
 
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                disabled={loading}
-                autoComplete="current-password"
-                className="rounded-xl bg-stone-100 p-2 disabled:cursor-not-allowed disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  disabled={loading}
+                  autoComplete="current-password"
+                  className="w-full rounded-xl bg-stone-100 p-2 pr-11 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  aria-label={
+                    showPassword
+                      ? "Sembunyikan password"
+                      : "Tampilkan password"
+                  }
+                  title={
+                    showPassword
+                      ? "Sembunyikan password"
+                      : "Tampilkan password"
+                  }
+                  disabled={loading}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-stone-600 hover:text-stone-900 disabled:opacity-50"
+                >
+                  {showPassword ? (
+                    <EyeOpen className="size-5" />
+                  ) : (
+                    <EyeClosed className="size-5" />
+                  )}
+                </button>
+              </div>
 
               {renderTurnstile()}
 

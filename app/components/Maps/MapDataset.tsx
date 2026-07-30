@@ -46,6 +46,7 @@ import {
   type MapGeometryType,
   type MapLayerGroupConfig,
   type MapLegendDraft,
+  type MapLink,
   type MapLayerTableConfig,
   type MapPopupField,
 } from "@/lib/utils/mapConfig";
@@ -55,6 +56,7 @@ import SpinnerLoading from "../SpinnerLoading";
 import MapPreviewDynamic from "./MapPreviewDynamic";
 import type { MapLegendItem, MapPreviewLayer } from "./MapPreview";
 import {
+  Delete,
   DownChevron,
   Draggable,
   LeftChevron,
@@ -64,6 +66,12 @@ import {
 } from "@/public/icons/iconSets";
 import AccordionToggleIcon from "../AccordionToggleIcon";
 import { useCollapsibleMount } from "@/lib/hooks/useCollapsibleMount";
+import MapLinks from "./MapLinks";
+import {
+  DATA_KKPD_OPTIONS,
+  DATA_REGENCY_OPTIONS,
+  DATA_SUBWPP_OPTIONS,
+} from "../configAreaSelector";
 
 const Papa = (await import("papaparse")).default;
 
@@ -89,6 +97,9 @@ type MapDatasetRow = {
   pictures_path: MapAttachment[] | string | null;
   published: PublicationStatus;
   tag: string[] | string | null;
+  data_regency: string[] | string | null;
+  data_subwpp: string[] | string | null;
+  data_kkpd: string[] | string | null;
   description: string | null;
   image_path: string | null;
 };
@@ -146,6 +157,7 @@ type Props = {
   saveData?: number;
   onAddReadyChange?: (ready: boolean) => void;
   onChangeCountChange?: (count: number) => void;
+  onSavingChange?: (saving: boolean) => void;
   onCreated?: () => void;
   mobileActionMenuOpen?: boolean;
 };
@@ -195,6 +207,9 @@ type MapVisualizationSnapshot = {
 type MapPublicationSnapshot = {
   label: string;
   tags: string[];
+  dataRegencies: string[];
+  dataSubWpp: string[];
+  dataKkpd: string[];
   description: string;
   imagePath: string | null;
 };
@@ -607,7 +622,36 @@ async function createGeoJsonUploadBlob(file: File) {
   });
 }
 
-async function uploadGeoJson(path: string, file: Blob) {
+async function uploadGeoJson(
+  path: string,
+  file: Blob,
+  options?: {
+    mapDatasetId: string;
+    permission: "add" | "edit";
+  },
+) {
+  const upload = (accessToken: string) => {
+    const formData = new FormData();
+    formData.set("path", path);
+    formData.set(
+      "file",
+      file,
+      path.split("/").pop() || "map.geojson",
+    );
+    if (options) {
+      formData.set("mapDatasetId", options.mapDatasetId);
+      formData.set("permission", options.permission);
+    }
+
+    return fetch("/api/map-files", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    });
+  };
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -616,27 +660,33 @@ async function uploadGeoJson(path: string, file: Blob) {
     throw new Error("Sesi login telah berakhir. Silakan masuk kembali.");
   }
 
-  const formData = new FormData();
-  formData.set("path", path);
-  formData.set(
-    "file",
-    file,
-    path.split("/").pop() || "map.geojson",
-  );
+  let response = await upload(session.access_token);
 
-  const response = await fetch("/api/map-files", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: formData,
-  });
+  // A long-running map edit can outlive the cached access token. Refresh it
+  // once before treating the upload as an unauthenticated request.
+  if (response.status === 401) {
+    const {
+      data: { session: refreshedSession },
+      error: refreshError,
+    } = await supabase.auth.refreshSession();
+
+    if (refreshError || !refreshedSession?.access_token) {
+      throw new Error("Sesi login telah berakhir. Silakan masuk kembali.");
+    }
+
+    response = await upload(refreshedSession.access_token);
+  }
+
   const result = (await response.json().catch(() => null)) as {
     message?: string;
   } | null;
 
   if (!response.ok) {
-    throw new Error(result?.message || "Gagal mengunggah data peta.");
+    throw new Error(
+      response.status === 401
+        ? "Sesi login telah berakhir. Silakan masuk kembali."
+        : result?.message || "Gagal mengunggah data peta.",
+    );
   }
 }
 
@@ -1539,12 +1589,18 @@ function countVisualizationChanges(
 function buildPublicationSnapshot(
   label: string,
   tags: string[],
+  dataRegencies: string[],
+  dataSubWpp: string[],
+  dataKkpd: string[],
   description: string,
   imagePath: string | null,
 ): MapPublicationSnapshot {
   return {
     label: label.trim(),
     tags: [...tags].sort((a, b) => a.localeCompare(b)),
+    dataRegencies: [...dataRegencies].sort((a, b) => a.localeCompare(b)),
+    dataSubWpp: [...dataSubWpp].sort((a, b) => a.localeCompare(b)),
+    dataKkpd: [...dataKkpd].sort((a, b) => a.localeCompare(b)),
     description: description.trim(),
     imagePath,
   };
@@ -1577,6 +1633,7 @@ export default function MapDataset({
   saveData = 0,
   onAddReadyChange,
   onChangeCountChange,
+  onSavingChange,
   onCreated,
   mobileActionMenuOpen = false,
 }: Props) {
@@ -1590,8 +1647,12 @@ export default function MapDataset({
     ((dataUrl: string | null) => void) | null
   >(null);
   const legendSectionRef = useRef<HTMLElement | null>(null);
+  const tableSectionRef = useRef<HTMLElement | null>(null);
   const popupSectionRef = useRef<HTMLElement | null>(null);
-  const pendingMapConfigScrollRef = useRef<"legend" | "popup" | null>(null);
+  const linkSectionRef = useRef<HTMLElement | null>(null);
+  const pendingMapConfigScrollRef = useRef<
+    "legend" | "table" | "popup" | "link" | null
+  >(null);
   const lastHandledSave = useRef(saveData);
   const mountedRef = useRef(false);
   const layerNameUpdateTimersRef = useRef<Map<string, number>>(new Map());
@@ -1602,6 +1663,10 @@ export default function MapDataset({
     "none",
   );
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    onSavingChange?.(saving);
+  }, [onSavingChange, saving]);
 
   const [dataset, setDataset] = useState<MapDatasetRow | null>(null);
   const [layers, setLayers] = useState<LoadedMapLayer[]>([]);
@@ -1616,6 +1681,15 @@ export default function MapDataset({
   const [publicationStatus, setPublicationStatus] =
     useState<PublicationStatus>(null);
   const [publicationTags, setPublicationTags] = useState<string[]>([]);
+  const [publicationDataRegencies, setPublicationDataRegencies] = useState<
+    string[]
+  >([]);
+  const [publicationInKkpd, setPublicationInKkpd] = useState(false);
+  const [publicationDataKkpd, setPublicationDataKkpd] = useState<string[]>([]);
+  const [publicationInSubWpp, setPublicationInSubWpp] = useState(false);
+  const [publicationDataSubWpp, setPublicationDataSubWpp] = useState<string[]>(
+    [],
+  );
   const [publicationDescription, setPublicationDescription] = useState("");
   const [publicationImagePath, setPublicationImagePath] = useState<
     string | null
@@ -1703,11 +1777,14 @@ export default function MapDataset({
     string | null
   >(null);
   const [showLegendConfig, setShowLegendConfig] = useState(true);
+  const [showTableConfig, setShowTableConfig] = useState(false);
   const [showPopupConfig, setShowPopupConfig] = useState(false);
+  const [showLinkConfig, setShowLinkConfig] = useState(false);
   const [showLayerListSection, setShowLayerListSection] = useState(true);
   const [openLegendLayerId, setOpenLegendLayerId] = useState<string | null>(
     null,
   );
+  const [openTableLayerId, setOpenTableLayerId] = useState<string | null>(null);
   const [openLegendItemKey, setOpenLegendItemKey] = useState<string | null>(
     null,
   );
@@ -1751,10 +1828,14 @@ export default function MapDataset({
     };
   }, []);
 
-  const toggleMapConfigSection = (section: "legend" | "popup") => {
+  const toggleMapConfigSection = (
+    section: "legend" | "table" | "popup" | "link",
+  ) => {
     pendingMapConfigScrollRef.current = section;
     setShowLegendConfig((prev) => (section === "legend" ? !prev : false));
+    setShowTableConfig((prev) => (section === "table" ? !prev : false));
     setShowPopupConfig((prev) => (section === "popup" ? !prev : false));
+    setShowLinkConfig((prev) => (section === "link" ? !prev : false));
   };
 
   useEffect(() => {
@@ -1766,13 +1847,17 @@ export default function MapDataset({
       const target =
         section === "legend"
           ? legendSectionRef.current
-          : popupSectionRef.current;
+          : section === "table"
+            ? tableSectionRef.current
+            : section === "popup"
+              ? popupSectionRef.current
+              : linkSectionRef.current;
 
       target?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
 
     return () => window.clearTimeout(timer);
-  }, [showLegendConfig, showPopupConfig]);
+  }, [showLegendConfig, showLinkConfig, showPopupConfig, showTableConfig]);
 
   const allPropertyKeys = useMemo(() => {
     return Array.from(
@@ -2189,61 +2274,20 @@ export default function MapDataset({
     // collection by a non-unique/empty selector can accidentally select a
     // different row from the one displayed in the callout.
     const properties = selectedPreviewFeature.feature.properties ?? {};
-    const isVisibleTableValue = (rawValue: unknown) => {
-      const value = String(rawValue ?? "").trim().toLowerCase();
-
-      return value !== "" && value !== "0" && value !== "null" && value !== "-";
-    };
+    const formatTableValue = (rawValue: unknown) =>
+      rawValue === null || rawValue === undefined ? "null" : String(rawValue);
     const rows =
       config.mode === "rows"
         ? [
             {
-              data: String(properties[config.dataField] ?? ""),
-              value: String(properties[config.valueField] ?? ""),
+              data: formatTableValue(properties[config.dataField]),
+              value: formatTableValue(properties[config.valueField]),
             },
           ]
-        : Array.from(
-            config.selectedFields.reduce<
-              Map<string, Array<{ field: string; value: string }>>
-            >((groups, field) => {
-              const groupName = field.replace(
-                /_(?:jum_unit|jum|kondisi|tahun)$/i,
-                "",
-              );
-              const items = groups.get(groupName) ?? [];
-              items.push({
-                field,
-                value: String(properties[field] ?? ""),
-              });
-              groups.set(groupName, items);
-              return groups;
-            }, new Map()),
-          ).map(([groupName, items]) => {
-            const baseItem = items.find((item) => item.field === groupName);
-            const details = items
-              .filter((item) => isVisibleTableValue(item.value))
-              .map((item) => {
-                if (item.field === groupName) return item.value.trim();
-
-                const detailLabel = item.field
-                  .slice(groupName.length + 1)
-                  .replace(/_/g, " ");
-                return `${detailLabel}: ${item.value.trim()}`;
-              });
-
-            return {
-              data: groupName,
-              value:
-                baseItem && isVisibleTableValue(baseItem.value)
-                  ? details.join(" | ")
-                  : "",
-            };
-          });
-    const visibleRows = rows.filter((row) => {
-      const value = row.value.trim().toLowerCase();
-
-      return value !== "" && value !== "0" && value !== "null" && value !== "-";
-    });
+        : config.selectedFields.map((field) => ({
+            data: field,
+            value: formatTableValue(properties[field]),
+          }));
 
     return {
       selectorValue:
@@ -2257,7 +2301,7 @@ export default function MapDataset({
         ).trim() || layer.name,
       dataLabel: config.dataLabel || "Data",
       valueLabel: config.valueLabel || "Nilai",
-      rows: visibleRows,
+      rows,
     };
   }, [layers, mapConfig, selectedPreviewFeature]);
   const hasEnabledPreviewTable = useMemo(
@@ -2364,7 +2408,7 @@ export default function MapDataset({
       const { data: mapRow, error: mapError } = await supabase
         .from("map_datasets")
         .select(
-          "id, user_id, label, slug, geojson_feature_count, bounds, map_config, documents_path, pictures_path, published, tag, description, image_path",
+          "id, user_id, label, slug, geojson_feature_count, bounds, map_config, documents_path, pictures_path, published, tag, data_regency, data_subwpp, data_kkpd, description, image_path",
         )
         .eq("id", mapDatasetId)
         .maybeSingle();
@@ -2437,6 +2481,24 @@ export default function MapDataset({
       const row = mapRow as MapDatasetRow;
       const parsedConfig = parseMapConfig(row.map_config);
       const parsedPublicationTags = parseJsonArray<string>(row.tag);
+      const configuredRegencies = new Set<string>(
+        DATA_REGENCY_OPTIONS.map((option) => option.value),
+      );
+      const parsedDataRegencies = parseJsonArray<string>(
+        row.data_regency,
+      ).filter((value) => configuredRegencies.has(value));
+      const configuredSubWpp = new Set<string>(
+        DATA_SUBWPP_OPTIONS.map((option) => option.value),
+      );
+      const parsedDataSubWpp = parseJsonArray<string>(row.data_subwpp).filter(
+        (value) => configuredSubWpp.has(value),
+      );
+      const configuredKkpd = new Set<string>(
+        DATA_KKPD_OPTIONS.map((option) => option.value),
+      );
+      const parsedDataKkpd = parseJsonArray<string>(row.data_kkpd).filter(
+        (value) => configuredKkpd.has(value),
+      );
       const parsedDocuments = parseJsonArray<MapAttachment>(row.documents_path);
       const parsedPictures = parseJsonArray<MapAttachment>(row.pictures_path);
 
@@ -2447,6 +2509,11 @@ export default function MapDataset({
       setPictures(parsedPictures);
       setPublicationStatus(row.published ?? null);
       setPublicationTags(parsedPublicationTags);
+      setPublicationDataRegencies(parsedDataRegencies);
+      setPublicationDataSubWpp(parsedDataSubWpp);
+      setPublicationInSubWpp(parsedDataSubWpp.length > 0);
+      setPublicationDataKkpd(parsedDataKkpd);
+      setPublicationInKkpd(parsedDataKkpd.length > 0);
       setPublicationDescription(row.description ?? "");
       setPublicationImagePath(row.image_path ?? null);
       setPublicationImageFile(null);
@@ -2459,6 +2526,9 @@ export default function MapDataset({
         buildPublicationSnapshot(
           row.label ?? "",
           parsedPublicationTags,
+          parsedDataRegencies,
+          parsedDataSubWpp,
+          parsedDataKkpd,
           row.description ?? "",
           row.image_path ?? null,
         ),
@@ -2532,6 +2602,10 @@ export default function MapDataset({
     };
   }, [featureColumns, selectedLayer?.id]);
 
+  const featureEditChangeCount =
+    editedFeatureCells.length +
+    Number(Boolean(label.trim() && label.trim() !== dataset?.label));
+
   useEffect(() => {
     if (!onChangeCountChange) return;
 
@@ -2540,7 +2614,7 @@ export default function MapDataset({
     if (view === "mapadd" || action === "add") {
       nextCount = pendingGeoJson ? 1 : 0;
     } else if (view === "mapdataset" && action === "edit") {
-      nextCount = editedFeatureCells.length;
+      nextCount = featureEditChangeCount;
     } else if (view === "mapdataset" && action === "delete") {
       nextCount = deleteSelectedLayer ? 1 : selectedFeatureRows.length;
     } else if (view === "mapvisualization" || view === "maplegend") {
@@ -2563,7 +2637,7 @@ export default function MapDataset({
   }, [
     action,
     deleteSelectedLayer,
-    editedFeatureCells.length,
+    featureEditChangeCount,
     onChangeCountChange,
     pendingGeoJson,
     selectedFeatureRows.length,
@@ -2593,6 +2667,7 @@ export default function MapDataset({
       popupFields: getDefaultPopupFields(allPropertyKeys),
       layerPopupFields: {},
       layerTableConfigs: {},
+      links: [],
     });
   }, [allPropertyKeys, mapConfig.mainGroupField]);
 
@@ -2714,6 +2789,7 @@ export default function MapDataset({
         popupFields: getDefaultPopupFields(propertyKeys),
         layerPopupFields: {},
         layerTableConfigs: {},
+        links: [],
       };
 
       const { data: inserted, error: insertError } = await supabase
@@ -3035,8 +3111,6 @@ export default function MapDataset({
           .update({
             label: nextLabel,
             slug: nextSlug,
-            import_status: "ready",
-            draft_expires_at: null,
           })
           .eq("id", draftMapDatasetId);
 
@@ -3084,6 +3158,7 @@ export default function MapDataset({
           popupFields: getDefaultPopupFields(propertyKeys),
           layerPopupFields: {},
           layerTableConfigs: {},
+          links: [],
         };
 
         const { data: inserted, error: insertError } = await supabase
@@ -3097,8 +3172,8 @@ export default function MapDataset({
             geojson_feature_count: collection.features.length,
             bounds: targetBounds,
             map_config: initialConfig,
-            import_status: "ready",
-            draft_expires_at: null,
+            import_status: "draft",
+            draft_expires_at: getDraftExpiryDate(),
           })
           .select("id, label, slug, bounds, map_config")
           .single();
@@ -4197,7 +4272,13 @@ export default function MapDataset({
       type: "application/geo+json",
     });
 
-    await uploadGeoJson(layer.source_path, blob);
+    await uploadGeoJson(
+      layer.source_path,
+      blob,
+      mapDatasetId
+        ? { mapDatasetId, permission: "edit" }
+        : undefined,
+    );
   };
 
   const refreshMapDatasetSummary = async (
@@ -4237,10 +4318,29 @@ export default function MapDataset({
       await Promise.all(
         layers
           .filter((layer) => Boolean(layer.collection))
-          .map((layer) =>
-            uploadLayerCollection(layer, layer.collection as FeatureCollection),
-          ),
+          .map(async (layer) => {
+            await uploadLayerCollection(
+              layer,
+              layer.collection as FeatureCollection,
+            );
+            const { error } = await supabase
+              .from("map_layers")
+              .update({ property_keys: layer.property_keys })
+              .eq("id", layer.id);
+
+            if (error) throw error;
+          }),
       );
+
+      const nextLabel = label.trim();
+      if (nextLabel && nextLabel !== dataset?.label) {
+        const { error } = await supabase
+          .from("map_datasets")
+          .update({ label: nextLabel, slug: toSlug(nextLabel) })
+          .eq("id", mapDatasetId);
+
+        if (error) throw error;
+      }
 
       setEditedFeatureCells([]);
       setAlert("success");
@@ -4603,6 +4703,62 @@ export default function MapDataset({
     }));
   };
 
+  const addMapLink = () => {
+    const link: MapLink = {
+      id: crypto.randomUUID(),
+      name: "",
+      address: "",
+      iconPath: null,
+      style: "filled",
+    };
+
+    setMapConfig((prev) => ({
+      ...prev,
+      links: [...prev.links, link],
+    }));
+  };
+
+  const updateMapLink = (linkId: string, changes: Partial<MapLink>) => {
+    setMapConfig((prev) => ({
+      ...prev,
+      links: prev.links.map((link) =>
+        link.id === linkId ? { ...link, ...changes } : link,
+      ),
+    }));
+  };
+
+  const deleteMapLink = (linkId: string) => {
+    setMapConfig((prev) => ({
+      ...prev,
+      links: prev.links.filter((link) => link.id !== linkId),
+    }));
+  };
+
+  const uploadMapLinkIcon = async (linkId: string, file: File) => {
+    const isAllowed =
+      ["image/jpeg", "image/png"].includes(file.type) ||
+      /\.(jpe?g|png)$/i.test(file.name);
+
+    if (!isAllowed) {
+      setMessage("Ikon tautan harus berupa JPG, JPEG, atau PNG.");
+      setAlert("invalid");
+      return;
+    }
+
+    try {
+      const attachment = await uploadAttachment(
+        "images",
+        `map_links/${mapDatasetId || draftMapDatasetId || "draft"}`,
+        file,
+      );
+      updateMapLink(linkId, { iconPath: attachment.path });
+    } catch (error) {
+      console.error("Failed to upload map link icon:", error);
+      setMessage("Gagal mengunggah ikon tautan.");
+      setAlert("failed");
+    }
+  };
+
   const handleUploadLegendIcon = async (
     layerId: string,
     legendValue: string,
@@ -4700,6 +4856,30 @@ export default function MapDataset({
   const toggleTag = (tag: string) => {
     setPublicationTags((prev) =>
       prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
+    );
+  };
+
+  const togglePublicationDataRegency = (regency: string) => {
+    setPublicationDataRegencies((current) =>
+      current.includes(regency)
+        ? current.filter((item) => item !== regency)
+        : [...current, regency],
+    );
+  };
+
+  const togglePublicationDataKkpd = (area: string) => {
+    setPublicationDataKkpd((current) =>
+      current.includes(area)
+        ? current.filter((item) => item !== area)
+        : [...current, area],
+    );
+  };
+
+  const togglePublicationDataSubWpp = (subWpp: string) => {
+    setPublicationDataSubWpp((current) =>
+      current.includes(subWpp)
+        ? current.filter((item) => item !== subWpp)
+        : [...current, subWpp],
     );
   };
 
@@ -4858,7 +5038,12 @@ export default function MapDataset({
   }, [publicationImageFile, publicationImagePath, view]);
 
   const handleSubmitPublication = async () => {
-    if (!mapDatasetId || !label.trim() || publicationTags.length === 0) {
+    if (
+      !mapDatasetId ||
+      !label.trim() ||
+      publicationTags.length === 0 ||
+      publicationDataRegencies.length === 0
+    ) {
       setAlert("invalid");
       return;
     }
@@ -4880,6 +5065,15 @@ export default function MapDataset({
           label: label.trim(),
           slug: toSlug(label.trim()),
           tag: publicationTags,
+          data_regency: publicationDataRegencies,
+          data_subwpp:
+            publicationInSubWpp && publicationDataSubWpp.length > 0
+              ? publicationDataSubWpp
+              : null,
+          data_kkpd:
+            publicationInKkpd && publicationDataKkpd.length > 0
+              ? publicationDataKkpd
+              : null,
           description: publicationDescription.trim(),
           image_path: imagePath,
           published: "requested",
@@ -4895,6 +5089,9 @@ export default function MapDataset({
         buildPublicationSnapshot(
           label.trim(),
           publicationTags,
+          publicationDataRegencies,
+          publicationInSubWpp ? publicationDataSubWpp : [],
+          publicationInKkpd ? publicationDataKkpd : [],
           publicationDescription.trim(),
           imagePath ?? null,
         ),
@@ -4926,6 +5123,9 @@ export default function MapDataset({
     buildPublicationSnapshot(
       label,
       publicationTags,
+      publicationDataRegencies,
+      publicationInSubWpp ? publicationDataSubWpp : [],
+      publicationInKkpd ? publicationDataKkpd : [],
       publicationDescription,
       publicationImagePath,
     ),
@@ -4952,7 +5152,7 @@ export default function MapDataset({
     }
 
     if (confirmAction === "edit-layer") {
-      return `Simpan (${editedFeatureCells.length}) perubahan layer ini?`;
+      return `Simpan (${featureEditChangeCount}) perubahan layer ini?`;
     }
 
     if (confirmAction === "visualization") {
@@ -5203,6 +5403,18 @@ export default function MapDataset({
 
       {view === "mapdataset" && (
         <div className="w-full">
+          {action === "edit" && (
+            <label className="mb-4 flex flex-col gap-1 text-sm">
+              <span className="font-semibold text-gray-700">Judul Peta</span>
+              <input
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="Judul peta"
+                className="rounded-md border border-gray-400 px-3 py-2"
+              />
+            </label>
+          )}
+
           <div className="mb-4 flex flex-row flex-wrap gap-3">
             <label className="flex min-w-0 flex-1 grow flex-col gap-1 text-xs">
               <span className="font-semibold text-gray-700">
@@ -6465,7 +6677,7 @@ export default function MapDataset({
                     )}
                   </div>
 
-                  <div className="flex min-w-0 grow basis-full flex-col gap-3 rounded-md border border-stone-200 p-3">
+                  <div className="hidden">
                     <p className="text-sm font-semibold">Tabel</p>
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -7564,6 +7776,235 @@ export default function MapDataset({
             </section>
 
             <section
+              ref={tableSectionRef}
+              className="scroll-mt-24 rounded-lg border border-stone-200 bg-white shadow-md"
+            >
+              <button
+                type="button"
+                onClick={() => toggleMapConfigSection("table")}
+                className="flex w-full items-center justify-between rounded-t-lg bg-sky-800 px-3 py-2 text-left text-sm font-semibold text-white"
+              >
+                <span>Tabel</span>
+                <AccordionToggleIcon open={showTableConfig} size="sm" />
+              </button>
+
+              <div
+                className={`${showTableConfig ? "visible" : "invisible h-0 pointer-events-none"} flex min-h-0 flex-col gap-3 overflow-hidden border-t border-gray-200 p-3`}
+              >
+                {layers.filter((layer) => isLayerVisible(layer.id)).length ===
+                  0 && (
+                  <p className="rounded-md border border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">
+                    Pilih layer legenda terlebih dahulu
+                  </p>
+                )}
+
+                {layers
+                  .filter((layer) => isLayerVisible(layer.id))
+                  .map((layer) => {
+                  const isLayerOpen = openTableLayerId === layer.id;
+                  const layerTableConfig = getLayerTableConfig(
+                    mapConfig,
+                    layer,
+                  );
+                  const layerPropertyKeys = layer.property_keys ?? [];
+
+                  return (
+                    <div
+                      key={layer.id}
+                      className="flex min-w-0 flex-col rounded-md border border-stone-200 bg-white"
+                    >
+                      <div className="flex min-h-20 w-full items-center gap-3 px-6 py-6 transition-colors hover:bg-stone-50">
+                        <input
+                          type="checkbox"
+                          checked={layerTableConfig.enabled}
+                          onChange={(event) =>
+                            updateLayerTableConfig(layer, {
+                              enabled: event.target.checked,
+                            })
+                          }
+                          aria-label={`Tampilkan tabel ${layer.name}`}
+                          className="shrink-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenTableLayerId((current) =>
+                              current === layer.id ? null : layer.id,
+                            )
+                          }
+                          className="flex min-w-0 grow items-center justify-between gap-5 text-left"
+                        >
+                          <span className="flex min-w-0 flex-col">
+                            <span className="min-w-0 truncate text-sm font-semibold">
+                              {layer.name}
+                            </span>
+                            <span className="text-xs text-stone-500">
+                              {getGeometryLabel(layer.geometry_type)}
+                            </span>
+                          </span>
+                          <AccordionToggleIcon open={isLayerOpen} />
+                        </button>
+                      </div>
+
+                      <div
+                        className={`${isLayerOpen ? "visible" : "invisible h-0 pointer-events-none"} flex min-h-0 flex-col gap-3 overflow-hidden border-t border-stone-200 p-3`}
+                      >
+                        {layerTableConfig.enabled && (
+                          <>
+                            <label className="flex flex-col gap-2 text-sm">
+                              Susunan Data
+                              <select
+                                value={layerTableConfig.mode}
+                                onChange={(event) =>
+                                  updateLayerTableConfig(layer, {
+                                    mode:
+                                      event.target.value === "columns"
+                                        ? "columns"
+                                        : "rows",
+                                  })
+                                }
+                                className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                              >
+                                <option value="rows">Baris</option>
+                                <option value="columns">Kolom</option>
+                              </select>
+                            </label>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <label className="flex flex-col gap-2 text-sm">
+                                Nama Data
+                                <input
+                                  value={layerTableConfig.dataLabel}
+                                  onChange={(event) =>
+                                    updateLayerTableConfig(layer, {
+                                      dataLabel: event.target.value,
+                                    })
+                                  }
+                                  className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-2 text-sm">
+                                Nama Nilai
+                                <input
+                                  value={layerTableConfig.valueLabel}
+                                  onChange={(event) =>
+                                    updateLayerTableConfig(layer, {
+                                      valueLabel: event.target.value,
+                                    })
+                                  }
+                                  className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                                />
+                              </label>
+                            </div>
+
+                            {layerTableConfig.mode === "rows" ? (
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <label className="flex flex-col gap-2 text-sm">
+                                  Kolom untuk Data
+                                  <select
+                                    value={layerTableConfig.dataField}
+                                    onChange={(event) =>
+                                      updateLayerTableConfig(layer, {
+                                        dataField: event.target.value,
+                                      })
+                                    }
+                                    className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                                  >
+                                    {layerPropertyKeys.map((key) => (
+                                      <option key={key} value={key}>
+                                        {key}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="flex flex-col gap-2 text-sm">
+                                  Kolom untuk Nilai
+                                  <select
+                                    value={layerTableConfig.valueField}
+                                    onChange={(event) =>
+                                      updateLayerTableConfig(layer, {
+                                        valueField: event.target.value,
+                                      })
+                                    }
+                                    className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                                  >
+                                    {layerPropertyKeys.map((key) => (
+                                      <option key={key} value={key}>
+                                        {key}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+                            ) : (
+                              <>
+                                <label className="flex flex-col gap-2 text-sm">
+                                  Kolom selector fitur
+                                  <select
+                                    value={layerTableConfig.selectorField}
+                                    onChange={(event) =>
+                                      updateLayerTableConfig(layer, {
+                                        selectorField: event.target.value,
+                                      })
+                                    }
+                                    className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                                  >
+                                    {getOrderedLayerPopupFields(layer)
+                                      .filter((field) => field.selected)
+                                      .map((field) => (
+                                        <option
+                                          key={field.field}
+                                          value={field.field}
+                                        >
+                                          {field.label || field.field}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </label>
+
+                                <div className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-md border border-stone-200 p-3">
+                                  <span className="text-sm">
+                                    Kolom yang ditampilkan
+                                  </span>
+                                  {layerPropertyKeys.map((key) => (
+                                    <label
+                                      key={key}
+                                      className="flex items-center gap-2 text-sm"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={layerTableConfig.selectedFields.includes(
+                                          key,
+                                        )}
+                                        onChange={(event) =>
+                                          updateLayerTableConfig(layer, {
+                                            selectedFields: event.target.checked
+                                              ? [
+                                                  ...layerTableConfig.selectedFields,
+                                                  key,
+                                                ]
+                                              : layerTableConfig.selectedFields.filter(
+                                                  (field) => field !== key,
+                                                ),
+                                          })
+                                        }
+                                      />
+                                      {key}
+                                    </label>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section
               ref={popupSectionRef}
               className="scroll-mt-24 rounded-lg border border-stone-200 bg-white shadow-md"
             >
@@ -7588,35 +8029,58 @@ export default function MapDataset({
                 const isPopupLayerOpen = openPopupLayerId === layer.id;
                 const layerPopupFields = getOrderedLayerPopupFields(layer);
                 const numericLayerPopupFields = getNumericLayerPopupFields(layer);
+                const popupEnabled = layerPopupFields.some(
+                  (field) => field.selected,
+                );
 
                 return (
                 <div
                   key={layer.id}
                   className="flex min-w-0 flex-col rounded-md border border-stone-200 bg-white [contain-intrinsic-size:auto_10rem] [content-visibility:auto]"
                 >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenPopupLayerId((current) =>
-                        current === layer.id ? null : layer.id,
-                      )
-                    }
-                    className="flex min-h-20 w-full touch-manipulation items-center justify-between gap-5 px-6 py-6 text-left transition-colors hover:bg-stone-50"
-                  >
-                    <span className="flex min-w-0 flex-col">
-                      <span className="min-w-0 truncate text-sm font-semibold">
-                        {layer.name}
+                  <div className="flex min-h-20 w-full touch-manipulation items-center gap-3 px-6 py-6 transition-colors hover:bg-stone-50">
+                    <input
+                      type="checkbox"
+                      checked={popupEnabled}
+                      onChange={(event) => {
+                        const selected = event.target.checked;
+                        setLayerPopupFields(
+                          layer.id,
+                          layerPopupFields.map((field) => ({
+                            ...field,
+                            selected,
+                          })),
+                        );
+                      }}
+                      aria-label={`Tampilkan pop-up ${layer.name}`}
+                      className="shrink-0"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenPopupLayerId((current) =>
+                          current === layer.id ? null : layer.id,
+                        )
+                      }
+                      className="flex min-w-0 grow items-center justify-between gap-5 text-left"
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="min-w-0 truncate text-sm font-semibold">
+                          {layer.name}
+                        </span>
+                        <span className="text-xs text-stone-500">
+                          {getGeometryLabel(layer.geometry_type)}
+                        </span>
                       </span>
-                      <span className="text-xs text-stone-500">
-                        {getGeometryLabel(layer.geometry_type)}
-                      </span>
-                    </span>
-                    <AccordionToggleIcon open={isPopupLayerOpen} />
-                  </button>
+                      <AccordionToggleIcon open={isPopupLayerOpen} />
+                    </button>
+                  </div>
 
                   <div
                     className={`${isPopupLayerOpen ? "visible" : "invisible h-0 pointer-events-none"} flex min-h-0 flex-col gap-2 overflow-hidden border-t border-stone-200 p-3`}
                   >
+                  {popupEnabled && (
+                  <>
                   {layerPopupFields.map((popupField, popupFieldIndex) => {
                     const popupFieldKey = `${layer.id}:${popupField.field}`;
                     const isNumericField = numericLayerPopupFields.has(
@@ -7787,9 +8251,11 @@ export default function MapDataset({
                           </div>
                         )}
                       </div>
-                    </div>
+                      </div>
                     );
                   })}
+                  </>
+                  )}
                   </div>
                 </div>
                 );
@@ -7797,6 +8263,155 @@ export default function MapDataset({
               )}
               </div>
             </section>
+
+            {role === "admin" && (
+              <section
+                ref={linkSectionRef}
+                className="scroll-mt-24 rounded-lg border border-stone-200 bg-white shadow-md"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleMapConfigSection("link")}
+                  className="flex w-full items-center justify-between rounded-t-lg bg-sky-800 px-3 py-2 text-left text-sm font-semibold text-white"
+                >
+                  <span>Tautan</span>
+                  <AccordionToggleIcon open={showLinkConfig} size="sm" />
+                </button>
+
+                <div
+                  className={`${showLinkConfig ? "visible" : "invisible h-0 pointer-events-none"} flex min-h-0 flex-col gap-3 overflow-hidden border-t border-gray-200 p-3`}
+                >
+                  {mapConfig.links.map((link, index) => (
+                    <div
+                      key={link.id}
+                      className="flex flex-col gap-3 rounded-md border border-stone-200 bg-white p-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold">
+                          Tautan {index + 1}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => deleteMapLink(link.id)}
+                          aria-label={`Hapus tautan ${index + 1}`}
+                          className="flex size-9 shrink-0 items-center justify-center rounded-md text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                        >
+                          <Delete className="size-5" />
+                        </button>
+                      </div>
+
+                      <label className="flex flex-col gap-2 text-sm">
+                        Label Tautan
+                        <input
+                          value={link.name}
+                          onChange={(event) =>
+                            updateMapLink(link.id, {
+                              name: event.target.value,
+                            })
+                          }
+                          className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <label className="flex flex-col gap-2 text-sm">
+                        Alamat
+                        <input
+                          type="url"
+                          value={link.address}
+                          onChange={(event) =>
+                            updateMapLink(link.id, {
+                              address: event.target.value,
+                            })
+                          }
+                          placeholder="https://"
+                          className="h-10 rounded-md border border-stone-300 px-3 py-2"
+                        />
+                      </label>
+
+                      <fieldset className="flex flex-col gap-2 text-sm">
+                        <legend>Gaya Tombol</legend>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            aria-pressed={link.style === "filled"}
+                            onClick={() =>
+                              updateMapLink(link.id, { style: "filled" })
+                            }
+                            className={`rounded-md border px-3 py-2 font-semibold ${
+                              link.style === "filled"
+                                ? "border-sky-800 bg-sky-800 text-white"
+                                : "border-stone-300 bg-white text-stone-600"
+                            }`}
+                          >
+                            Style 1
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={link.style === "outline"}
+                            onClick={() =>
+                              updateMapLink(link.id, { style: "outline" })
+                            }
+                            className={`rounded-md border px-3 py-2 font-semibold ${
+                              link.style === "outline"
+                                ? "border-sky-800 bg-white text-sky-800"
+                                : "border-stone-300 bg-white text-stone-600"
+                            }`}
+                          >
+                            Style 2
+                          </button>
+                        </div>
+                      </fieldset>
+
+                      <label className="flex flex-col gap-2 text-sm">
+                        Icon
+                        <span
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            const file = event.dataTransfer.files[0];
+                            if (file) void uploadMapLinkIcon(link.id, file);
+                          }}
+                          className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-stone-300 bg-stone-50 p-3 text-center text-xs text-stone-500 hover:bg-stone-100"
+                        >
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                            className="hidden"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (file) void uploadMapLinkIcon(link.id, file);
+                              event.target.value = "";
+                            }}
+                          />
+                          {link.iconPath ? (
+                            <>
+                              <img
+                                src={getPublicImageUrl(link.iconPath)}
+                                alt={`Icon ${link.name || `tautan ${index + 1}`}`}
+                                className="mb-2 h-16 w-16 rounded-md object-contain"
+                              />
+                              <span>
+                                Klik atau jatuhkan gambar untuk mengganti.
+                              </span>
+                            </>
+                          ) : (
+                            "Klik atau jatuhkan JPG, JPEG, atau PNG di sini."
+                          )}
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addMapLink}
+                    className="flex min-h-16 w-full items-center justify-center rounded-md border-2 border-dashed border-stone-300 bg-stone-50 px-4 py-3 text-sm font-semibold text-stone-600 transition-colors hover:border-sky-500 hover:bg-sky-50 hover:text-sky-800"
+                  >
+                    Tambah tautan
+                  </button>
+                </div>
+              </section>
+            )}
 
             <div className="hidden lg:block">
               <Button
@@ -8037,6 +8652,8 @@ export default function MapDataset({
                   </div>
                 </div>
 
+                <MapLinks links={previewMapConfig.links} />
+
                 {hasEnabledPreviewTable && (
                   <div className="mt-4 overflow-x-auto rounded-md border border-stone-300">
                     {selectedPreviewTable ? (
@@ -8262,6 +8879,148 @@ export default function MapDataset({
                   </button>
                 ))}
               </div>
+
+              <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                <legend className="px-1 text-sm font-semibold text-gray-900">
+                  Wilayah Administratif — Kabupaten / Kota{" "}
+                  <span className="text-red-600" aria-hidden="true">
+                    *
+                  </span>
+                </legend>
+
+                <div className="flex flex-wrap gap-2">
+                  {DATA_REGENCY_OPTIONS.map((regency) => {
+                    const selected = publicationDataRegencies.includes(
+                      regency.value,
+                    );
+
+                    return (
+                      <button
+                        key={regency.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          togglePublicationDataRegency(regency.value)
+                        }
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                          selected
+                            ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-800"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-sky-400 hover:bg-sky-50"
+                        }`}
+                      >
+                        {regency.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs leading-relaxed text-gray-500">
+                  Wajib pilih minimal satu kabupaten atau kota yang dicakup
+                  oleh peta.
+                </p>
+              </fieldset>
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-colors hover:bg-sky-50">
+                <input
+                  type="checkbox"
+                  checked={publicationInKkpd}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setPublicationInKkpd(checked);
+                    if (!checked) setPublicationDataKkpd([]);
+                  }}
+                  className="h-4 w-4 accent-sky-700"
+                />
+                <span>
+                  <span className="block font-medium text-gray-900">
+                    Kawasan Konservasi
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Peta mencakup salah satu kawasan konservasi.
+                  </span>
+                </span>
+              </label>
+
+              {publicationInKkpd && (
+                <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                  <legend className="px-1 text-sm font-semibold text-gray-900">
+                    Kawasan Konservasi — KKD
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {DATA_KKPD_OPTIONS.map((area) => {
+                      const selected = publicationDataKkpd.includes(area.value);
+                      return (
+                        <button
+                          key={area.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => togglePublicationDataKkpd(area.value)}
+                          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                            selected
+                              ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-800"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-sky-400 hover:bg-sky-50"
+                          }`}
+                        >
+                          {area.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-colors hover:bg-sky-50">
+                <input
+                  type="checkbox"
+                  checked={publicationInSubWpp}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setPublicationInSubWpp(checked);
+                    if (!checked) setPublicationDataSubWpp([]);
+                  }}
+                  className="h-4 w-4 accent-sky-700"
+                />
+                <span>
+                  <span className="block font-medium text-gray-900">
+                    Wilayah Perikanan
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Peta mencakup salah satu wilayah Sub-WPP.
+                  </span>
+                </span>
+              </label>
+
+              {publicationInSubWpp && (
+                <fieldset className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                  <legend className="px-1 text-sm font-semibold text-gray-900">
+                    Wilayah Perikanan — Sub-WPP
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {DATA_SUBWPP_OPTIONS.map((subWpp) => {
+                      const selected = publicationDataSubWpp.includes(
+                        subWpp.value,
+                      );
+                      return (
+                        <button
+                          key={subWpp.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() =>
+                            togglePublicationDataSubWpp(subWpp.value)
+                          }
+                          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                            selected
+                              ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-800"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-sky-400 hover:bg-sky-50"
+                          }`}
+                        >
+                          {subWpp.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
 
               <label className="flex flex-col gap-2 text-sm">
                 Deskripsi

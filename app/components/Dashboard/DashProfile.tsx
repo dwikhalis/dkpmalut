@@ -77,13 +77,6 @@ function getPublicImageUrl(imagePath: string | null | undefined) {
   return data.publicUrl || DEFAULT_PROFILE_IMAGE;
 }
 
-function getFileExtension(file: File) {
-  const fileNameParts = file.name.split(".");
-  const extension = fileNameParts[fileNameParts.length - 1];
-
-  return extension ? extension.toLowerCase() : "png";
-}
-
 function displayValue(value: string | null | undefined, placeholder: string) {
   return value && value.trim() !== "" ? value : placeholder;
 }
@@ -106,7 +99,12 @@ async function getOwnedDataCounts(userId: string) {
     };
   }
 
-  const [uploadedResult, publishedResult] = await Promise.all([
+  const [
+    uploadedDatasetResult,
+    publishedDatasetResult,
+    uploadedMapResult,
+    publishedMapResult,
+  ] = await Promise.all([
     supabase
       .from("datasets")
       .select("id", { count: "exact", head: true })
@@ -117,19 +115,34 @@ async function getOwnedDataCounts(userId: string) {
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("published", "approved"),
+
+    supabase
+      .from("map_datasets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+
+    supabase
+      .from("map_datasets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("published", "approved"),
   ]);
 
-  if (uploadedResult.error) {
-    throw uploadedResult.error;
-  }
+  const countError =
+    uploadedDatasetResult.error ||
+    publishedDatasetResult.error ||
+    uploadedMapResult.error ||
+    publishedMapResult.error;
 
-  if (publishedResult.error) {
-    throw publishedResult.error;
+  if (countError) {
+    throw countError;
   }
 
   return {
-    uploaded: uploadedResult.count ?? 0,
-    published: publishedResult.count ?? 0,
+    uploaded:
+      (uploadedDatasetResult.count ?? 0) + (uploadedMapResult.count ?? 0),
+    published:
+      (publishedDatasetResult.count ?? 0) + (publishedMapResult.count ?? 0),
   };
 }
 
@@ -239,11 +252,28 @@ export default function DashProfile() {
           );
 
           if (cached) {
+            let uploaded = cached.uploaded;
+            let published = cached.published;
+
+            if (cached.profile.role !== "user") {
+              const counts = await getOwnedDataCounts(authStoreUserId);
+              uploaded = counts.uploaded;
+              published = counts.published;
+            }
+
             setResolvedUserId(authStoreUserId);
             setProfile(cached.profile);
             resetFormFromProfile(cached.profile);
-            setUploadedDataCount(cached.uploaded);
-            setPublishedDataCount(cached.published);
+            setUploadedDataCount(uploaded);
+            setPublishedDataCount(published);
+            setSessionCache<ProfileCache>(
+              `dashboard-profile:${authStoreUserId}`,
+              {
+                ...cached,
+                uploaded,
+                published,
+              },
+            );
             return;
           }
         }
@@ -394,28 +424,33 @@ export default function DashProfile() {
       return formData.image_path || profile?.image_path || null;
     }
 
-    const extension = getFileExtension(selectedImageFile);
-    const safeName = selectedImageFile.name
-      .replace(/\s+/g, "-")
-      .replace(/[^a-zA-Z0-9-.]/g, "")
-      .toLowerCase();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    const filePath = `profiles/${profile.id}-${Date.now()}-${
-      safeName || `profile.${extension}`
-    }`;
+    if (!session?.access_token) {
+      throw new Error("Sesi login telah berakhir. Silakan masuk kembali.");
+    }
 
-    const { error: uploadError } = await supabase.storage
-      .from("images")
-      .upload(filePath, selectedImageFile, {
-        upsert: true,
-        contentType: selectedImageFile.type || undefined,
-      });
+    const uploadData = new FormData();
+    uploadData.set("file", selectedImageFile);
 
-    if (uploadError) throw uploadError;
+    const response = await fetch("/api/profile-image", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: uploadData,
+    });
+    const result = (await response.json().catch(() => null)) as {
+      message?: string;
+      path?: string;
+      publicUrl?: string;
+    } | null;
 
-    const { data } = supabase.storage.from("images").getPublicUrl(filePath);
+    if (!response.ok) {
+      throw new Error(result?.message || "Gagal mengunggah foto profil.");
+    }
 
-    return data.publicUrl || filePath;
+    return result?.publicUrl || result?.path || null;
   };
 
   const hasChanges = () => {

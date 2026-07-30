@@ -43,10 +43,14 @@ export default function DatasetConfiguration({
   datasetId,
   columns,
   onValidationChange,
+  resourceKind = "dataset",
+  showValidation = true,
 }: {
   datasetId: string;
   columns: ColumnConfig[];
   onValidationChange?: (keys: string[]) => void;
+  resourceKind?: "dataset" | "map";
+  showValidation?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,6 +65,8 @@ export default function DatasetConfiguration({
     () => columns.filter((column) => column.key !== "id"),
     [columns],
   );
+  const grantDatasetColumn =
+    resourceKind === "map" ? "map_dataset_id" : "dataset_id";
 
   useEffect(() => {
     const fetchConfiguration = async () => {
@@ -69,7 +75,7 @@ export default function DatasetConfiguration({
 
       try {
         const { data: dataset, error: datasetError } = await supabase
-          .from("datasets")
+          .from(resourceKind === "map" ? "map_datasets" : "datasets")
           .select("user_id")
           .eq("id", datasetId)
           .single();
@@ -89,15 +95,21 @@ export default function DatasetConfiguration({
               .select("id, username, organization, email")
               .eq("role", "partner")
               .order("organization"),
+            showValidation
+              ? supabase
+                  .from("dataset_validation_configs")
+                  .select("duplicate_keys")
+                  .eq("dataset_id", datasetId)
+                  .maybeSingle()
+              : Promise.resolve({ data: null, error: null }),
             supabase
-              .from("dataset_validation_configs")
-              .select("duplicate_keys")
-              .eq("dataset_id", datasetId)
-              .maybeSingle(),
-            supabase
-              .from("dataset_access_grants")
+              .from(
+                resourceKind === "map"
+                  ? "map_dataset_access_grants"
+                  : "dataset_access_grants",
+              )
               .select("user_id, can_add, can_edit, can_delete")
-              .eq("dataset_id", datasetId),
+              .eq(grantDatasetColumn, datasetId),
           ]);
 
         if (partnersResult.error) throw partnersResult.error;
@@ -136,7 +148,13 @@ export default function DatasetConfiguration({
     };
 
     void fetchConfiguration();
-  }, [datasetId, usableColumns]);
+  }, [
+    datasetId,
+    grantDatasetColumn,
+    resourceKind,
+    showValidation,
+    usableColumns,
+  ]);
 
   const toggleDuplicateKey = (key: string) => {
     setDuplicateKeys((current) =>
@@ -206,31 +224,41 @@ export default function DatasetConfiguration({
     setMessage("");
 
     try {
-      const { error: validationError } = await supabase
-        .from("dataset_validation_configs")
-        .upsert(
-          {
-            dataset_id: datasetId,
-            duplicate_keys: duplicateKeys,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "dataset_id" },
-        );
-      if (validationError) throw validationError;
+      if (showValidation) {
+        const { error: validationError } = await supabase
+          .from("dataset_validation_configs")
+          .upsert(
+            {
+              dataset_id: datasetId,
+              duplicate_keys: duplicateKeys,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "dataset_id" },
+          );
+        if (validationError) throw validationError;
+      }
 
       const { error: deleteError } = await supabase
-        .from("dataset_access_grants")
+        .from(
+          resourceKind === "map"
+            ? "map_dataset_access_grants"
+            : "dataset_access_grants",
+        )
         .delete()
-        .eq("dataset_id", datasetId);
+        .eq(grantDatasetColumn, datasetId);
       if (deleteError) throw deleteError;
 
       const selectedGrants = Object.values(grants);
       if (selectedGrants.length > 0) {
         const { error: grantError } = await supabase
-          .from("dataset_access_grants")
-          .insert(
+          .from(
+            resourceKind === "map"
+              ? "map_dataset_access_grants"
+              : "dataset_access_grants",
+          )
+            .insert(
             selectedGrants.map((grant) => ({
-              dataset_id: datasetId,
+              [grantDatasetColumn]: datasetId,
               ...grant,
             })),
           );
@@ -257,7 +285,8 @@ export default function DatasetConfiguration({
 
   return (
     <div className="space-y-5">
-      <section className="space-y-4 rounded-xl border border-gray-300 bg-white p-4">
+      {showValidation && (
+        <section className="space-y-4 rounded-xl border border-gray-300 bg-white p-4">
         <div>
           <h4 className="font-semibold">Validasi Data</h4>
           <p className="text-sm text-gray-500">
@@ -330,7 +359,8 @@ export default function DatasetConfiguration({
             )}
           </div>
         </div>
-      </section>
+        </section>
+      )}
 
       <section className="space-y-4 rounded-xl border border-gray-300 bg-white p-4">
         <div>

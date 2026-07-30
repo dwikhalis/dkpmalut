@@ -537,9 +537,9 @@ export default function DashUsers() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <h5 className="truncate font-semibold text-sky-950">
+                      <h6 className="truncate font-semibold text-sky-950">
                         {displayText(user.username)}
-                      </h5>
+                      </h6>
                       <span className="shrink-0 text-xs font-medium text-stone-400">
                         #{index + 1}
                       </span>

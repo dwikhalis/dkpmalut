@@ -17,6 +17,7 @@ import {
 import DataPageDropdown from "../DataPageDropdown";
 import SpinnerLoading from "../SpinnerLoading";
 import MapPreviewDynamic from "./MapPreviewDynamic";
+import MapLinks from "./MapLinks";
 import type { MapLegendItem, MapPreviewLayer } from "./MapPreview";
 import { LeftChevron, VerticalThreeDot } from "@/public/icons/iconSets";
 
@@ -564,6 +565,8 @@ export default function MapPublic({ slug, pages }: Props) {
           className=""
         />
       </div>
+
+      <MapLinks links={publicMapConfig.links} />
 
       <div className="mt-6 flex flex-col gap-4">
         {dataset.description && (

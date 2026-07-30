@@ -221,7 +221,11 @@ export default function DashboardAnalysisWorkspace({
     );
     const { error } = await supabase
       .from("datasets")
-      .update({ dashboard_config: next })
+      .update({
+        dashboard_config: next,
+        import_status: "ready",
+        draft_expires_at: null,
+      })
       .eq("id", dashboardId);
     if (error) setMessage("Status analisis tidak dapat disimpan.");
     else {

@@ -63,6 +63,14 @@ export type MapLayerTableConfig = {
   selectedFields: string[];
 };
 
+export type MapLink = {
+  id: string;
+  name: string;
+  address: string;
+  iconPath: string | null;
+  style: "filled" | "outline";
+};
+
 export type MapGlobalLegendGeometryType = Exclude<MapGeometryType, "mixed">;
 
 export type MapGlobalLegendRawMapping = {
@@ -141,6 +149,7 @@ export type MapConfig = {
   popupFields: MapPopupField[];
   layerPopupFields: Record<string, MapPopupField[]>;
   layerTableConfigs: Record<string, MapLayerTableConfig>;
+  links: MapLink[];
 };
 
 export type MapLegendDraft = {
@@ -493,6 +502,7 @@ export function parseMapConfig(value: unknown): MapConfig {
       popupFields: [],
       layerPopupFields: {},
       layerTableConfigs: {},
+      links: [],
     };
   }
 
@@ -606,6 +616,17 @@ export function parseMapConfig(value: unknown): MapConfig {
             return acc;
           }, {})
         : {},
+    links: Array.isArray(config.links)
+      ? config.links
+          .map<MapLink>((link) => ({
+            id: cleanText(link.id),
+            name: cleanText(link.name),
+            address: cleanText(link.address),
+            iconPath: cleanText(link.iconPath) || null,
+            style: link.style === "outline" ? "outline" : "filled",
+          }))
+          .filter((link) => link.id)
+      : [],
   };
 }
 
