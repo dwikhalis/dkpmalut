@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { deleteData, getMessage } from "@/lib/supabase/supabaseHelper";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Delete, Switch } from "@/public/icons/iconSets";
@@ -74,6 +74,8 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
   const [data, setData] = useState<DataTypes[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [monthFilter, setMonthFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
   const [confirmAction, setConfirmAction] = useState<[boolean, string]>([
     false,
     "",
@@ -124,7 +126,35 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
     };
   }, [fetch, table]);
 
-  const groupedData = data.reduce(
+  const dateFilterOptions = useMemo(() => {
+    const dates = data
+      .map((item) => (item.created_at ? new Date(item.created_at) : null))
+      .filter((date): date is Date => Boolean(date && !isNaN(date.getTime())));
+
+    return {
+      months: Array.from(new Set(dates.map((date) => date.getMonth())))
+        .sort((a, b) => a - b),
+      years: Array.from(new Set(dates.map((date) => date.getFullYear())))
+        .sort((a, b) => b - a),
+    };
+  }, [data]);
+
+  const filteredData = useMemo(
+    () =>
+      data.filter((item) => {
+        if (!item.created_at) return monthFilter === "all" && yearFilter === "all";
+        const date = new Date(item.created_at);
+        if (isNaN(date.getTime())) return false;
+
+        return (
+          (monthFilter === "all" || date.getMonth() === Number(monthFilter)) &&
+          (yearFilter === "all" || date.getFullYear() === Number(yearFilter))
+        );
+      }),
+    [data, monthFilter, yearFilter],
+  );
+
+  const groupedData = filteredData.reduce(
     (acc, item) => {
       const key = (item[groupKey as keyof DataTypes] as string) ?? "undefined";
       if (!acc[key]) acc[key] = [];
@@ -208,6 +238,46 @@ export default function ListMassage({ admin, sendToParent = () => {} }: Prop) {
     <>
       {admin && (
         <div className="flex flex-col gap-6 w-full">
+          <div className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-md sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-semibold text-stone-700">
+              Bulan
+              <select
+                value={monthFilter}
+                onChange={(event) => setMonthFilter(event.target.value)}
+                className="rounded-lg border border-stone-300 bg-white px-3 py-2 font-normal"
+              >
+                <option value="all">Semua bulan</option>
+                {dateFilterOptions.months.map((month) => (
+                  <option key={month} value={month}>
+                    {new Intl.DateTimeFormat("id-ID", { month: "long" }).format(
+                      new Date(2024, month, 1),
+                    )}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm font-semibold text-stone-700">
+              Tahun
+              <select
+                value={yearFilter}
+                onChange={(event) => setYearFilter(event.target.value)}
+                className="rounded-lg border border-stone-300 bg-white px-3 py-2 font-normal"
+              >
+                <option value="all">Semua tahun</option>
+                {dateFilterOptions.years.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {filteredData.length === 0 && (
+            <p className="w-full rounded-2xl border border-stone-200 bg-white p-4 text-center text-sm shadow-md">
+              Tidak ada pesan yang sesuai dengan filter.
+            </p>
+          )}
+
           {Object.entries(groupedData)
             .sort(([a], [b]) => {
               const groupOrder: Record<string, number> = {

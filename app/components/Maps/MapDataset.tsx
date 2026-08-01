@@ -8697,7 +8697,10 @@ export default function MapDataset({
             </section>
 
             {visualizationActions.mounted && (
-              <div className="h-24 lg:hidden" aria-hidden="true" />
+              <div
+                className="h-[calc(8rem+env(safe-area-inset-bottom))] lg:hidden"
+                aria-hidden="true"
+              />
             )}
           </div>
         </div>

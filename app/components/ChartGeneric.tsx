@@ -336,8 +336,8 @@ export default function ChartGeneric({ slug, pages }: Props) {
 
         <div className="shrink-0">
           <details three-dot-menu="true" className="group relative">
-            <summary className="list-none cursor-pointer rounded-sm border-2 border-white bg-white px-1 py-1 text-xs hover:border-black group-open:border-2 group-open:border-black">
-              <VerticalThreeDot className="size-6" />
+            <summary className="list-none cursor-pointer text-xs">
+              <VerticalThreeDot className="size-6 drop-shadow-md" />
             </summary>
 
             <div className="absolute right-0 z-30 mt-2 flex flex-col rounded-lg border border-gray-400 bg-white p-2 shadow-lg">

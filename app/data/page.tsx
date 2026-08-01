@@ -15,6 +15,7 @@ export type DataPageOption = {
   image: string;
   tag: string[];
   pathRedirect?: string | null;
+  link?: string;
 };
 
 type PublishedMitraDataset = {
@@ -31,14 +32,7 @@ type PublishedMapDataset = {
   image_path: string | null;
   tag: string[] | string | null;
 };
-
-type PublishedLbiDataset = {
-  id: string;
-  dataset_name: string;
-  slug: string;
-  image_path: string | null;
-  tag: string[] | string | null;
-};
+type PublishedDashboard = { id: string; label: string; selected_tabs: string[] };
 
 const STATIC_PAGES: DataPageOption[] = [];
 
@@ -72,6 +66,7 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
   const { data, error } = await supabase
     .from("datasets")
     .select("id, label, image_path, tag, path_redirect")
+    .in("kind", ["dataset", "link"])
     .eq("published", "approved")
     .order("label", { ascending: true });
 
@@ -87,26 +82,23 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
 
   const rows = (data ?? []) as PublishedMitraDataset[];
 
-  const [{ data: mapData, error: mapError }, { data: lbiData, error: lbiError }] =
-    await Promise.all([
-      supabase
-        .from("map_datasets")
-        .select("id, label, image_path, tag")
-        .eq("published", "approved")
-        .order("label", { ascending: true }),
-      supabase
-        .from("lbi_datasets")
-        .select("id, dataset_name, slug, image_path, tag")
-        .eq("published", "approved")
-        .order("dataset_name", { ascending: true }),
-    ]);
+  const { data: mapData, error: mapError } = await supabase
+    .from("map_datasets")
+    .select("id, label, image_path, tag")
+    .eq("published", "approved")
+    .order("label", { ascending: true });
 
   if (mapError) {
     console.error("Failed to fetch published map datasets:", mapError);
   }
-  if (lbiError) {
-    console.error("Failed to fetch published LBI datasets:", lbiError);
-  }
+
+  const { data: dashboardData, error: dashboardError } = await supabase
+    .from("datasets")
+    .select("id, label, column_config")
+    .eq("kind", "dashboard")
+    .eq("published", "approved")
+    .order("label", { ascending: true });
+  if (dashboardError) console.error("Failed to fetch published fisheries dashboards:", dashboardError);
 
   const publishedDatasets: DataPageOption[] = rows
     .filter(
@@ -136,15 +128,9 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
       image: row.image_path || "charts/pic_data_kkd.png",
       tag: normalizeTags(row.tag),
     }));
-
-  const publishedLbi: DataPageOption[] = (
-    (lbiData ?? []) as PublishedLbiDataset[]
-  ).map((row) => ({
-    id: row.id,
-    title: row.dataset_name,
-    slug: `lbi/${row.slug}`,
-    image: row.image_path || "charts/pic_data_perikanan_kelas.png",
-    tag: normalizeTags(row.tag),
+  const publishedDashboards: DataPageOption[] = ((dashboardData ?? []) as unknown as PublishedDashboard[]).map((row) => ({
+    id: row.id, title: row.label, slug: `dashboard-${row.id}`, image: "charts/pic_data_kkd.png",
+    tag: ["dashboard", "perikanan tangkap"], link: `/data/dashboard/${row.id}`,
   }));
 
   function mergePages(
@@ -165,17 +151,13 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
   const pages = mergePages(STATIC_PAGES, [
     ...publishedDatasets,
     ...publishedMaps,
-    ...publishedLbi,
+    ...publishedDashboards,
   ]);
   const filteredPages = selectedTag
     ? pages.filter((page) => page.tag.includes(selectedTag))
     : pages;
 
-  if (
-    publishedDatasets.length === 0 &&
-    publishedMaps.length === 0 &&
-    publishedLbi.length === 0
-  ) {
+  if (publishedDatasets.length === 0 && publishedMaps.length === 0 && publishedDashboards.length === 0) {
     return <p className="mt-10">Belum ada data terpublikasi.</p>;
   }
 
@@ -197,7 +179,7 @@ async function DatasetContent({ selectedTag }: { selectedTag: string | null }) {
               }
               title={dataset.title}
               image={getImagePreviewUrl(dataset.image) ?? ""}
-              link={dataset.pathRedirect || `/data/${dataset.slug}`}
+              link={dataset.link || dataset.pathRedirect || `/data/${dataset.slug}`}
               external={Boolean(dataset.pathRedirect)}
               resourceId={dataset.id}
             />

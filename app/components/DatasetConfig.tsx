@@ -57,7 +57,7 @@ type DatasetRow = {
   label: string | null;
   data: DataJsonRow[] | string | null;
   column_config: ColumnConfig[] | string | null;
-  kind: "dataset" | "map";
+  kind: "dataset" | "map" | "link" | "dashboard";
   feature_count?: number | null;
 };
 
@@ -320,9 +320,9 @@ export default function DatasetConfig({
   }, [datasetRows, editDataset, selectedEditId]);
 
   const editOptions = useMemo(() => {
-    return datasetRows.map((row) => ({
+    return datasetRows.filter((row) => row.kind === "dataset" || row.kind === "map").map((row) => ({
       id: `${row.kind}:${row.id}`,
-      label: `${row.kind === "map" ? "Peta" : "Dataset"} - ${
+      label: `${row.kind === "map" ? "Peta" : row.kind === "link" ? "Link" : "Dataset"} - ${
         row.label ?? "Tanpa Label"
       } - ${
         userNameMap[row.user_id ?? ""] ?? "Tanpa Pemilik"
@@ -333,7 +333,7 @@ export default function DatasetConfig({
   const deleteRows = useMemo(() => {
     return datasetRows.map((row) => ({
       id: `${row.kind}:${row.id}`,
-      label: `${row.kind === "map" ? "Peta" : "Dataset"} - ${row.label ?? "-"}`,
+      label: `${row.kind === "map" ? "Peta" : row.kind === "dashboard" ? "Dashboard" : row.kind === "link" ? "Link" : "Dataset"} - ${row.label ?? "-"}`,
       ownerName: userNameMap[row.user_id ?? ""] ?? "-",
       dataCount:
         row.kind === "map"
@@ -456,7 +456,7 @@ export default function DatasetConfig({
 
       let datasetQuery = supabase
         .from("datasets")
-        .select("id, user_id, label, data, column_config")
+        .select("id, user_id, label, data, column_config, kind")
         .order("created_at", { ascending: false });
       let mapDatasetQuery = supabase
         .from("map_datasets")
@@ -485,10 +485,10 @@ export default function DatasetConfig({
 
       setUserRows((usersResult.data ?? []) as UserRow[]);
       setDatasetRows([
-        ...((datasetResult.data ?? []) as Omit<DatasetRow, "kind">[]).map(
+        ...((datasetResult.data ?? []) as DatasetRow[]).map(
           (row) => ({
             ...row,
-            kind: "dataset" as const,
+            kind: row.kind === "dashboard" || row.kind === "link" ? row.kind : "dataset" as const,
           }),
         ),
         ...((mapDatasetResult.data ?? []) as Array<{
@@ -1070,7 +1070,7 @@ export default function DatasetConfig({
         selectedDeleteIds.includes(`${row.kind}:${row.id}`),
       );
       const datasetDeleteIds = selectedRows
-        .filter((row) => row.kind === "dataset")
+        .filter((row) => row.kind !== "map")
         .map((row) => row.id);
       const mapDeleteIds = selectedRows
         .filter((row) => row.kind === "map")
@@ -1084,12 +1084,10 @@ export default function DatasetConfig({
 
         const deleteResults = await Promise.all([
           datasetDeleteIds.length > 0
-            ? supabase
-                .from("datasets")
-                .delete()
-                .in("id", datasetDeleteIds)
-                .eq("user_id", userId)
-                .select("id")
+            ? supabase.rpc("delete_authorized_datasets", {
+                p_dataset_ids: datasetDeleteIds,
+                p_owner_id: userId,
+              }).then(({ data, error }) => ({ data: Array.from({ length: Number(data ?? 0) }), error }))
             : Promise.resolve({ data: [], error: null }),
           mapDeleteIds.length > 0
             ? supabase
@@ -1117,16 +1115,12 @@ export default function DatasetConfig({
         const deleteQueries = [];
 
         if (datasetDeleteIds.length > 0) {
-          let deleteQuery = supabase
-            .from("datasets")
-            .delete()
-            .in("id", datasetDeleteIds);
-
-          if (scopedOwnerId) {
-            deleteQuery = deleteQuery.eq("user_id", scopedOwnerId);
-          }
-
-          deleteQueries.push(deleteQuery);
+          deleteQueries.push(
+            supabase.rpc("delete_authorized_datasets", {
+              p_dataset_ids: datasetDeleteIds,
+              p_owner_id: scopedOwnerId || null,
+            }),
+          );
         }
 
         if (mapDeleteIds.length > 0) {
@@ -1259,7 +1253,7 @@ export default function DatasetConfig({
             editName={editName}
             setEditName={setEditName}
             editColumns={editColumns}
-            selectedKind={selectedEditRow?.kind ?? "dataset"}
+            selectedKind={selectedEditRow?.kind === "map" ? "map" : "dataset"}
             updateColumn={updateColumn}
           />
         )}

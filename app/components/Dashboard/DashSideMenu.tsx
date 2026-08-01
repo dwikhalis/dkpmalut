@@ -28,6 +28,7 @@ export default function DashSideMenu({
   const [loading, setLoading] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState([false, "hidden"]);
   const [showMobileSideMenu, setShowMobileSideMenu] = useState(false);
+  const [pendingPublicationCount, setPendingPublicationCount] = useState(0);
   const unreadMessageCount = useMessageStore((state) => state.unreadCount);
   const setUnreadMessageCount = useMessageStore(
     (state) => state.setUnreadCount,
@@ -106,6 +107,78 @@ export default function DashSideMenu({
     };
   }, [setUnreadMessageCount, userRole]);
 
+  useEffect(() => {
+    if (userRole !== "admin") {
+      setPendingPublicationCount(0);
+      return;
+    }
+
+    let active = true;
+
+    const refreshPendingPublicationCount = async () => {
+      const [datasetResult, mapResult, dashboardResult] = await Promise.all([
+        supabase
+          .from("datasets")
+          .select("id", { count: "exact", head: true })
+          .in("kind", ["dataset", "link"])
+          .eq("published", "requested"),
+        supabase
+          .from("map_datasets")
+          .select("id", { count: "exact", head: true })
+          .eq("published", "requested"),
+        supabase
+          .from("datasets")
+          .select("id", { count: "exact", head: true })
+          .eq("kind", "dashboard")
+          .eq("published", "requested"),
+      ]);
+
+      if (datasetResult.error) {
+        console.warn("Gagal menghitung publikasi dataset tertunda:", datasetResult.error);
+      }
+      if (mapResult.error) {
+        console.warn("Gagal menghitung publikasi peta tertunda:", mapResult.error);
+      }
+      if (dashboardResult.error) console.warn("Gagal menghitung publikasi dashboard tertunda:", dashboardResult.error);
+
+      if (active) {
+        setPendingPublicationCount(
+          (datasetResult.count ?? 0) + (mapResult.count ?? 0) + (dashboardResult.count ?? 0),
+        );
+      }
+    };
+
+    void refreshPendingPublicationCount();
+
+    const datasetChannel = supabase
+      .channel("dash-side-menu:dataset-publications")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "datasets" },
+        () => void refreshPendingPublicationCount(),
+      )
+      .subscribe();
+    const mapChannel = supabase
+      .channel("dash-side-menu:map-publications")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "map_datasets" },
+        () => void refreshPendingPublicationCount(),
+      )
+      .subscribe();
+    const dashboardChannel = supabase
+      .channel("dash-side-menu:dashboard-publications")
+      .on("postgres_changes", { event: "*", schema: "public", table: "datasets" }, () => void refreshPendingPublicationCount())
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(datasetChannel);
+      void supabase.removeChannel(mapChannel);
+      void supabase.removeChannel(dashboardChannel);
+    };
+  }, [userRole]);
+
   const handleLogout = async () => {
     setLoading(true);
 
@@ -140,6 +213,16 @@ export default function DashSideMenu({
             {unreadMessageCount}
           </span>
         )}
+        {userRole === "admin" &&
+          menu.slug === "data" &&
+          pendingPublicationCount > 0 && (
+            <span
+              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[0.65rem] font-bold leading-none text-white"
+              aria-label={`${pendingPublicationCount} publikasi dataset tertunda`}
+            >
+              {pendingPublicationCount}
+            </span>
+          )}
       </span>
     </Link>
   );
@@ -195,6 +278,7 @@ export default function DashSideMenu({
                   </Link>
 
                   {partnerMenus.map(renderMenuLink)}
+
                 </>
               )}
 
@@ -207,6 +291,7 @@ export default function DashSideMenu({
                       Profil Akun
                     </span>
                   </Link>
+
                 </>
               )}
             </div>
