@@ -134,9 +134,9 @@ const LineCharts = forwardRef<ChartJS<"line"> | undefined, LineChartProps>(
 
     return (
       <div
-        className={`mb-6 w-full overflow-x-auto overflow-y-hidden ${heightClassName}`}
+        className={`relative mb-6 w-full overflow-x-auto overflow-y-hidden ${heightClassName}`}
       >
-        <div className="h-full">
+        <div className="absolute inset-0">
           <Line ref={ref} data={data} options={options} />
         </div>
       </div>

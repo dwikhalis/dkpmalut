@@ -276,7 +276,7 @@ export const getDataset = async (dataset: string) => {
 export const getDatasetPages = async (ownerId: string | "all") => {
   let query = supabase
     .from("datasets")
-    .select("id, label, user_id, published, import_status, draft_expires_at, kind, updated_at")
+    .select("id, label, user_id, published, import_status, draft_expires_at, kind, created_at, updated_at")
     .order("label", { ascending: true });
 
   if (ownerId !== "all") {
@@ -290,7 +290,7 @@ export const getDatasetPages = async (ownerId: string | "all") => {
 
     let fallbackQuery = supabase
       .from("datasets")
-      .select("id, label, user_id, published, kind, updated_at")
+      .select("id, label, user_id, published, kind, created_at, updated_at")
       .order("label", { ascending: true });
 
     if (ownerId !== "all") {

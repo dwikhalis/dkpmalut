@@ -293,6 +293,7 @@ function parseGlobalLegendStyle(
     : {}) as Partial<MapGlobalLegendStyle>;
   const color =
     cleanText(style.color) || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+  const iconPath = cleanText(style.iconPath) || null;
 
   return {
     color,
@@ -310,9 +311,14 @@ function parseGlobalLegendStyle(
         : cleanOpacity(style.fillOpacity, 0.65),
     pointSize:
       geometryType === "point"
-        ? cleanNumberRange(style.pointSize, 16, 4, 64)
+        ? cleanNumberRange(
+            style.pointSize,
+            iconPath ? 16 : 1,
+            iconPath ? 4 : 0.1,
+            iconPath ? 64 : 100,
+          )
         : 0,
-    iconPath: cleanText(style.iconPath) || null,
+    iconPath,
     fillPattern: ["diagonal", "reverse-diagonal", "crosshatch", "horizontal", "vertical", "dots"].includes(String(style.fillPattern)) ? style.fillPattern as MapFillPattern : "none",
     patternColor: cleanText(style.patternColor) || color,
     patternThickness: cleanNumberRange(style.patternThickness, 1.25, 0.5, 6),
@@ -767,7 +773,7 @@ export function createLegendDrafts(
         strokeColor: color,
         strokeWidth: geometryType === "polyline" ? 3 : 2,
         fillOpacity: geometryType === "polyline" ? 0 : 0.65,
-        pointSize: geometryType === "point" ? 16 : 0,
+        pointSize: geometryType === "point" ? 1 : 0,
         iconPath: null,
         fillPattern: "none",
         patternColor: color,

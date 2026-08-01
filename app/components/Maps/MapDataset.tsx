@@ -65,7 +65,6 @@ import {
   UpChevron,
 } from "@/public/icons/iconSets";
 import AccordionToggleIcon from "../AccordionToggleIcon";
-import { useCollapsibleMount } from "@/lib/hooks/useCollapsibleMount";
 import MapLinks from "./MapLinks";
 import {
   DATA_KKPD_OPTIONS,
@@ -158,8 +157,8 @@ type Props = {
   onAddReadyChange?: (ready: boolean) => void;
   onChangeCountChange?: (count: number) => void;
   onSavingChange?: (saving: boolean) => void;
+  onVisualizationSaved?: () => void;
   onCreated?: () => void;
-  mobileActionMenuOpen?: boolean;
 };
 
 type PendingGeoJson = {
@@ -1634,8 +1633,8 @@ export default function MapDataset({
   onAddReadyChange,
   onChangeCountChange,
   onSavingChange,
+  onVisualizationSaved,
   onCreated,
-  mobileActionMenuOpen = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -2348,11 +2347,6 @@ export default function MapDataset({
         savedVisualizationSnapshot,
       ),
     [currentVisualizationSnapshot, savedVisualizationSnapshot],
-  );
-  const visualizationActions = useCollapsibleMount(
-    view === "mapvisualization" &&
-      visualizationChangeCount > 0 &&
-      !mobileActionMenuOpen,
   );
 
   useEffect(() => {
@@ -3451,6 +3445,7 @@ export default function MapDataset({
       setPreviewMapBoundsTrigger((current) => current + 1);
       setSavedVisualizationSnapshot(currentVisualizationSnapshot);
       setAlert("success");
+      onVisualizationSaved?.();
       await fetchMapDataset();
     } catch (error) {
       console.error("Failed to save map legend:", error);
@@ -6272,14 +6267,16 @@ export default function MapDataset({
                                             <span className="flex items-center justify-between gap-3">
                                               Ukuran
                                               <span className="text-xs text-stone-500">
-                                                {item.style.pointSize}px
+                                                {item.style.iconPath
+                                                  ? `${item.style.pointSize}px`
+                                                  : `${item.style.pointSize} km`}
                                               </span>
                                             </span>
                                             <input
                                               type="range"
-                                              min="4"
-                                              max="64"
-                                              step="1"
+                                              min={item.style.iconPath ? 4 : 0.1}
+                                              max={item.style.iconPath ? 64 : 100}
+                                              step={item.style.iconPath ? 1 : 0.1}
                                               value={item.style.pointSize}
                                               onChange={(event) =>
                                                 updateGlobalLegendItemStyle(
@@ -7179,14 +7176,16 @@ export default function MapDataset({
                                 <span className="flex items-center justify-between gap-3">
                                   Ukuran
                                   <span className="text-xs text-stone-500">
-                                    {legend.pointSize}px
+                                    {isPointImageMode
+                                      ? `${legend.pointSize}px`
+                                      : `${legend.pointSize} km`}
                                   </span>
                                 </span>
                                 <input
                                   type="range"
-                                  min="4"
-                                  max="64"
-                                  step="1"
+                                  min={isPointImageMode ? 4 : 0.1}
+                                  max={isPointImageMode ? 64 : 100}
+                                  step={isPointImageMode ? 1 : 0.1}
                                   value={legend.pointSize}
                                   onChange={(event) =>
                                     updateLayerLegend(layer.id, legend.value, {
@@ -8413,7 +8412,7 @@ export default function MapDataset({
               </section>
             )}
 
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               <Button
                 onClick={() => setMapConfirmAction("visualization")}
                 loading={saving}
@@ -8696,28 +8695,17 @@ export default function MapDataset({
               </div>
             </section>
 
-            {visualizationActions.mounted && (
-              <div
-                className="h-[calc(8rem+env(safe-area-inset-bottom))] lg:hidden"
-                aria-hidden="true"
-              />
-            )}
+            <div className="mt-3 xl:hidden">
+              <Button
+                onClick={() => setMapConfirmAction("visualization")}
+                loading={saving}
+                fullWidth
+                className="rounded-md"
+              >
+                {visualizationButtonLabel}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {visualizationActions.mounted && (
-        <div
-          className={`${visualizationActions.closing ? "bottom-menu-collapse" : "bottom-menu-expand"} fixed bottom-0 left-0 z-[1200] flex w-full flex-col justify-center rounded-t-2xl bg-stone-900 p-5 lg:hidden`}
-        >
-          <Button
-            onClick={() => setMapConfirmAction("visualization")}
-            loading={saving}
-            fullWidth
-            className="rounded-xl border-2 border-white"
-          >
-            {visualizationButtonLabel}
-          </Button>
         </div>
       )}
 

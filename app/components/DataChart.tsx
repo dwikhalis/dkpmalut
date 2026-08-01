@@ -2992,7 +2992,7 @@ export default function DataChart({
         </div>
 
         {onSave && (
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <Button
               type="button"
               onClick={handleSave}
@@ -3062,7 +3062,7 @@ export default function DataChart({
                   xAxisTitle={xAxisLabel}
                   showLegend={draftChartConfig.showLegend}
                   rotateXLabels={chartResult.labels.length > 8 ? 45 : 0}
-                  heightClassName="h-[30vh] md:min-h-[60vh]"
+                  heightClassName="min-h-[75vh]"
                 />
               ) : draftChartConfig.type === "pie" ? (
                 <PieCharts
@@ -3086,7 +3086,7 @@ export default function DataChart({
                   chartTitle={chartTitle}
                   datalabel={false}
                   showLegend={draftChartConfig.showLegend}
-                  heightClassName="h-[30vh] md:min-h-[60vh]"
+                  heightClassName="min-h-[75vh]"
                 />
               ) : (
                 <BarCharts
@@ -3101,7 +3101,7 @@ export default function DataChart({
                   xAxisTitle={xAxisLabel}
                   showLegend={draftChartConfig.showLegend}
                   rotateXLabels={chartResult.labels.length > 8 ? 45 : 0}
-                  heightClassName="h-[30vh] md:min-h-[60vh]"
+                  heightClassName="min-h-[75vh]"
                 />
               )}
             </div>
@@ -3154,23 +3154,23 @@ export default function DataChart({
               </table>
             </div>
           </div>
-        </div>
 
-        {onSave && (
-          <div className="mt-3 lg:hidden">
-            <Button
-              type="button"
-              onClick={handleSave}
-              loading={saving}
-              disabled={saving}
-              fullWidth
-            >
-              {showSaveChangeCount
-                ? withChangeCount(saveButtonLabel, visualizationChangeCount)
-                : saveButtonLabel}
-            </Button>
-          </div>
-        )}
+          {onSave && (
+            <div className="px-3 pb-3 xl:hidden">
+              <Button
+                type="button"
+                onClick={handleSave}
+                loading={saving}
+                disabled={saving}
+                fullWidth
+              >
+                {showSaveChangeCount
+                  ? withChangeCount(saveButtonLabel, visualizationChangeCount)
+                  : saveButtonLabel}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

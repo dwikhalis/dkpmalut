@@ -63,7 +63,30 @@ type DatasetPage = {
   kind: "dataset" | "map" | "link" | "dashboard";
   view_count?: number;
   download_count?: number;
+  updated_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  publication_changed_at?: string | null;
 };
+
+function formatWitDateTime(value?: string) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return `${new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jayapura",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+    .format(date)
+    .replace(",", "")} WIT`;
+}
 
 function downloadText(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
@@ -168,9 +191,17 @@ function getPublicationStatus(
 } {
   const status = dataset.published;
 
+  if (dataset.import_status === "draft") {
+    return {
+      label: "draft",
+      className: "bg-violet-100 text-violet-800 ring-1 ring-violet-200",
+      title: "Data masih berstatus draft",
+    };
+  }
+
   if (status === "requested") {
     return {
-      label: "requested",
+      label: "pending",
       className: "bg-amber-100 text-amber-800",
     };
   }
@@ -190,9 +221,44 @@ function getPublicationStatus(
   }
 
   return {
-    label: "draft",
-    className: "bg-violet-100 text-violet-800 ring-1 ring-violet-200",
-    title: "Status publikasi default",
+    label: "not published",
+    className: "bg-stone-100 text-stone-700 ring-1 ring-stone-200",
+    title: "Data siap, tetapi belum dipublikasikan",
+  };
+}
+
+function getStatusCallout(dataset: DatasetPage) {
+  if (dataset.import_status === "draft") {
+    return {
+      message: "Data akan dihapus pada",
+      date: formatWitDateTime(dataset.draft_expires_at ?? undefined),
+    };
+  }
+
+  if (dataset.published === "requested") {
+    return {
+      message: "Data diajukan pada",
+      date: formatWitDateTime(dataset.publication_changed_at ?? undefined),
+    };
+  }
+
+  if (dataset.published === "rejected") {
+    return {
+      message: "Data ditolak pada",
+      date: formatWitDateTime(dataset.publication_changed_at ?? undefined),
+    };
+  }
+
+  if (dataset.published === "approved") {
+    return {
+      message: "Data dipublikasikan pada",
+      date: formatWitDateTime(dataset.publication_changed_at ?? undefined),
+    };
+  }
+
+  return {
+    message: "Data diunggah pada",
+    date: formatWitDateTime(dataset.created_at),
   };
 }
 
@@ -204,7 +270,6 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const loading = useAuthStore((state) => state.loading);
   const userId = useAuthStore((state) => state.userId);
   const role = useAuthStore((state) => state.role);
-  const userName = useAuthStore((state) => state.profile?.organization);
 
   const [action, setAction] = useState<ActionType>("list");
   const [mainPage, setMainPage] = useState<MainPage>("main");
@@ -224,6 +289,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const [dashboardUploadsReady, setDashboardUploadsReady] = useState(true);
   const [missingDashboardUploads, setMissingDashboardUploads] = useState<string[]>([]);
   const [dashboardUploadWarning, setDashboardUploadWarning] = useState("");
+  const [visualizationSaved, setVisualizationSaved] = useState(false);
+  const [visualizationWarning, setVisualizationWarning] = useState("");
+  const [openStatusCallout, setOpenStatusCallout] = useState<string | null>(
+    null,
+  );
   const mountedRef = useRef(false);
 
   const editDataset: EditSource = "datasets";
@@ -347,6 +417,28 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     setMissingDashboardUploads(missing);
     if (ready) setDashboardUploadWarning("");
   }, []);
+  const handleVisualizationSaved = useCallback(() => {
+    setVisualizationSaved(true);
+    setVisualizationWarning("");
+    setDatasetPages((current) =>
+      current.map((dataset) =>
+        dataset.id === selectedDataset?.id
+          ? {
+              ...dataset,
+              import_status: "ready",
+              draft_expires_at: null,
+            }
+          : dataset,
+      ),
+    );
+  }, [selectedDataset?.id]);
+
+  useEffect(() => {
+    if (detailView === "visualization" || detailView === "mapvisualization") {
+      setVisualizationSaved(selectedDataset?.import_status === "ready");
+      setVisualizationWarning("");
+    }
+  }, [detailView, selectedDataset?.id, selectedDataset?.import_status]);
 
   const ownerNameMap = useMemo(() => {
     return ownerRows.reduce<Record<string, string>>((acc, owner) => {
@@ -360,9 +452,9 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   const getOwnerName = (ownerId: string | null) => {
     if (!ownerId) return "Tanpa Pemilik";
     if (role === "partner") {
-      return ownerId === userId ? "Dataset Saya" : "Dataset Dibagikan";
+      return ownerId === userId ? "Data Saya" : "Dataset Dibagikan";
     }
-    if (role === "admin" && ownerId === userId) return "Dataset Saya";
+    if (role === "admin" && ownerId === userId) return "Data Saya";
 
     return ownerNameMap[ownerId] ?? "Dataset Dibagikan";
   };
@@ -376,7 +468,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const filteredDatasetPages = useMemo(
     () => datasetPages.filter((dataset) => {
-      const publication = dataset.published ?? "draft";
+      const publication =
+        dataset.import_status === "draft"
+          ? "draft"
+          : (dataset.published ?? "not-published");
       return (
         (kindFilter === "all" || dataset.kind === kindFilter) &&
         (publicationFilter === "all" || publication === publicationFilter) &&
@@ -419,15 +514,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       groups.get(ownerId)?.datasets.push(dataset);
     });
 
-    if (groups.size === 0 && userId) {
+    if (userId && !groups.has(userId)) {
       groups.set(userId, {
         ownerId: userId,
-        ownerName:
-          role === "admin"
-            ? "Dataset Saya"
-            : role === "partner"
-              ? "Dataset Saya"
-              : userName || "Data",
+        ownerName: "Data Saya",
         datasets: [],
       });
     }
@@ -447,7 +537,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
         return a.ownerName.localeCompare(b.ownerName);
       });
-  }, [getOwnerName, filteredDatasetPages, role, userId, userName]);
+  }, [getOwnerName, filteredDatasetPages, role, userId]);
 
   const pageTitle =
     isNewMapPage
@@ -601,7 +691,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
         let mapQuery = supabase
           .from("map_datasets")
-          .select("id, label, user_id, published, import_status, draft_expires_at")
+          .select("id, label, user_id, published, import_status, draft_expires_at, created_at, updated_at")
           .order("label", { ascending: true });
 
         if (role !== "admin") {
@@ -615,7 +705,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
           let fallbackMapQuery = supabase
             .from("map_datasets")
-            .select("id, label, user_id, published")
+            .select("id, label, user_id, published, created_at, updated_at")
             .order("label", { ascending: true });
 
           if (role !== "admin") {
@@ -646,7 +736,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           })),
         ];
 
-        let workflowQuery = supabase.from("datasets").select("id, user_id, label, published, updated_at").eq("kind", "dashboard").order("label", { ascending: true });
+        let workflowQuery = supabase.from("datasets").select("id, user_id, label, published, created_at, updated_at").eq("kind", "dashboard").order("label", { ascending: true });
         if (role !== "admin") workflowQuery = workflowQuery.eq("user_id", userId);
         const { data: workflowRows, error: workflowError } = await workflowQuery;
         if (workflowError) console.warn("Dashboard workflows are unavailable:", workflowError);
@@ -685,6 +775,63 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           }
         }
 
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token && nextDatasetPages.length > 0) {
+          try {
+            const response = await fetch("/api/dataset-last-updates", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                resources: nextDatasetPages.map((dataset) => ({
+                  id: dataset.id,
+                  kind: dataset.kind === "map" ? "map" : "dataset",
+                })),
+              }),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const payload = (await response.json()) as {
+              updates?: Array<{
+                resource_kind: "dataset" | "map";
+                resource_id: string;
+                updated_by: string;
+                updated_at: string;
+                publication_changed_at: string | null;
+              }>;
+            };
+            const updateMap = new Map(
+              (payload.updates ?? []).map((update) => [
+                `${update.resource_kind}:${update.resource_id}`,
+                update,
+              ]),
+            );
+
+            nextDatasetPages = nextDatasetPages.map((dataset) => {
+              const update = updateMap.get(
+                `${dataset.kind === "map" ? "map" : "dataset"}:${dataset.id}`,
+              );
+
+              return update
+                ? {
+                    ...dataset,
+                    updated_by: update.updated_by,
+                    updated_at: update.updated_at,
+                    publication_changed_at: update.publication_changed_at,
+                  }
+                : dataset;
+            });
+          } catch (error) {
+            console.warn("Dataset last-update metadata is unavailable:", error);
+          }
+        }
+
         const ownersQuery = supabase
           .from("users")
           .select("id, username, organization, role")
@@ -711,6 +858,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+
+      if (!target.closest("[data-status-callout='true']")) {
+        setOpenStatusCallout(null);
+      }
 
       document
         .querySelectorAll<HTMLDetailsElement>("[three-dot-menu='true']")
@@ -810,6 +961,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           (action === "add" && addDataReady))));
   const mobileActions = useCollapsibleMount(showMobileAction);
   const saveCancelActions = useCollapsibleMount(showSaveCancelAction);
+  const publicationStepLocked =
+    nextDetailView === "publication" &&
+    (detailView === "visualization" || detailView === "mapvisualization") &&
+    !visualizationSaved;
 
   if (loading) {
     return (
@@ -846,6 +1001,18 @@ export default function DashData({ onSignal = noopSignal }: Props) {
   };
 
   const setDetailStep = (view: DetailView) => {
+    if (
+      view === "publication" &&
+      (detailView === "visualization" || detailView === "mapvisualization") &&
+      !visualizationSaved
+    ) {
+      setVisualizationWarning(
+        "Simpan Visualisasi terlebih dahulu sebelum melanjutkan ke Publikasi.",
+      );
+      return;
+    }
+
+    setVisualizationWarning("");
     setDetailView(view);
   };
 
@@ -1096,7 +1263,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     </details>
   );
   return (
-    <div className="flex w-full max-w-full overflow-hidden">
+    <div
+      className={`flex w-full max-w-full overflow-hidden md:pb-0 ${
+        mobileActions.mounted || saveCancelActions.mounted ? "pb-52" : "pb-0"
+      }`}
+    >
       {mainPage === "main" && (
         <div className="flex w-full min-w-0 max-w-full flex-col overflow-hidden">
           <div className="mb-6 flex w-full min-w-0 items-center gap-3">
@@ -1286,7 +1457,12 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               {action === "list" && nextDetailView && (
                 <button
                   type="button"
-                  aria-disabled={selectedDataset?.kind === "dashboard" && nextDetailView === "visualization" && !dashboardUploadsReady}
+                  aria-disabled={
+                    publicationStepLocked ||
+                    (selectedDataset?.kind === "dashboard" &&
+                      nextDetailView === "visualization" &&
+                      !dashboardUploadsReady)
+                  }
                   onClick={() => {
                     if (selectedDataset?.kind === "dashboard" && nextDetailView === "visualization" && !dashboardUploadsReady) {
                       setDashboardUploadWarning(`Upload belum lengkap: ${missingDashboardUploads.join(" dan ")}.`);
@@ -1294,7 +1470,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                     }
                     setDetailStep(nextDetailView);
                   }}
-                  className={`flex items-center gap-1 text-lg font-normal ${selectedDataset?.kind === "dashboard" && nextDetailView === "visualization" && !dashboardUploadsReady ? "cursor-not-allowed text-stone-300" : "text-stone-400 hover:text-black"}`}
+                  className={`flex items-center gap-1 text-lg font-normal ${publicationStepLocked || (selectedDataset?.kind === "dashboard" && nextDetailView === "visualization" && !dashboardUploadsReady) ? "cursor-not-allowed text-stone-300" : "text-stone-400 hover:text-black"}`}
                 >
                   <span>{nextDetailLabel}</span>
                   <RightChevron className="h-5 w-5" strokeWidth={1.8} />
@@ -1308,6 +1484,17 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               {dashboardUploadWarning}
             </div>
           )}
+
+          {visualizationWarning &&
+            (detailView === "visualization" ||
+              detailView === "mapvisualization") && (
+              <div
+                role="alert"
+                className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+              >
+                {visualizationWarning}
+              </div>
+            )}
 
           {!isDetailPage && (
             <div className="flex w-full min-w-0 max-w-full flex-col gap-6 mb-6 px-1 py-2">
@@ -1347,13 +1534,25 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                     className="rounded-lg border border-stone-300 bg-white px-3 py-2 font-normal"
                   >
                     <option value="all">Semua status</option>
-                    {datasetPages.some((dataset) => dataset.published === null) && (
+                    {datasetPages.some(
+                      (dataset) =>
+                        dataset.import_status === "draft",
+                    ) && (
                       <option value="draft">Draft</option>
+                    )}
+                    {datasetPages.some(
+                      (dataset) =>
+                        dataset.import_status !== "draft" &&
+                        dataset.published === null,
+                    ) && (
+                      <option value="not-published">Not Published</option>
                     )}
                     {datasetPages.some((dataset) => dataset.published === "requested") && (
                       <option value="requested">Pending</option>
                     )}
-                    {datasetPages.some((dataset) => dataset.published === "approved") && (
+                    {datasetPages.some(
+                      (dataset) => dataset.published === "approved",
+                    ) && (
                       <option value="approved">Published</option>
                     )}
                     {datasetPages.some((dataset) => dataset.published === "rejected") && (
@@ -1410,6 +1609,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                       const publicationStatus = getPublicationStatus(
                         dataset,
                       );
+                      const statusCallout = getStatusCallout(dataset);
 
                       return (
                         <button
@@ -1455,6 +1655,16 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                                 </>
                               )}
                             </span>
+                            <span className="mt-1 block text-xs text-gray-500 group-hover:text-white/80">
+                              Terakhir diupdate oleh {dataset.updated_by ??
+                                ownerRows.find(
+                                  (owner) => owner.id === dataset.user_id,
+                                )?.username ??
+                                "Tidak diketahui"}
+                            </span>
+                            <span className="block text-xs text-gray-500 group-hover:text-white/80">
+                              {formatWitDateTime(dataset.updated_at)}
+                            </span>
                           </span>
 
                           {dataset.kind === "dataset" && (
@@ -1479,10 +1689,49 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                           )}
 
                           <span
-                            title={publicationStatus.title}
-                            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${publicationStatus.className}`}
+                            data-status-callout="true"
+                            className="group/status relative shrink-0"
                           >
-                            {publicationStatus.label}
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-expanded={openStatusCallout === dataset.id}
+                              title={publicationStatus.title}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setOpenStatusCallout((current) =>
+                                  current === dataset.id ? null : dataset.id,
+                                );
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key !== "Enter" && event.key !== " ") {
+                                  return;
+                                }
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setOpenStatusCallout((current) =>
+                                  current === dataset.id ? null : dataset.id,
+                                );
+                              }}
+                              className={`block rounded-full px-3 py-1 text-xs font-semibold ${publicationStatus.className}`}
+                            >
+                              {publicationStatus.label}
+                            </span>
+
+                            <span
+                              role="tooltip"
+                              className={`${
+                                openStatusCallout === dataset.id
+                                  ? "block"
+                                  : "hidden group-hover/status:block group-focus-within/status:block"
+                              } absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-stone-300 bg-white px-3 py-2 text-left text-xs font-normal leading-relaxed text-stone-700 shadow-xl`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <span className="block">{statusCallout.message}</span>
+                              <span className="block font-semibold">
+                                {statusCallout.date}
+                              </span>
+                            </span>
                           </span>
                         </button>
                       );
@@ -1503,6 +1752,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
               role={role}
               canAdd={Boolean(datasetAccess.can_add)}
               previewOnly={isSharedPartnerDataset}
+              onVisualizationSaved={handleVisualizationSaved}
             />
           )}
           {isDetailPage && selectedDataset?.kind === "link" && (
@@ -1558,8 +1808,8 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                 saveData={saveData}
                 onAddReadyChange={setAddDataReady}
                 onChangeCountChange={handleActionChangeCount}
+                onVisualizationSaved={handleVisualizationSaved}
                 onCreated={() => setDetailAction("list")}
-                mobileActionMenuOpen={mobileActions.mounted}
               />
             )}
           {isDetailPage && !selectedDataset && !isNewMapPage && datasetPages.length > 0 && (
@@ -1635,21 +1885,25 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                   Peta
                 </Button>
 
-                <Button
-                  variant={mainPage === "linkadd" ? "outline" : "primary"}
-                  size="md"
-                  onClick={() => setLinkAddAction(selectedActionOwnerId)}
-                >
-                  Link
-                </Button>
+                {role !== "partner" && (
+                  <>
+                    <Button
+                      variant={mainPage === "linkadd" ? "outline" : "primary"}
+                      size="md"
+                      onClick={() => setLinkAddAction(selectedActionOwnerId)}
+                    >
+                      Link
+                    </Button>
 
-                <Button
-                  variant={mainPage === "dashboard" ? "outline" : "primary"}
-                  size="md"
-                  onClick={() => router.push("/profile/data?action=dashboardadd")}
-                >
-                  Dashboard
-                </Button>
+                    <Button
+                      variant={mainPage === "dashboard" ? "outline" : "primary"}
+                      size="md"
+                      onClick={() => router.push("/profile/data?action=dashboardadd")}
+                    >
+                      Dashboard
+                    </Button>
+                  </>
+                )}
               </div>
             )}
 

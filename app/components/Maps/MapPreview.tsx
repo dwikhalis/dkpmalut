@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Circle,
   CircleMarker,
   GeoJSON,
   MapContainer,
@@ -875,9 +876,9 @@ function MapPoint({
 
   if (!icon) {
     return (
-      <CircleMarker
+      <Circle
         center={getPointLatLng(feature)}
-        radius={pointSize / 2}
+        radius={pointSize * 1000}
         pathOptions={pointStyle}
         eventHandlers={{
           click: (event) => {
@@ -889,7 +890,7 @@ function MapPoint({
         }}
       >
         {renderPopup(feature, mapConfig, layerId)}
-      </CircleMarker>
+      </Circle>
     );
   }
 

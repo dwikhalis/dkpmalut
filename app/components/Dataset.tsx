@@ -175,6 +175,7 @@ export default function Dataset({
   canAdd = false,
   previewOnly = false,
   linkMode = false,
+  onVisualizationSaved,
 }: {
   datasetId: string;
   action: "add" | "edit" | "list" | "delete";
@@ -185,6 +186,7 @@ export default function Dataset({
   canAdd?: boolean;
   previewOnly?: boolean;
   linkMode?: boolean;
+  onVisualizationSaved?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -484,6 +486,7 @@ export default function Dataset({
       setPublicationImageEditing(false);
       await fetchImageUrl(imagePath ?? null);
       setPublicationAlert("success-chart-config");
+      onVisualizationSaved?.();
     } catch (error) {
       console.error("Failed to save chart publication config:", error);
       setPublicationAlert("failed");

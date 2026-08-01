@@ -63,7 +63,7 @@ type PendingRoleChange = {
 
 const DEFAULT_PROFILE_IMAGE = "/assets/icon_profile_u.png";
 
-const roleOptions = ["admin", "partner", "user"];
+const roleOptions = ["partner", "user"];
 
 const filterOptions: { label: string; value: FilterKey }[] = [
   { label: "Semua Kolom", value: "all" },
@@ -594,22 +594,28 @@ export default function DashUsers() {
                     <span className="mb-1 block text-xs font-medium text-stone-500">
                       Akses
                     </span>
-                    <select
-                      value={user.role ?? ""}
-                      onChange={(event) => handleRoleSelect(event, user)}
-                      className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 font-medium outline-none focus:ring-2 focus:ring-sky-400"
-                      disabled={savingRole}
-                    >
-                      <option value="" disabled>
-                        Pilih Akses
-                      </option>
-
-                      {roleOptions.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
+                    {user.role === "admin" ? (
+                      <div className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 font-medium text-stone-600">
+                        admin
+                      </div>
+                    ) : (
+                      <select
+                        value={user.role ?? ""}
+                        onChange={(event) => handleRoleSelect(event, user)}
+                        className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 font-medium outline-none focus:ring-2 focus:ring-sky-400"
+                        disabled={savingRole}
+                      >
+                        <option value="" disabled>
+                          Pilih Akses
                         </option>
-                      ))}
-                    </select>
+
+                        {roleOptions.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </label>
                 </div>
               </article>
