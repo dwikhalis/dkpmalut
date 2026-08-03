@@ -442,8 +442,10 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const ownerNameMap = useMemo(() => {
     return ownerRows.reduce<Record<string, string>>((acc, owner) => {
-      acc[owner.id] =
-        owner.organization || owner.username || "Pengguna tanpa nama";
+      const username = owner.username?.trim() || "Pengguna tanpa nama";
+      const organization = owner.organization?.trim() || "Tanpa organisasi";
+
+      acc[owner.id] = `${username} - ${organization}`;
 
       return acc;
     }, {});
@@ -451,10 +453,6 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   const getOwnerName = (ownerId: string | null) => {
     if (!ownerId) return "Tanpa Pemilik";
-    if (role === "partner") {
-      return ownerId === userId ? "Data Saya" : "Dataset Dibagikan";
-    }
-    if (role === "admin" && ownerId === userId) return "Data Saya";
 
     return ownerNameMap[ownerId] ?? "Dataset Dibagikan";
   };
@@ -497,10 +495,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     >();
 
     filteredDatasetPages.forEach((dataset) => {
-      const ownerId =
-        role === "partner" && dataset.user_id !== userId
-          ? "__shared__"
-          : (dataset.user_id ?? "");
+      const ownerId = dataset.user_id ?? "";
       const ownerName = getOwnerName(dataset.user_id);
 
       if (!groups.has(ownerId)) {
@@ -517,7 +512,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     if (userId && !groups.has(userId)) {
       groups.set(userId, {
         ownerId: userId,
-        ownerName: "Data Saya",
+        ownerName: getOwnerName(userId),
         datasets: [],
       });
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type {
   ClipboardEvent,
   DragEvent,
@@ -9,6 +10,7 @@ import type {
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useUrlTableState } from "@/lib/hooks/useUrlTableState";
 import AlertNotif from "./AlertNotif";
+import { useDataEditStore } from "@/app/Stores/dataEditStores";
 import SpinnerLoading from "./SpinnerLoading";
 import {
   DownChevron,
@@ -158,6 +160,7 @@ interface Props {
   datasetId: string;
 
   columns: ColumnConfig[];
+  onColumnsChange?: (columns: ColumnConfig[]) => void;
   filters?: FilterConfig[];
   defaultSortKey?: string;
   duplicateKeys?: string[];
@@ -172,12 +175,14 @@ export default function DatasetTable({
   onChangeCountChange,
   datasetId,
   columns,
+  onColumnsChange,
   filters = [],
   defaultSortKey,
   duplicateKeys = [],
   role = null,
   canAdd = false,
 }: Props) {
+  const searchParams = useSearchParams();
   const [allRows, setAllRows] = useState<DatasetRow[]>([]);
   const [dataset, setDataset] = useState<DatasetRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,6 +195,13 @@ export default function DatasetTable({
   const [editedRows, setEditedRows] = useState<
     Record<string, Partial<DatasetRow>>
   >({});
+  const [editColumns, setEditColumns] = useState<ColumnConfig[]>(columns);
+  const [editAddedRows, setEditAddedRows] = useState<DatasetRow[]>([]);
+  const [editDeletedRowIds, setEditDeletedRowIds] = useState<string[]>([]);
+  const [newColumnKeys, setNewColumnKeys] = useState<string[]>([]);
+  const [validationMessage, setValidationMessage] = useState("");
+  const editSessionKey = `dataset-edit:${datasetId}`;
+  const restoredEditSessionRef = useRef("");
 
   const [newRows, setNewRows] = useState<DatasetRow[]>([]);
   const [isDraggingCsv, setIsDraggingCsv] = useState(false);
@@ -251,16 +263,26 @@ export default function DatasetTable({
     | "no-add"
     | "no-delete"
     | "failed"
+    | "validation"
   >("none");
 
   const tableColumns = useMemo(() => {
+    if (action === "edit") return editColumns;
     if (action !== "list") return columns;
 
     const columnMap = new Map(columns.map((column) => [column.key, column]));
     return visibleColumnKeys
       .map((key) => columnMap.get(key))
       .filter((column): column is ColumnConfig => Boolean(column));
-  }, [action, columns, visibleColumnKeys]);
+  }, [action, columns, editColumns, visibleColumnKeys]);
+
+  const editDisplayRows = useMemo(
+    () => [
+      ...dataset.filter((row) => !editDeletedRowIds.includes(row.id)),
+      ...editAddedRows,
+    ],
+    [dataset, editAddedRows, editDeletedRowIds],
+  );
 
   const importColumns = useMemo(
     () => columns.filter((column) => column.key !== "id"),
@@ -570,6 +592,130 @@ export default function DatasetTable({
     importBatches,
     selectedImportBatchIds,
   ]);
+
+  const addEditRow = () => {
+    const row: DatasetRow = { id: createRowId() };
+    editColumns.forEach((column) => {
+      if (column.key !== "id") row[column.key] = "";
+    });
+    setEditAddedRows((rows) => [...rows, row]);
+  };
+
+  const addEditColumn = () => {
+    let index = 1;
+    let key = "kolom_baru";
+    while (editColumns.some((column) => column.key === key)) {
+      index += 1;
+      key = `kolom_baru_${index}`;
+    }
+    setEditColumns((current) => [
+      ...current,
+      { key, label: "Kolom Baru", editable: true, inputType: "text", align: "left" },
+    ]);
+    setNewColumnKeys((keys) => [...keys, key]);
+  };
+
+  const deleteEditColumn = (key: string) => {
+    setEditColumns((current) => current.filter((column) => column.key !== key));
+    setNewColumnKeys((keys) => keys.filter((columnKey) => columnKey !== key));
+  };
+
+  const deleteEditRow = (rowId: string) => {
+    if (editAddedRows.some((row) => row.id === rowId)) {
+      setEditAddedRows((rows) => rows.filter((row) => row.id !== rowId));
+    } else {
+      setEditDeletedRowIds((ids) => [...new Set([...ids, rowId])]);
+    }
+  };
+
+  useEffect(() => {
+    if (action !== "edit") return;
+    if (restoredEditSessionRef.current === editSessionKey) return;
+
+    restoredEditSessionRef.current = editSessionKey;
+    const saved = useDataEditStore.getState().drafts[editSessionKey] as
+      | {
+          editedRows?: Record<string, Partial<DatasetRow>>;
+          addedRows?: DatasetRow[];
+          deletedRowIds?: string[];
+          editColumns?: ColumnConfig[];
+          newColumnKeys?: string[];
+        }
+      | undefined;
+
+    setEditedRows(saved?.editedRows ?? {});
+    setEditAddedRows(saved?.addedRows ?? []);
+    setEditDeletedRowIds(saved?.deletedRowIds ?? []);
+    setEditColumns(saved?.editColumns?.length ? saved.editColumns : columns);
+    setNewColumnKeys(saved?.newColumnKeys ?? []);
+  }, [action, columns, editSessionKey]);
+
+  useEffect(() => {
+    if (action !== "edit" || restoredEditSessionRef.current !== editSessionKey)
+      return;
+
+    const timeout = window.setTimeout(() => {
+      useDataEditStore.getState().setDraft(editSessionKey, {
+        editedRows,
+        addedRows: editAddedRows,
+        deletedRowIds: editDeletedRowIds,
+        editColumns,
+        newColumnKeys,
+      });
+    }, 150);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    action,
+    editAddedRows,
+    editColumns,
+    editDeletedRowIds,
+    editedRows,
+    editSessionKey,
+    newColumnKeys,
+  ]);
+
+  useEffect(() => {
+    if (searchParams.get("action") === "edit") return;
+    useDataEditStore.getState().clearDraft(editSessionKey);
+    restoredEditSessionRef.current = "";
+    setEditAddedRows([]);
+    setEditDeletedRowIds([]);
+    setNewColumnKeys([]);
+    setEditColumns(columns);
+  }, [action, columns, editSessionKey, searchParams]);
+
+  useEffect(() => {
+    if (action !== "edit") return;
+    let pageIsUnloading = false;
+    const markPageUnload = () => {
+      pageIsUnloading = true;
+    };
+    const clearForLinkNavigation = (event: MouseEvent) => {
+      const anchor = (event.target as HTMLElement).closest("a[href]");
+      if (!anchor) return;
+      const destination = new URL(
+        (anchor as HTMLAnchorElement).href,
+        window.location.href,
+      );
+      if (
+        destination.pathname !== window.location.pathname ||
+        destination.search !== window.location.search
+      ) {
+        useDataEditStore.getState().clearDraft(editSessionKey);
+      }
+    };
+    window.addEventListener("beforeunload", markPageUnload);
+    window.addEventListener("pagehide", markPageUnload);
+    document.addEventListener("click", clearForLinkNavigation, true);
+    return () => {
+      window.removeEventListener("beforeunload", markPageUnload);
+      window.removeEventListener("pagehide", markPageUnload);
+      document.removeEventListener("click", clearForLinkNavigation, true);
+      if (!pageIsUnloading)
+        useDataEditStore.getState().clearDraft(editSessionKey);
+    };
+  }, [action, editSessionKey]);
 
   useEffect(() => {
     if (action === "add") {
@@ -964,6 +1110,54 @@ export default function DatasetTable({
       .filter((row) => Object.keys(row).length > 0);
   };
 
+  const getEffectiveEditRows = () =>
+    [
+      ...allRows
+        .filter((row) => !editDeletedRowIds.includes(row.id))
+        .map((row) => ({ ...row, ...editedRows[row.id] })),
+      ...editAddedRows,
+    ];
+
+  const validateEditDraft = () => {
+    const labels = editColumns.map((column) => column.label.trim());
+    if (labels.some((label) => !label))
+      return "Nama header tidak boleh kosong.";
+    if (new Set(labels.map((label) => label.toLocaleLowerCase("id-ID"))).size !== labels.length)
+      return "Nama header tidak boleh duplikat.";
+
+    if (
+      editAddedRows.length > 0 &&
+      !editAddedRows.some((row) =>
+        editColumns.some(
+          (column) =>
+            column.key !== "id" && !isMissingValue(row[column.key]),
+        ),
+      )
+    ) {
+      return "Baris baru masih kosong. Isi setidaknya satu sel sebelum menyimpan.";
+    }
+
+    for (const column of editColumns) {
+      if (column.inputType !== "number") continue;
+      const invalid = getEffectiveEditRows().some((row) => {
+        const value = row[column.key];
+        return !isMissingValue(value) && !Number.isFinite(Number(value));
+      });
+      if (invalid) return `Kolom "${column.label}" hanya menerima angka.`;
+    }
+    return "";
+  };
+
+  const editChangeCount =
+    Object.values(editedRows).reduce(
+      (count, changes) => count + Object.keys(changes).length,
+      0,
+    ) +
+    editAddedRows.length +
+    editDeletedRowIds.length +
+    newColumnKeys.length +
+    editColumns.filter((column, index) => columns[index]?.label !== column.label || columns[index]?.inputType !== column.inputType).length;
+
   useEffect(() => {
     if (saveData === 0) return;
     if (saveData === lastHandledSave.current) return;
@@ -971,7 +1165,13 @@ export default function DatasetTable({
     lastHandledSave.current = saveData;
 
     if (action === "edit") {
-      const hasChanges = Object.keys(editedRows).length > 0;
+      const invalidMessage = validateEditDraft();
+      if (invalidMessage) {
+        setValidationMessage(invalidMessage);
+        setAlertType("validation");
+        return;
+      }
+      const hasChanges = editChangeCount > 0;
 
       if (!hasChanges) {
         setAlertType("no-update");
@@ -1002,7 +1202,7 @@ export default function DatasetTable({
 
       setAlertType("confirm-delete");
     }
-  }, [saveData, action, editedRows, newRows, selectedDeleteIds]);
+  }, [saveData, action, editedRows, newRows, selectedDeleteIds, editChangeCount]);
 
   const handleCellChange = (
     rowId: string,
@@ -1011,6 +1211,13 @@ export default function DatasetTable({
     inputType?: HTMLInputTypeAttribute,
   ) => {
     const finalValue = normalizeInputValue(value, inputType);
+
+    if (editAddedRows.some((row) => row.id === rowId)) {
+      setEditAddedRows((rows) =>
+        rows.map((row) => (row.id === rowId ? { ...row, [key]: finalValue } : row)),
+      );
+      return;
+    }
 
     setEditedRows((prev) => ({
       ...prev,
@@ -1072,28 +1279,118 @@ export default function DatasetTable({
     setSaving(true);
 
     try {
-      const nextRows = allRows.map((row) => {
-        const changes = editedRows[row.id];
+      const effectiveRows = getEffectiveEditRows();
+      const savedColumns = editColumns.filter(
+        (column) =>
+          !newColumnKeys.includes(column.key) ||
+          effectiveRows.some((row) => !isMissingValue(row[column.key])),
+      );
+      const rowsToAppend = editAddedRows.filter((row) =>
+        savedColumns.some(
+          (column) => column.key !== "id" && !isMissingValue(row[column.key]),
+        ),
+      );
+      const allowedKeys = new Set(savedColumns.map((column) => column.key));
+      const committedRows = allRows
+        .map((row) => ({ ...row, ...editedRows[row.id] }))
+        .filter((row) => !editDeletedRowIds.includes(row.id))
+        .concat(rowsToAppend)
+        .map((row) =>
+          Object.fromEntries(
+            Object.entries(row).filter(
+              ([key]) => key === "id" || allowedKeys.has(key),
+            ),
+          ),
+        ) as DatasetRow[];
+      const { error: saveError } = await supabase.rpc(
+        "save_dataset_table_edit",
+        {
+          p_dataset_id: datasetId,
+          p_rows: committedRows,
+          p_column_config: savedColumns,
+        },
+      );
+      if (saveError?.code === "PGRST202") {
+        // Compatibility path for databases that have not received the atomic
+        // editor RPC yet. Use the existing row RPCs so additions and removals
+        // are persisted instead of relying on a full JSON table update.
+        const { data: configData, error: configError } = await supabase
+          .from("datasets")
+          .update({ column_config: savedColumns })
+          .eq("id", datasetId)
+          .select("id")
+          .maybeSingle();
+        if (configError) throw configError;
+        if (!configData) {
+          throw new Error(
+            "Migration save_dataset_table_edit belum diterapkan dan akun ini tidak memiliki akses update langsung.",
+          );
+        }
 
-        return changes ? { ...row, ...changes } : row;
-      });
+        const existingIds = new Set(allRows.map((row) => row.id));
+        const existingChanges = committedRows.filter((row) =>
+          existingIds.has(row.id),
+        );
+        if (existingChanges.length > 0) {
+          const { error } = await supabase.rpc("update_dataset_data_rows", {
+            p_dataset_id: datasetId,
+            p_changes: existingChanges,
+          });
+          if (error) throw error;
+        }
+        if (editDeletedRowIds.length > 0) {
+          const { error } = await supabase.rpc("delete_dataset_data_rows", {
+            p_dataset_id: datasetId,
+            p_row_ids: editDeletedRowIds,
+          });
+          if (error) throw error;
+        }
+        if (rowsToAppend.length > 0) {
+          const { error } = await supabase.rpc(
+            "append_dataset_rows_with_batch",
+            { p_dataset_id: datasetId, p_rows: rowsToAppend },
+          );
+          if (error) throw error;
+        }
+      } else if (saveError) {
+        throw saveError;
+      }
+      const { data: persistedDataset, error: readbackError } = await supabase
+        .from("datasets")
+        .select("data")
+        .eq("id", datasetId)
+        .maybeSingle();
+      if (readbackError) throw readbackError;
+      const persistedRows = normalizeJsonbRows(persistedDataset?.data);
+      const persistedIds = new Set(persistedRows.map((row) => row.id));
+      const missingAddedRow = rowsToAppend.find(
+        (row) => !persistedIds.has(row.id),
+      );
+      if (missingAddedRow) {
+        throw new Error(
+          `Baris baru ${missingAddedRow.id} tidak ditemukan setelah penyimpanan database.`,
+        );
+      }
 
-      const changes = Object.entries(editedRows).map(([id, rowChanges]) => ({
-        id,
-        ...rowChanges,
-      }));
-      const { error } = await supabase.rpc("update_dataset_data_rows", {
-        p_dataset_id: datasetId,
-        p_changes: changes,
-      });
-
-      if (error) throw error;
-
-      setAllRows(nextRows);
-      applyRowsToPage(nextRows);
-      buildFilterOptions(nextRows);
+      setColumnFilters({});
+      setTableSort(null);
+      setSelectedImportBatchIds(null);
+      if (rowsToAppend.length > 0) {
+        updatePage(
+          Math.max(Math.ceil(persistedRows.length / pageSize) - 1, 0),
+        );
+      }
+      setAllRows(persistedRows);
+      buildFilterOptions(persistedRows);
+      setEditColumns(savedColumns);
+      onColumnsChange?.(savedColumns);
 
       setEditedRows({});
+      setEditAddedRows([]);
+      setEditDeletedRowIds([]);
+      setNewColumnKeys([]);
+      useDataEditStore.getState().clearDraft(editSessionKey);
+      restoredEditSessionRef.current = "";
       setAlertType("success-update");
     } catch (err) {
       console.error("Failed to update data:", err);
@@ -1308,15 +1605,6 @@ export default function DatasetTable({
       );
     }
   };
-
-  const editChangeCount = useMemo(
-    () =>
-      Object.values(editedRows).reduce(
-        (count, changes) => count + Object.keys(changes).length,
-        0,
-      ),
-    [editedRows],
-  );
 
   const addChangeCount = useMemo(
     () => getRowsToAdd().length,
@@ -1852,7 +2140,7 @@ export default function DatasetTable({
                                   : "before",
                               )
                             }
-                            className={`${
+                            className={`min-w-44 ${
                               col.color ? col.color : "bg-sky-100"
                             } px-0 py-2 border border-gray-400 whitespace-normal break-words ${
                               draggedColumnKey === col.key
@@ -1870,18 +2158,56 @@ export default function DatasetTable({
                                 : ""
                             }`}
                           >
-                            {action === "list"
-                              ? renderColumnHeaderMenu(col, columnIndex)
-                              : col.label}
+                            {action === "list" ? (
+                              renderColumnHeaderMenu(col, columnIndex)
+                            ) : action === "edit" ? (
+                              <div className="flex items-start gap-2 px-2">
+                                <div className="flex min-w-32 flex-1 flex-col gap-1">
+                                  <input
+                                    value={col.label}
+                                    onChange={(event) =>
+                                      setEditColumns((current) =>
+                                        current.map((column) =>
+                                          column.key === col.key
+                                            ? { ...column, label: event.target.value }
+                                            : column,
+                                        ),
+                                      )
+                                    }
+                                    className="w-full rounded-md border border-gray-400 bg-white px-2 py-1 text-center font-semibold text-stone-800 focus:border-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                                    aria-label={`Nama header ${col.label}`}
+                                  />
+                                  {newColumnKeys.includes(col.key) && (
+                                  <div className="grid grid-cols-2 gap-1">
+                                    {(["text", "number"] as const).map((type) => (
+                                      <button key={type} type="button" onClick={() => setEditColumns((current) => current.map((column) => column.key === col.key ? { ...column, inputType: type } : column))} className={`rounded border px-2 py-1 text-xs font-medium transition ${col.inputType === type ? "border-sky-700 bg-sky-700 text-white" : "border-gray-300 bg-white text-stone-700 hover:bg-sky-50"}`}>
+                                        {type === "text" ? "Text" : "Angka"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  )}
+                                </div>
+                                <button type="button" onClick={() => deleteEditColumn(col.key)} aria-label={`Hapus kolom ${col.label}`} title={`Hapus kolom ${col.label}`} className="shrink-0 rounded-md p-1.5 text-rose-700 transition hover:bg-rose-100">
+                                  <Delete className="size-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              col.label
+                            )}
                           </th>
                         ))}
+                        {action === "edit" && (
+                          <th className="w-36 min-w-36 border border-gray-400 bg-stone-50 px-2 py-2 align-middle">
+                            <button type="button" onClick={addEditColumn} className="w-full rounded-md border border-sky-700 bg-white px-3 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-50">+ Tambah Kolom</button>
+                          </th>
+                        )}
                       </tr>
                     </thead>
 
                     <tbody>
-                      {dataset.length > 0 &&
+                      {(action === "edit" ? editDisplayRows : dataset).length > 0 &&
                         tableColumns.length > 0 &&
-                        dataset.map((row, rowIndex) => (
+                        (action === "edit" ? editDisplayRows : dataset).map((row, rowIndex) => (
                           <tr key={row.id ?? rowIndex}>
                             {action === "delete" && (
                               <td className="border border-gray-400 px-3 py-2 text-center">
@@ -1896,8 +2222,7 @@ export default function DatasetTable({
 
                             {tableColumns.map((col, colIndex) => {
                               const value = row[col.key];
-                              const editable =
-                                action === "edit" && col.editable;
+                              const editable = action === "edit";
 
                               const alignClass =
                                 col.align === "right"
@@ -1909,9 +2234,7 @@ export default function DatasetTable({
                               return (
                                 <td
                                   key={col.key}
-                                  className={`border border-gray-400 ${
-                                    editable ? "p-0" : "px-3 py-2"
-                                  } ${alignClass}`}
+                                  className={`border border-gray-400 px-3 py-2 align-top ${alignClass}`}
                                 >
                                   {editable ? (
                                     <input
@@ -1931,8 +2254,7 @@ export default function DatasetTable({
                                       onPaste={(e) =>
                                         handlePasteToEdit(e, rowIndex, colIndex)
                                       }
-                                      placeholder="N/A"
-                                      className={`w-full px-3 py-2 ${alignClass}`}
+                                      className={`w-full min-w-32 rounded border border-gray-300 px-2 py-1 text-inherit ${alignClass}`}
                                     />
                                   ) : (
                                     displayValue(value)
@@ -1940,13 +2262,25 @@ export default function DatasetTable({
                                 </td>
                               );
                             })}
+                            {action === "edit" && (
+                              <td className="border border-gray-400 bg-stone-50 px-2 py-1 text-center">
+                                <button type="button" onClick={() => deleteEditRow(row.id)} aria-label={`Hapus baris ${rowIndex + 1}`} title={`Hapus baris ${rowIndex + 1}`} className="rounded-md p-2 text-rose-700 transition hover:bg-rose-100"><Delete className="size-4" /></button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                     </tbody>
                   </table>
                 </div>
 
-                {(dataset.length === 0 || tableColumns.length === 0) && (
+                {action === "edit" && (
+                  <div className="border-t border-gray-300 bg-stone-50 p-3">
+                    <button type="button" onClick={addEditRow} className="w-full rounded-md border border-sky-700 bg-white px-4 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-50">+ Tambah Baris</button>
+                    <p className="mt-2 text-center text-xs text-stone-500">Baris atau kolom baru hanya disimpan jika setidaknya satu sel berisi data.</p>
+                  </div>
+                )}
+
+                {((action === "edit" ? editDisplayRows : dataset).length === 0 || tableColumns.length === 0) && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-gray-500">
                     Tidak ada data.
                   </div>
@@ -2117,6 +2451,16 @@ export default function DatasetTable({
           msg="Penyimpanan data gagal"
           yesText="OK"
           icon="failed"
+          confirm={() => setAlertType("none")}
+        />
+      )}
+
+      {alertType === "validation" && (
+        <AlertNotif
+          type="single"
+          msg={validationMessage}
+          yesText="OK"
+          icon="warning"
           confirm={() => setAlertType("none")}
         />
       )}

@@ -104,7 +104,7 @@ const PieCharts = forwardRef<ChartJS<"pie"> | undefined, PieChartProps>(
 
     return (
       <div
-        className={`relative mb-6 w-full overflow-x-auto overflow-y-hidden ${heightClassName}`}
+        className={`relative w-full overflow-visible ${heightClassName}`}
       >
         <div className="absolute inset-0">
           <Pie ref={ref} data={data} options={options} />

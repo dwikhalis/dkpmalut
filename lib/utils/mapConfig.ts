@@ -86,6 +86,10 @@ export type MapGlobalLegendStyle = {
   strokeWidth: number;
   fillOpacity: number;
   pointSize: number;
+  bufferRadius: number;
+  bufferUnit: "m" | "km";
+  bufferColor: string;
+  bufferOpacity: number;
   iconPath: string | null;
   fillPattern: MapFillPattern;
   patternColor: string;
@@ -149,6 +153,19 @@ export type MapConfig = {
   popupFields: MapPopupField[];
   layerPopupFields: Record<string, MapPopupField[]>;
   layerTableConfigs: Record<string, MapLayerTableConfig>;
+  layerColumnTypes: Record<string, Record<string, "text" | "number">>;
+  layerPointBuffers: Record<
+    string,
+    Record<
+      string,
+      {
+        radius: number;
+        unit: "m" | "km";
+        color: string;
+        opacity: number;
+      }
+    >
+  >;
   links: MapLink[];
 };
 
@@ -313,11 +330,15 @@ function parseGlobalLegendStyle(
       geometryType === "point"
         ? cleanNumberRange(
             style.pointSize,
-            iconPath ? 16 : 1,
+            14,
             iconPath ? 4 : 0.1,
             iconPath ? 64 : 100,
           )
         : 0,
+    bufferRadius: cleanNumberRange(style.bufferRadius, 0, 0, 1000000),
+    bufferUnit: style.bufferUnit === "m" ? "m" : "km",
+    bufferColor: cleanText(style.bufferColor) || color,
+    bufferOpacity: cleanOpacity(style.bufferOpacity, 0.15),
     iconPath,
     fillPattern: ["diagonal", "reverse-diagonal", "crosshatch", "horizontal", "vertical", "dots"].includes(String(style.fillPattern)) ? style.fillPattern as MapFillPattern : "none",
     patternColor: cleanText(style.patternColor) || color,
@@ -508,6 +529,8 @@ export function parseMapConfig(value: unknown): MapConfig {
       popupFields: [],
       layerPopupFields: {},
       layerTableConfigs: {},
+      layerColumnTypes: {},
+      layerPointBuffers: {},
       links: [],
     };
   }
@@ -619,6 +642,73 @@ export function parseMapConfig(value: unknown): MapConfig {
               selectedFields: cleanStringArray(tableConfig.selectedFields),
             };
 
+            return acc;
+          }, {})
+        : {},
+    layerColumnTypes:
+      typeof config.layerColumnTypes === "object" &&
+      config.layerColumnTypes !== null
+        ? Object.entries(config.layerColumnTypes).reduce<
+            Record<string, Record<string, "text" | "number">>
+          >((acc, [layerId, columnTypes]) => {
+            const cleanLayerId = cleanText(layerId);
+            if (
+              !cleanLayerId ||
+              typeof columnTypes !== "object" ||
+              columnTypes === null
+            ) {
+              return acc;
+            }
+            acc[cleanLayerId] = Object.entries(columnTypes).reduce<
+              Record<string, "text" | "number">
+            >((types, [column, type]) => {
+              const cleanColumn = cleanText(column);
+              if (cleanColumn) {
+                types[cleanColumn] = type === "number" ? "number" : "text";
+              }
+              return types;
+            }, {});
+            return acc;
+          }, {})
+        : {},
+    layerPointBuffers:
+      typeof config.layerPointBuffers === "object" &&
+      config.layerPointBuffers !== null
+        ? Object.entries(config.layerPointBuffers).reduce<
+            MapConfig["layerPointBuffers"]
+          >((acc, [layerId, buffers]) => {
+            const cleanLayerId = cleanText(layerId);
+            if (!cleanLayerId || typeof buffers !== "object" || !buffers) {
+              return acc;
+            }
+            acc[cleanLayerId] = Object.entries(buffers).reduce<
+              Record<
+                string,
+                {
+                  radius: number;
+                  unit: "m" | "km";
+                  color: string;
+                  opacity: number;
+                }
+              >
+            >((items, [value, buffer]) => {
+              const parsedBuffer =
+                typeof buffer === "object" && buffer !== null
+                  ? (buffer as { radius?: unknown; unit?: unknown })
+                  : {};
+              items[value] = {
+                radius: cleanNumberRange(parsedBuffer.radius, 0, 0, 1000000),
+                unit: parsedBuffer.unit === "m" ? "m" : "km",
+                color: cleanText(
+                  (parsedBuffer as { color?: unknown }).color,
+                ) || "#0EA5E9",
+                opacity: cleanOpacity(
+                  (parsedBuffer as { opacity?: unknown }).opacity,
+                  0.15,
+                ),
+              };
+              return items;
+            }, {});
             return acc;
           }, {})
         : {},
@@ -773,7 +863,7 @@ export function createLegendDrafts(
         strokeColor: color,
         strokeWidth: geometryType === "polyline" ? 3 : 2,
         fillOpacity: geometryType === "polyline" ? 0 : 0.65,
-        pointSize: geometryType === "point" ? 1 : 0,
+        pointSize: geometryType === "point" ? 14 : 0,
         iconPath: null,
         fillPattern: "none",
         patternColor: color,

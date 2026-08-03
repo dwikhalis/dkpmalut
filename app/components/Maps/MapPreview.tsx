@@ -805,6 +805,74 @@ function renderPopup(
   );
 }
 
+function createLeafletPopupContent(
+  feature: Feature<Geometry, GeoJsonProperties>,
+  mapConfig: MapConfig,
+  layerId: string,
+) {
+  const layerFields = mapConfig.layerPopupFields[layerId];
+  const configuredFields = layerFields && layerFields.length > 0
+    ? layerFields
+    : mapConfig.popupFields;
+  const selectedFields = configuredFields.filter((field) => field.selected);
+  let fields = selectedFields.filter(
+    (field) =>
+      field.field &&
+      Object.prototype.hasOwnProperty.call(
+        feature.properties ?? {},
+        field.field,
+      ),
+  );
+
+  // A header may have been renamed after an older popup configuration was
+  // saved. If callouts are enabled but none of those saved keys exist on this
+  // feature anymore, show the available properties instead of silently
+  // producing no polygon popup.
+  if (fields.length === 0 && selectedFields.length > 0) {
+    fields = Object.keys(feature.properties ?? {})
+      .slice(0, 6)
+      .map((field) => ({
+        field,
+        label: field,
+        selected: true,
+        suffixEnabled: false,
+        suffix: "",
+      }));
+  }
+
+  if (fields.length === 0) return null;
+
+  const container = document.createElement("div");
+  container.className = "space-y-1 text-sm leading-tight";
+  fields.forEach((field) => {
+    const row = document.createElement("p");
+    const label = document.createElement("b");
+    const rawValue = feature.properties?.[field.field];
+    const numericValue =
+      typeof rawValue === "number"
+        ? rawValue
+        : Number(String(rawValue ?? "").replace(/,/g, ""));
+    const formattedValue =
+      rawValue === undefined || rawValue === null || rawValue === ""
+        ? "-"
+        : Number.isFinite(numericValue)
+          ? new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 2,
+            }).format(numericValue)
+          : String(rawValue);
+    const value =
+      field.suffixEnabled && field.suffix && formattedValue !== "-"
+        ? `${formattedValue} ${field.suffix}`
+        : formattedValue;
+
+    label.textContent = `${field.label || field.field}:`;
+    row.append(label, document.createTextNode(` ${value}`));
+    container.append(row);
+  });
+
+  return container;
+}
+
 function getPointLatLng(feature: Feature<Point, GeoJsonProperties>) {
   const coordinates = feature.geometry.coordinates;
   return [coordinates[1], coordinates[0]] as [number, number];
@@ -841,9 +909,33 @@ function MapPoint({
   const iconUrl = getPublicImageUrl(
     globalLegend?.style.iconPath ?? legend?.icon_path ?? null,
   );
-  const pointSize = globalLegend?.style.pointSize ?? legend?.icon_width ?? 16;
+  const configuredPointSize =
+    globalLegend?.style.pointSize ?? legend?.icon_width ?? 14;
+  const configuredPointHeight =
+    globalLegend?.style.pointSize ?? legend?.icon_height ?? configuredPointSize;
+  // Older configurations often retained the 1px symbol default after an
+  // image was selected, making the marker effectively invisible.
+  const pointSize = configuredPointSize <= 1 ? 14 : configuredPointSize;
   const pointHeight =
-    globalLegend?.style.pointSize ?? legend?.icon_height ?? pointSize;
+    configuredPointHeight <= 1 ? 14 : configuredPointHeight;
+  const layerBuffer = mapConfig.layerPointBuffers[layerId]?.[
+    legend?.value ?? value
+  ];
+  const bufferRadius =
+    globalLegend?.style.bufferRadius ?? layerBuffer?.radius ?? 0;
+  const bufferUnit =
+    globalLegend?.style.bufferUnit ?? layerBuffer?.unit ?? "km";
+  const bufferColor =
+    globalLegend?.style.bufferColor ??
+    layerBuffer?.color ??
+    globalLegend?.style.fillColor ??
+    legend?.fill_color ??
+    legend?.color ??
+    "#0EA5E9";
+  const bufferOpacity =
+    globalLegend?.style.bufferOpacity ?? layerBuffer?.opacity ?? 0.15;
+  const bufferRadiusMeters =
+    bufferRadius * (bufferUnit === "km" ? 1000 : 1);
 
   const icon = useMemo(() => {
     if (!iconUrl) return undefined;
@@ -876,26 +968,56 @@ function MapPoint({
 
   if (!icon) {
     return (
-      <Circle
-        center={getPointLatLng(feature)}
-        radius={pointSize * 1000}
-        pathOptions={pointStyle}
-        eventHandlers={{
-          click: (event) => {
-            L.DomEvent.stopPropagation(event.originalEvent);
-            onSelect();
-            event.target.openPopup();
-          },
-          popupclose: onUnselect,
-        }}
-      >
-        {renderPopup(feature, mapConfig, layerId)}
-      </Circle>
+      <>
+        {bufferRadiusMeters > 0 && (
+          <Circle
+            center={getPointLatLng(feature)}
+            radius={bufferRadiusMeters}
+            interactive={false}
+            pathOptions={{
+              color: bufferColor,
+              fillColor: bufferColor,
+              fillOpacity: bufferOpacity,
+              opacity: Math.min(1, Math.max(0.25, bufferOpacity + 0.25)),
+              weight: 1,
+            }}
+          />
+        )}
+        <CircleMarker
+          center={getPointLatLng(feature)}
+          radius={pointSize / 2}
+          pathOptions={pointStyle}
+          eventHandlers={{
+            click: (event) => {
+              L.DomEvent.stopPropagation(event.originalEvent);
+              onSelect();
+              event.target.openPopup();
+            },
+            popupclose: onUnselect,
+          }}
+        >
+          {renderPopup(feature, mapConfig, layerId)}
+        </CircleMarker>
+      </>
     );
   }
 
   return (
     <>
+      {bufferRadiusMeters > 0 && (
+        <Circle
+          center={getPointLatLng(feature)}
+          radius={bufferRadiusMeters}
+          interactive={false}
+          pathOptions={{
+            color: bufferColor,
+            fillColor: bufferColor,
+            fillOpacity: bufferOpacity,
+            opacity: Math.min(1, Math.max(0.25, bufferOpacity + 0.25)),
+            weight: 1,
+          }}
+        />
+      )}
       {isSelected && (
         <CircleMarker
           center={getPointLatLng(feature)}
@@ -1074,31 +1196,42 @@ function MapFeature({
     <GeoJSON
       ref={geoJsonRef}
       data={feature}
-      style={() =>
-        getLegendStyle(
+      style={() => ({
+        ...getLegendStyle(
           feature,
           legends,
           mapConfig,
           layerId,
           isSelected,
           selectedLegendFilters,
-        )
-      }
+        ),
+        bubblingMouseEvents: false,
+      })}
+      onEachFeature={(_, layer) => {
+        const popupContent = createLeafletPopupContent(
+          feature,
+          mapConfig,
+          layerId,
+        );
+        if (popupContent) {
+          layer.bindPopup(popupContent);
+          layer.on("click", (event: L.LeafletMouseEvent) => {
+            if (event.originalEvent) L.DomEvent.stop(event.originalEvent);
+            layer.openPopup(event.latlng);
+          });
+        }
+      }}
       eventHandlers={{
         click: (event) => {
-          L.DomEvent.stopPropagation(event.originalEvent);
+          L.DomEvent.stop(event.originalEvent);
           onSelect();
-
           const target = event.target as L.Layer & {
             openPopup?: (latlng?: L.LatLng) => void;
           };
-
           target.openPopup?.(event.latlng);
         },
-        popupclose: onUnselect,
       }}
     >
-      {renderPopup(feature, mapConfig, layerId)}
     </GeoJSON>
   );
 }
@@ -1421,6 +1554,7 @@ function MapPreview({
         <ClearSelectionOnMapClick
           onClear={() => {
             setSelectedFeatureKey(null);
+            onFeatureSelect?.(null, null);
           }}
         />
 
@@ -1442,6 +1576,7 @@ function MapPreview({
                   isSelected={isSelected}
                   onSelect={() => {
                     setSelectedFeatureKey(featureKey);
+                    onFeatureSelect?.(layer.id, feature);
                   }}
                   onUnselect={() =>
                     setSelectedFeatureKey((current) =>
@@ -1463,6 +1598,7 @@ function MapPreview({
                 isSelected={isSelected}
                 onSelect={() => {
                   setSelectedFeatureKey(featureKey);
+                  onFeatureSelect?.(layer.id, feature);
                 }}
                 onUnselect={() =>
                   setSelectedFeatureKey((current) =>

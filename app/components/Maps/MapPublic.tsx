@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { FeatureCollection } from "geojson";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type {
+  Feature,
+  FeatureCollection,
+  GeoJsonProperties,
+  Geometry,
+} from "geojson";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import {
   collectionToCsv,
@@ -125,6 +130,10 @@ export default function MapPublic({ slug, pages }: Props) {
   const [selectedLayerId, setSelectedLayerId] = useState("");
   const [showLegend, setShowLegend] = useState(false);
   const [mapBoundsTrigger, setMapBoundsTrigger] = useState(0);
+  const [selectedFeature, setSelectedFeature] = useState<{
+    layerId: string;
+    feature: Feature<Geometry, GeoJsonProperties>;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -296,6 +305,66 @@ export default function MapPublic({ slug, pages }: Props) {
   );
   const documents = parseJsonArray<MapAttachment>(dataset?.documents_path);
   const canDownloadCsv = layers.length > 0;
+  const handleFeatureSelect = useCallback(
+    (
+      layerId: string | null,
+      feature: Feature<Geometry, GeoJsonProperties> | null,
+    ) => {
+      setSelectedFeature(
+        layerId && feature ? { layerId, feature } : null,
+      );
+    },
+    [],
+  );
+  const hasEnabledTable = useMemo(
+    () =>
+      layers.some(
+        (layer) =>
+          !publicMapConfig.hiddenMapLayerIds.includes(layer.id) &&
+          publicMapConfig.layerTableConfigs[layer.id]?.enabled === true,
+      ),
+    [layers, publicMapConfig],
+  );
+  const selectedFeatureTable = useMemo(() => {
+    if (!selectedFeature) return null;
+
+    const layer = layers.find((item) => item.id === selectedFeature.layerId);
+    const config = publicMapConfig.layerTableConfigs[selectedFeature.layerId];
+    if (!layer || !config?.enabled) return null;
+
+    const properties = selectedFeature.feature.properties ?? {};
+    const formatValue = (value: unknown) =>
+      value === null || value === undefined || value === ""
+        ? "-"
+        : String(value);
+    const rows =
+      config.mode === "rows"
+        ? [
+            {
+              data: formatValue(properties[config.dataField]),
+              value: formatValue(properties[config.valueField]),
+            },
+          ]
+        : config.selectedFields.map((field) => ({
+            data: field,
+            value: formatValue(properties[field]),
+          }));
+
+    return {
+      title:
+        String(
+          properties.name ??
+            properties.nama ??
+            properties.Name ??
+            properties.Nama ??
+            properties[config.selectorField] ??
+            "",
+        ).trim() || layer.name,
+      dataLabel: config.dataLabel || "Data",
+      valueLabel: config.valueLabel || "Nilai",
+      rows,
+    };
+  }, [layers, publicMapConfig.layerTableConfigs, selectedFeature]);
 
   useEffect(() => {
     if (!dataset?.id) return;
@@ -561,10 +630,51 @@ export default function MapPublic({ slug, pages }: Props) {
           bounds={publicMapBounds}
           boundsTrigger={mapBoundsTrigger}
           selectedLegendFilters={selectedLegendFilters}
+          onFeatureSelect={handleFeatureSelect}
           heightClassName="h-[60vh] min-h-[60vh]"
           className=""
         />
       </div>
+
+      {hasEnabledTable && (
+        <div className="mt-4 overflow-x-auto rounded-md border border-stone-300">
+          {selectedFeatureTable ? (
+            <>
+              <div className="border-b border-stone-300 bg-stone-50 px-3 py-2 text-sm font-semibold">
+                {selectedFeatureTable.title}
+              </div>
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-sky-100">
+                    <th className="border border-stone-300 px-3 py-2 text-left">
+                      {selectedFeatureTable.dataLabel}
+                    </th>
+                    <th className="border border-stone-300 px-3 py-2 text-left">
+                      {selectedFeatureTable.valueLabel}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedFeatureTable.rows.map((row, index) => (
+                    <tr key={`${row.data}-${index}`}>
+                      <td className="border border-stone-300 px-3 py-2">
+                        {row.data}
+                      </td>
+                      <td className="border border-stone-300 px-3 py-2">
+                        {row.value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : (
+            <div className="bg-stone-50 px-4 py-5 text-center text-sm text-stone-600">
+              Klik feature pada peta untuk menampilkan data terkait.
+            </div>
+          )}
+        </div>
+      )}
 
       <MapLinks links={publicMapConfig.links} />
 

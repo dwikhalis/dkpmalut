@@ -1919,7 +1919,7 @@ export default function DataChart({
                 xAxisTitle={xAxisLabel}
                 showLegend={draftChartConfig.showLegend}
                 rotateXLabels={chartResult.labels.length > 8 ? 45 : 0}
-                heightClassName="h-[30vh]"
+                heightClassName="min-h-[70vh] md:min-h-[75vh]"
               />
             ) : draftChartConfig.type === "pie" ? (
               <PieCharts
@@ -1943,7 +1943,7 @@ export default function DataChart({
                 chartTitle={chartTitle}
                 datalabel={false}
                 showLegend={draftChartConfig.showLegend}
-                heightClassName="h-[30vh]"
+                heightClassName="min-h-[70vh] md:min-h-[75vh]"
               />
             ) : (
               <BarCharts
@@ -1958,7 +1958,7 @@ export default function DataChart({
                 xAxisTitle={xAxisLabel}
                 showLegend={draftChartConfig.showLegend}
                 rotateXLabels={chartResult.labels.length > 8 ? 45 : 0}
-                heightClassName="h-[30vh]"
+                heightClassName="min-h-[70vh] md:min-h-[75vh]"
               />
             )}
           </div>

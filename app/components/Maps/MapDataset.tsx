@@ -50,6 +50,8 @@ import {
   type MapLayerTableConfig,
   type MapPopupField,
 } from "@/lib/utils/mapConfig";
+import { useMapVisualizationStore } from "@/app/Stores/mapVisualizationStores";
+import { useDataEditStore } from "@/app/Stores/dataEditStores";
 import AlertNotif from "../AlertNotif";
 import Button from "../Button";
 import SpinnerLoading from "../SpinnerLoading";
@@ -211,6 +213,33 @@ type MapPublicationSnapshot = {
   dataKkpd: string[];
   description: string;
   imagePath: string | null;
+};
+
+type MapDatasetEditSession = {
+  label: string;
+  selectedLayerId: string;
+  layers: Array<{
+    id: string;
+    propertyKeys: string[];
+    changedRows: Array<{
+      index: number;
+      properties: GeoJsonProperties;
+    }>;
+  }>;
+  editedFeatureCells: string[];
+  editedFeatureHeaders: string[];
+  featureHeaderDrafts: Record<string, string>;
+  draftFeatureRows: Record<string, number[]>;
+  draftFeatureColumns: Record<string, string[]>;
+  deletedFeatureRowOperations: Record<string, number[]>;
+  featureColumnOperations: Record<
+    string,
+    Array<
+      | { type: "rename"; from: string; to: string }
+      | { type: "delete"; column: string }
+    >
+  >;
+  layerColumnTypes: Record<string, Record<string, "text" | "number">>;
 };
 
 const TAG_OPTIONS = [
@@ -586,6 +615,50 @@ function getDraftExpiryDate() {
 
 function isTemporaryDraftTitle(value: string) {
   return value.trim().toLowerCase() === "draft";
+}
+
+function getCoordinatePropertyAxis(
+  layer: LoadedMapLayer,
+  column: string,
+): "longitude" | "latitude" | null {
+  const comparable = (layer.collection?.features ?? []).flatMap((feature) => {
+    if (feature.geometry?.type !== "Point") return [];
+    const value = parseCoordinateValue(feature.properties?.[column]);
+    if (value === null) return [];
+    return [{ value, coordinates: feature.geometry.coordinates }];
+  });
+
+  if (comparable.length > 0) {
+    const matchesLongitude = comparable.every(
+      ({ value, coordinates }) => Math.abs(value - coordinates[0]) < 1e-9,
+    );
+    const matchesLatitude = comparable.every(
+      ({ value, coordinates }) => Math.abs(value - coordinates[1]) < 1e-9,
+    );
+
+    if (matchesLongitude) return "longitude";
+    if (matchesLatitude) return "latitude";
+  }
+
+  if (layer.geometry_type !== "point") return null;
+
+  const normalized = column.trim().toLowerCase();
+  if (["lat", "latitude", "lintang", "y"].includes(normalized)) {
+    return "latitude";
+  }
+  if (
+    ["lon", "lng", "long", "longitude", "bujur", "x"].includes(normalized)
+  ) {
+    return "longitude";
+  }
+  return null;
+}
+
+function isCoordinatePropertyColumn(
+  layer: LoadedMapLayer,
+  column: string,
+) {
+  return getCoordinatePropertyAxis(layer, column) !== null;
 }
 
 function mergeBounds(
@@ -1462,7 +1535,11 @@ function createDefaultGlobalLegendStyle(
     patternThickness: 1.25,
     patternOpacity: 1,
     patternGap: 8,
-    pointSize: geometryType === "point" ? 16 : 0,
+    pointSize: geometryType === "point" ? 14 : 0,
+    bufferRadius: 0,
+    bufferUnit: "km" as const,
+    bufferColor: color,
+    bufferOpacity: 0.15,
     iconPath: null,
   };
 }
@@ -1721,6 +1798,17 @@ export default function MapDataset({
   const [selectedFeatureRows, setSelectedFeatureRows] = useState<number[]>([]);
   const [deleteSelectedLayer, setDeleteSelectedLayer] = useState(false);
   const [editedFeatureCells, setEditedFeatureCells] = useState<string[]>([]);
+  const [draftFeatureRows, setDraftFeatureRows] = useState<
+    Record<string, number[]>
+  >({});
+  const [draftFeatureColumns, setDraftFeatureColumns] = useState<
+    Record<string, string[]>
+  >({});
+  const [deletedFeatureRowOperations, setDeletedFeatureRowOperations] =
+    useState<Record<string, number[]>>({});
+  const [featureColumnOperations, setFeatureColumnOperations] = useState<
+    MapDatasetEditSession["featureColumnOperations"]
+  >({});
   const [deleteConfirm, setDeleteConfirm] = useState<"features" | "dataset" | null>(
     null,
   );
@@ -1731,6 +1819,7 @@ export default function MapDataset({
   const [draftMapDatasetId, setDraftMapDatasetId] = useState<string | null>(
     null,
   );
+  const restoredEditSessionKeysRef = useRef<Set<string>>(new Set());
   const [draggedPopupField, setDraggedPopupField] = useState<string | null>(
     null,
   );
@@ -1775,6 +1864,12 @@ export default function MapDataset({
   const [openFeatureHeaderMenu, setOpenFeatureHeaderMenu] = useState<
     string | null
   >(null);
+  const [featureHeaderDrafts, setFeatureHeaderDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [editedFeatureHeaders, setEditedFeatureHeaders] = useState<string[]>(
+    [],
+  );
   const [showLegendConfig, setShowLegendConfig] = useState(true);
   const [showTableConfig, setShowTableConfig] = useState(false);
   const [showPopupConfig, setShowPopupConfig] = useState(false);
@@ -1803,7 +1898,14 @@ export default function MapDataset({
   const [selectedPreviewLegendFilterIds, setSelectedPreviewLegendFilterIds] =
     useState<string[]>([]);
   const [previewMapBoundsTrigger, setPreviewMapBoundsTrigger] = useState(0);
+  const [previewInstance, setPreviewInstance] = useState(0);
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
+  const setVisualizationDraft = useMapVisualizationStore(
+    (state) => state.setDraft,
+  );
+  const clearVisualizationDraft = useMapVisualizationStore(
+    (state) => state.clearDraft,
+  );
   const previewLegendEnabled = true;
   const [showPreviewLegend, setShowPreviewLegend] = useState(false);
   const [openGlobalLegendItemKey, setOpenGlobalLegendItemKey] = useState<
@@ -2019,6 +2121,298 @@ export default function MapDataset({
     );
   }, [layers, selectedLayerId]);
 
+  const mapEditSessionKey = mapDatasetId
+    ? `map-dataset-edit:v2:${mapDatasetId}`
+    : null;
+
+  const clearMapEditSession = useCallback(() => {
+    if (!mapEditSessionKey) return;
+    useDataEditStore.getState().clearDraft(mapEditSessionKey);
+  }, [mapEditSessionKey]);
+
+  useEffect(() => {
+    if (
+      view !== "mapdataset" ||
+      action !== "edit" ||
+      !mapEditSessionKey ||
+      loading ||
+      layers.length === 0 ||
+      restoredEditSessionKeysRef.current.has(mapEditSessionKey)
+    ) {
+      return;
+    }
+
+    restoredEditSessionKeysRef.current.add(mapEditSessionKey);
+    const savedSession = useDataEditStore.getState().drafts[mapEditSessionKey];
+    if (!savedSession) return;
+
+    try {
+      const saved = savedSession as MapDatasetEditSession;
+      const savedLayers = new Map(saved.layers.map((layer) => [layer.id, layer]));
+
+      setLabel(saved.label);
+      setSelectedLayerId(saved.selectedLayerId);
+      setLayers((current) =>
+        current.map((layer) => {
+          const savedLayer = savedLayers.get(layer.id);
+          if (!savedLayer || !layer.collection) return layer;
+
+          let restoredKeys = [...(layer.property_keys ?? [])];
+          let restoredFeatures = layer.collection.features.map((feature) => ({
+            ...feature,
+            properties: { ...(feature.properties ?? {}) },
+          }));
+
+          (saved.featureColumnOperations?.[layer.id] ?? []).forEach(
+            (operation) => {
+              if (operation.type === "rename") {
+                restoredKeys = restoredKeys.map((column) =>
+                  column === operation.from ? operation.to : column,
+                );
+                restoredFeatures = restoredFeatures.map((feature) => {
+                  const properties = { ...(feature.properties ?? {}) };
+                  properties[operation.to] = properties[operation.from] ?? "";
+                  delete properties[operation.from];
+                  return { ...feature, properties };
+                });
+                return;
+              }
+
+              restoredKeys = restoredKeys.filter(
+                (column) => column !== operation.column,
+              );
+              restoredFeatures = restoredFeatures.map((feature) => {
+                const properties = { ...(feature.properties ?? {}) };
+                delete properties[operation.column];
+                return { ...feature, properties };
+              });
+            },
+          );
+          (saved.deletedFeatureRowOperations?.[layer.id] ?? []).forEach(
+            (rowIndex) => {
+              restoredFeatures.splice(rowIndex, 1);
+            },
+          );
+
+          const originalKeys = restoredKeys;
+          const renamedProperties = restoredFeatures.map((feature) => {
+            const properties = { ...(feature.properties ?? {}) };
+            originalKeys.forEach((originalKey, index) => {
+              const savedKey = savedLayer.propertyKeys[index];
+              if (!savedKey || savedKey === originalKey) return;
+              properties[savedKey] = properties[originalKey] ?? "";
+              delete properties[originalKey];
+            });
+            savedLayer.propertyKeys.forEach((column) => {
+              if (!(column in properties)) properties[column] = "";
+            });
+            return { ...feature, properties };
+          });
+          const changedRows = new Map(
+            (savedLayer.changedRows ?? []).map((row) => [row.index, row]),
+          );
+          const highestChangedIndex = Math.max(
+            -1,
+            ...(savedLayer.changedRows ?? []).map((row) => row.index),
+          );
+          const featureCount = Math.max(
+            renamedProperties.length,
+            highestChangedIndex + 1,
+          );
+          const features = Array.from({ length: featureCount }, (_, index) => {
+            const changedRow = changedRows.get(index);
+            return {
+              ...(renamedProperties[index] ?? {
+                type: "Feature" as const,
+                geometry: null,
+              }),
+              ...(changedRow ? { properties: changedRow.properties } : {}),
+            };
+          }) as Feature[];
+
+          return {
+            ...layer,
+            property_keys: savedLayer.propertyKeys,
+            feature_count: features.length,
+            collection: { ...layer.collection, features },
+          };
+        }),
+      );
+      setEditedFeatureCells(saved.editedFeatureCells ?? []);
+      setEditedFeatureHeaders(saved.editedFeatureHeaders ?? []);
+      setFeatureHeaderDrafts(saved.featureHeaderDrafts ?? {});
+      setDraftFeatureRows(saved.draftFeatureRows ?? {});
+      setDraftFeatureColumns(saved.draftFeatureColumns ?? {});
+      setDeletedFeatureRowOperations(
+        saved.deletedFeatureRowOperations ?? {},
+      );
+      setFeatureColumnOperations(saved.featureColumnOperations ?? {});
+      setMapConfig((current) => ({
+        ...current,
+        layerColumnTypes: saved.layerColumnTypes ?? current.layerColumnTypes,
+      }));
+    } catch (error) {
+      console.warn("Map edit session could not be restored:", error);
+      clearMapEditSession();
+    }
+  }, [
+    action,
+    clearMapEditSession,
+    layers.length,
+    loading,
+    mapEditSessionKey,
+    view,
+  ]);
+
+  useEffect(() => {
+    if (view === "mapdataset" && action === "edit") return;
+    // On a hard refresh DashData initially renders with action="list" before
+    // synchronizing it from the URL. Keep the saved draft during that brief
+    // initialization window so edit mode can restore it.
+    if (searchParams.get("action") === "edit") return;
+    clearMapEditSession();
+  }, [action, clearMapEditSession, searchParams, view]);
+
+  useEffect(() => {
+    if (
+      view !== "mapdataset" ||
+      action !== "edit" ||
+      !mapEditSessionKey ||
+      !restoredEditSessionKeysRef.current.has(mapEditSessionKey)
+    ) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const hasDraftRows = Object.values(draftFeatureRows).some(
+        (rows) => rows.length > 0,
+      );
+      const hasDraftColumns = Object.values(draftFeatureColumns).some(
+        (columns) => columns.length > 0,
+      );
+      const hasDeletedRows = Object.values(deletedFeatureRowOperations).some(
+        (rows) => rows.length > 0,
+      );
+      const hasColumnOperations = Object.values(featureColumnOperations).some(
+        (operations) => operations.length > 0,
+      );
+      const hasSessionChanges =
+        editedFeatureCells.length > 0 ||
+        editedFeatureHeaders.length > 0 ||
+        Object.keys(featureHeaderDrafts).length > 0 ||
+        hasDraftRows ||
+        hasDraftColumns ||
+        hasDeletedRows ||
+        hasColumnOperations ||
+        Boolean(label.trim() && label.trim() !== dataset?.label);
+
+      if (!hasSessionChanges) {
+        clearMapEditSession();
+        return;
+      }
+
+      const session: MapDatasetEditSession = {
+        label,
+        selectedLayerId,
+        layers: layers.map((layer) => {
+          const changedIndexes = new Set<number>(
+            draftFeatureRows[layer.id] ?? [],
+          );
+          editedFeatureCells.forEach((cellKey) => {
+            const prefix = `${layer.id}:`;
+            if (!cellKey.startsWith(prefix)) return;
+            const rowAndColumn = cellKey.slice(prefix.length);
+            const separatorIndex = rowAndColumn.indexOf(":");
+            const rowIndex = Number(rowAndColumn.slice(0, separatorIndex));
+            if (Number.isInteger(rowIndex)) changedIndexes.add(rowIndex);
+          });
+
+          return {
+            id: layer.id,
+            propertyKeys: layer.property_keys ?? [],
+            changedRows: [...changedIndexes]
+              .sort((left, right) => left - right)
+              .map((index) => ({
+                index,
+                properties:
+                  layer.collection?.features[index]?.properties ?? {},
+              })),
+          };
+        }),
+        editedFeatureCells,
+        editedFeatureHeaders,
+        featureHeaderDrafts,
+        draftFeatureRows,
+        draftFeatureColumns,
+        deletedFeatureRowOperations,
+        featureColumnOperations,
+        layerColumnTypes: mapConfig.layerColumnTypes,
+      };
+
+      try {
+        useDataEditStore.getState().setDraft(
+          mapEditSessionKey,
+          session as unknown as Record<string, unknown>,
+        );
+      } catch (error) {
+        console.warn("Map edit session could not be saved:", error);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    action,
+    draftFeatureColumns,
+    draftFeatureRows,
+    clearMapEditSession,
+    dataset?.label,
+    editedFeatureCells,
+    editedFeatureHeaders,
+    deletedFeatureRowOperations,
+    featureHeaderDrafts,
+    featureColumnOperations,
+    label,
+    layers,
+    mapEditSessionKey,
+    mapConfig.layerColumnTypes,
+    selectedLayerId,
+    view,
+  ]);
+
+  useEffect(() => {
+    if (!mapEditSessionKey || action !== "edit") return;
+
+    let pageIsUnloading = false;
+    const markPageUnload = () => {
+      pageIsUnloading = true;
+    };
+    const clearForLinkNavigation = (event: MouseEvent) => {
+      const anchor = (event.target as HTMLElement).closest("a[href]");
+      if (!anchor) return;
+      const destination = new URL(
+        (anchor as HTMLAnchorElement).href,
+        window.location.href,
+      );
+      if (
+        destination.pathname !== window.location.pathname ||
+        destination.search !== window.location.search
+      ) {
+        clearMapEditSession();
+      }
+    };
+
+    window.addEventListener("beforeunload", markPageUnload);
+    window.addEventListener("pagehide", markPageUnload);
+    document.addEventListener("click", clearForLinkNavigation, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", markPageUnload);
+      window.removeEventListener("pagehide", markPageUnload);
+      document.removeEventListener("click", clearForLinkNavigation, true);
+      if (!pageIsUnloading) clearMapEditSession();
+    };
+  }, [action, clearMapEditSession, mapEditSessionKey]);
+
   const featureColumns = useMemo(() => {
     return selectedLayer?.property_keys ?? [];
   }, [selectedLayer]);
@@ -2130,6 +2524,12 @@ export default function MapDataset({
   );
 
   const applyDraftToPreview = () => {
+    if (mapDatasetId) {
+      setVisualizationDraft(mapDatasetId, {
+        ...mapConfig,
+        layerPopupFields: resolvedLayerPopupFields,
+      });
+    }
     setPreviewRefreshing(true);
     setAppliedMapPreview({
       layers,
@@ -2138,8 +2538,31 @@ export default function MapDataset({
         layerPopupFields: resolvedLayerPopupFields,
       },
     });
+    setPreviewInstance((current) => current + 1);
     setPreviewMapBoundsTrigger((current) => current + 1);
   };
+
+  useEffect(() => {
+    if (
+      loading ||
+      !mapDatasetId ||
+      (view !== "mapvisualization" && view !== "maplegend")
+    ) {
+      return;
+    }
+
+    setVisualizationDraft(mapDatasetId, {
+      ...mapConfig,
+      layerPopupFields: resolvedLayerPopupFields,
+    });
+  }, [
+    loading,
+    mapConfig,
+    mapDatasetId,
+    resolvedLayerPopupFields,
+    setVisualizationDraft,
+    view,
+  ]);
   const handlePreviewRenderComplete = useCallback(
     () => setPreviewRefreshing(false),
     [],
@@ -2450,7 +2873,10 @@ export default function MapDataset({
               patternThickness: legend.pattern_thickness ?? 1.25,
               patternOpacity: legend.pattern_opacity ?? 1,
               patternGap: legend.pattern_gap ?? 8,
-              pointSize: legend.icon_width ?? 16,
+              pointSize:
+                legend.icon_path && (legend.icon_width ?? 0) <= 1
+                  ? 14
+                  : (legend.icon_width ?? 14),
               iconPath: legend.icon_path,
               sortOrder: legend.sort_order,
             }));
@@ -2474,6 +2900,9 @@ export default function MapDataset({
 
       const row = mapRow as MapDatasetRow;
       const parsedConfig = parseMapConfig(row.map_config);
+      const sessionVisualizationDraft = mapDatasetId
+        ? useMapVisualizationStore.getState().drafts[mapDatasetId]
+        : undefined;
       const parsedPublicationTags = parseJsonArray<string>(row.tag);
       const configuredRegencies = new Set<string>(
         DATA_REGENCY_OPTIONS.map((option) => option.value),
@@ -2498,7 +2927,11 @@ export default function MapDataset({
 
       setDataset(row);
       setLabel(row.label ?? "");
-      setMapConfig(parsedConfig);
+      setMapConfig(
+        sessionVisualizationDraft
+          ? parseMapConfig(sessionVisualizationDraft)
+          : parsedConfig,
+      );
       setDocuments(parsedDocuments);
       setPictures(parsedPictures);
       setPublicationStatus(row.published ?? null);
@@ -2562,7 +2995,6 @@ export default function MapDataset({
     setFeatureSort(null);
     setSelectedFeatureRows([]);
     setDeleteSelectedLayer(false);
-    setEditedFeatureCells([]);
 
     const fetchColumnOrder = async () => {
       if (!selectedLayer?.id || featureColumns.length === 0) return;
@@ -2598,6 +3030,17 @@ export default function MapDataset({
 
   const featureEditChangeCount =
     editedFeatureCells.length +
+    editedFeatureHeaders.length +
+    Object.keys(featureHeaderDrafts).length +
+    Object.values(deletedFeatureRowOperations).reduce(
+      (total, rows) => total + rows.length,
+      0,
+    ) +
+    Object.values(featureColumnOperations).reduce(
+      (total, operations) =>
+        total + operations.filter((operation) => operation.type === "delete").length,
+      0,
+    ) +
     Number(Boolean(label.trim() && label.trim() !== dataset?.label));
 
   useEffect(() => {
@@ -2661,6 +3104,8 @@ export default function MapDataset({
       popupFields: getDefaultPopupFields(allPropertyKeys),
       layerPopupFields: {},
       layerTableConfigs: {},
+      layerColumnTypes: {},
+      layerPointBuffers: {},
       links: [],
     });
   }, [allPropertyKeys, mapConfig.mainGroupField]);
@@ -2783,6 +3228,8 @@ export default function MapDataset({
         popupFields: getDefaultPopupFields(propertyKeys),
         layerPopupFields: {},
         layerTableConfigs: {},
+        layerColumnTypes: {},
+        layerPointBuffers: {},
         links: [],
       };
 
@@ -3152,6 +3599,8 @@ export default function MapDataset({
           popupFields: getDefaultPopupFields(propertyKeys),
           layerPopupFields: {},
           layerTableConfigs: {},
+          layerColumnTypes: {},
+          layerPointBuffers: {},
           links: [],
         };
 
@@ -3444,6 +3893,7 @@ export default function MapDataset({
       });
       setPreviewMapBoundsTrigger((current) => current + 1);
       setSavedVisualizationSnapshot(currentVisualizationSnapshot);
+      clearVisualizationDraft(mapDatasetId);
       setAlert("success");
       onVisualizationSaved?.();
       await fetchMapDataset();
@@ -4214,25 +4664,452 @@ export default function MapDataset({
       prev.map((layer) => {
         if (layer.id !== layerId || !layer.collection) return layer;
 
+        const coordinateColumns = (layer.property_keys ?? []).filter((key) =>
+          isCoordinatePropertyColumn(layer, key),
+        );
+
         return {
           ...layer,
           collection: {
             ...layer.collection,
             features: layer.collection.features.map((feature, index) =>
               index === rowIndex
-                ? {
-                    ...feature,
-                    properties: {
+                ? (() => {
+                    const properties = {
                       ...(feature.properties ?? {}),
                       [column]: value,
-                    },
-                  }
+                    };
+                    const longitudeColumn = coordinateColumns.find(
+                      (key) =>
+                        getCoordinatePropertyAxis(layer, key) === "longitude",
+                    );
+                    const latitudeColumn = coordinateColumns.find(
+                      (key) =>
+                        getCoordinatePropertyAxis(layer, key) === "latitude",
+                    );
+                    const longitude = longitudeColumn
+                      ? parseCoordinateValue(properties[longitudeColumn])
+                      : null;
+                    const latitude = latitudeColumn
+                      ? parseCoordinateValue(properties[latitudeColumn])
+                      : null;
+
+                    return {
+                    ...feature,
+                      properties,
+                      geometry:
+                        longitude !== null && latitude !== null
+                          ? {
+                              type: "Point" as const,
+                              coordinates: [longitude, latitude],
+                            }
+                          : feature.geometry,
+                    };
+                  })()
                 : feature,
             ),
           },
         };
       }),
     );
+  };
+
+  const renameFeatureColumn = (
+    layerId: string,
+    currentColumn: string,
+    requestedColumn: string,
+  ) => {
+    const nextColumn = requestedColumn.trim();
+    const layer = layers.find((item) => item.id === layerId);
+    const draftKey = `${layerId}:${currentColumn}`;
+
+    if (!layer) return;
+
+    if (!nextColumn) {
+      setMessage("Nama header tidak boleh kosong.");
+      setAlert("invalid");
+      return;
+    }
+
+    if (nextColumn === currentColumn) {
+      setFeatureHeaderDrafts((current) => {
+        const next = { ...current };
+        delete next[draftKey];
+        return next;
+      });
+      return;
+    }
+
+    if ((layer.property_keys ?? []).includes(nextColumn)) {
+      setMessage(`Nama kolom "${nextColumn}" sudah digunakan.`);
+      setAlert("invalid");
+      return;
+    }
+
+    setLayers((current) =>
+      current.map((item) =>
+        item.id === layerId
+          ? {
+              ...item,
+              property_keys: (item.property_keys ?? []).map((column) =>
+                column === currentColumn ? nextColumn : column,
+              ),
+              collection: item.collection
+                ? {
+                    ...item.collection,
+                    features: item.collection.features.map((feature) => {
+                      const properties = { ...(feature.properties ?? {}) };
+                      properties[nextColumn] = properties[currentColumn] ?? "";
+                      delete properties[currentColumn];
+                      return { ...feature, properties };
+                    }),
+                  }
+                : item.collection,
+            }
+          : item,
+      ),
+    );
+    setVisibleFeatureColumns((current) =>
+      current.map((column) =>
+        column === currentColumn ? nextColumn : column,
+      ),
+    );
+    setFeatureFilters((current) => {
+      if (!(currentColumn in current)) return current;
+      const next = { ...current, [nextColumn]: current[currentColumn] };
+      delete next[currentColumn];
+      return next;
+    });
+    setFeatureSort((current) =>
+      current?.key === currentColumn
+        ? { ...current, key: nextColumn }
+        : current,
+    );
+    setDraftFeatureColumns((current) => ({
+      ...current,
+      [layerId]: (current[layerId] ?? []).map((column) =>
+        column === currentColumn ? nextColumn : column,
+      ),
+    }));
+    setMapConfig((current) => {
+      const groupConfig = current.layerGroupConfigs[layerId];
+      const tableConfig = current.layerTableConfigs[layerId];
+      const popupFields = current.layerPopupFields[layerId];
+      const rename = (value: string) =>
+        value === currentColumn ? nextColumn : value;
+
+      return {
+        ...current,
+        layerGroupConfigs: groupConfig
+          ? {
+              ...current.layerGroupConfigs,
+              [layerId]: {
+                ...groupConfig,
+                mainGroupField: rename(groupConfig.mainGroupField),
+                subGroupField: rename(groupConfig.subGroupField),
+                columnLegendFields: groupConfig.columnLegendFields.map(rename),
+              },
+            }
+          : current.layerGroupConfigs,
+        layerPopupFields: popupFields
+          ? {
+              ...current.layerPopupFields,
+              [layerId]: popupFields.map((field) => ({
+                ...field,
+                field: rename(field.field),
+              })),
+            }
+          : current.layerPopupFields,
+        layerTableConfigs: tableConfig
+          ? {
+              ...current.layerTableConfigs,
+              [layerId]: {
+                ...tableConfig,
+                dataField: rename(tableConfig.dataField),
+                valueField: rename(tableConfig.valueField),
+                selectorField: rename(tableConfig.selectorField),
+                selectedFields: tableConfig.selectedFields.map(rename),
+              },
+            }
+          : current.layerTableConfigs,
+        layerColumnTypes: {
+          ...current.layerColumnTypes,
+          [layerId]: Object.fromEntries(
+            Object.entries(current.layerColumnTypes[layerId] ?? {}).map(
+              ([column, type]) => [
+                column === currentColumn ? nextColumn : column,
+                type,
+              ],
+            ),
+          ),
+        },
+      };
+    });
+    setEditedFeatureHeaders((current) => [
+      ...current,
+      `${layerId}:${currentColumn}->${nextColumn}`,
+    ]);
+    setFeatureColumnOperations((current) => ({
+      ...current,
+      [layerId]: [
+        ...(current[layerId] ?? []),
+        { type: "rename", from: currentColumn, to: nextColumn },
+      ],
+    }));
+    setFeatureHeaderDrafts((current) => {
+      const next = { ...current };
+      delete next[draftKey];
+      return next;
+    });
+  };
+
+  const deleteFeatureRowInEdit = (layerId: string, rowIndex: number) => {
+    const isDraftRow = (draftFeatureRows[layerId] ?? []).includes(rowIndex);
+
+    setLayers((current) =>
+      current.map((layer) =>
+        layer.id === layerId && layer.collection
+          ? {
+              ...layer,
+              feature_count: Math.max(0, layer.collection.features.length - 1),
+              collection: {
+                ...layer.collection,
+                features: layer.collection.features.filter(
+                  (_, index) => index !== rowIndex,
+                ),
+              },
+            }
+          : layer,
+      ),
+    );
+    setDraftFeatureRows((current) => ({
+      ...current,
+      [layerId]: (current[layerId] ?? [])
+        .filter((index) => index !== rowIndex)
+        .map((index) => (index > rowIndex ? index - 1 : index)),
+    }));
+    setEditedFeatureCells((current) =>
+      current.flatMap((cellKey) => {
+        const prefix = `${layerId}:`;
+        if (!cellKey.startsWith(prefix)) return [cellKey];
+        const remainder = cellKey.slice(prefix.length);
+        const separator = remainder.indexOf(":");
+        const index = Number(remainder.slice(0, separator));
+        const column = remainder.slice(separator + 1);
+        if (index === rowIndex) return [];
+        return [
+          index > rowIndex
+            ? `${layerId}:${index - 1}:${column}`
+            : cellKey,
+        ];
+      }),
+    );
+
+    if (!isDraftRow) {
+      setDeletedFeatureRowOperations((current) => ({
+        ...current,
+        [layerId]: [...(current[layerId] ?? []), rowIndex],
+      }));
+    }
+  };
+
+  const deleteFeatureColumnInEdit = (layerId: string, column: string) => {
+    const targetLayer = layers.find((layer) => layer.id === layerId);
+    if (targetLayer && isCoordinatePropertyColumn(targetLayer, column)) return;
+
+    const isDraftColumn = (draftFeatureColumns[layerId] ?? []).includes(column);
+
+    setLayers((current) =>
+      current.map((layer) =>
+        layer.id === layerId
+          ? {
+              ...layer,
+              property_keys: (layer.property_keys ?? []).filter(
+                (item) => item !== column,
+              ),
+              collection: layer.collection
+                ? {
+                    ...layer.collection,
+                    features: layer.collection.features.map((feature) => {
+                      const properties = { ...(feature.properties ?? {}) };
+                      delete properties[column];
+                      return { ...feature, properties };
+                    }),
+                  }
+                : layer.collection,
+            }
+          : layer,
+      ),
+    );
+    setVisibleFeatureColumns((current) =>
+      current.filter((item) => item !== column),
+    );
+    setDraftFeatureColumns((current) => ({
+      ...current,
+      [layerId]: (current[layerId] ?? []).filter((item) => item !== column),
+    }));
+    setEditedFeatureCells((current) =>
+      current.filter((cellKey) => !cellKey.startsWith(`${layerId}:`) || !cellKey.endsWith(`:${column}`)),
+    );
+    setFeatureHeaderDrafts((current) => {
+      const next = { ...current };
+      delete next[`${layerId}:${column}`];
+      return next;
+    });
+    setMapConfig((current) => {
+      const nextTypes = { ...(current.layerColumnTypes[layerId] ?? {}) };
+      delete nextTypes[column];
+      return {
+        ...current,
+        layerColumnTypes: {
+          ...current.layerColumnTypes,
+          [layerId]: nextTypes,
+        },
+      };
+    });
+
+    if (!isDraftColumn) {
+      setFeatureColumnOperations((current) => ({
+        ...current,
+        [layerId]: [
+          ...(current[layerId] ?? []),
+          { type: "delete", column },
+        ],
+      }));
+    }
+  };
+
+  const addFeatureRow = () => {
+    if (!selectedLayer) return;
+
+    const rowIndex = selectedLayer.collection?.features.length ?? 0;
+    const properties = (selectedLayer.property_keys ?? []).reduce<
+      Record<string, string>
+    >((values, column) => {
+      values[column] = "";
+      return values;
+    }, {});
+
+    setLayers((current) =>
+      current.map((layer) =>
+        layer.id === selectedLayer.id && layer.collection
+          ? {
+              ...layer,
+              collection: {
+                ...layer.collection,
+                features: [
+                  ...layer.collection.features,
+                  {
+                    type: "Feature" as const,
+                    geometry: null,
+                    properties,
+                  } as unknown as Feature,
+                ],
+              },
+            }
+          : layer,
+      ),
+    );
+    setDraftFeatureRows((current) => ({
+      ...current,
+      [selectedLayer.id]: [
+        ...(current[selectedLayer.id] ?? []),
+        rowIndex,
+      ],
+    }));
+  };
+
+  const addFeatureColumn = () => {
+    if (!selectedLayer) return;
+
+    const existingColumns = new Set(selectedLayer.property_keys ?? []);
+    let suffix = 1;
+    let column = "Kolom Baru";
+
+    while (existingColumns.has(column)) {
+      suffix += 1;
+      column = `Kolom Baru ${suffix}`;
+    }
+
+    setLayers((current) =>
+      current.map((layer) =>
+        layer.id === selectedLayer.id
+          ? {
+              ...layer,
+              property_keys: [...(layer.property_keys ?? []), column],
+              collection: layer.collection
+                ? {
+                    ...layer.collection,
+                    features: layer.collection.features.map((feature) => ({
+                      ...feature,
+                      properties: {
+                        ...(feature.properties ?? {}),
+                        [column]: "",
+                      },
+                    })),
+                  }
+                : layer.collection,
+            }
+          : layer,
+      ),
+    );
+    setVisibleFeatureColumns((current) => [...current, column]);
+    setDraftFeatureColumns((current) => ({
+      ...current,
+      [selectedLayer.id]: [...(current[selectedLayer.id] ?? []), column],
+    }));
+    setMapConfig((current) => ({
+      ...current,
+      layerColumnTypes: {
+        ...current.layerColumnTypes,
+        [selectedLayer.id]: {
+          ...(current.layerColumnTypes[selectedLayer.id] ?? {}),
+          [column]: "text",
+        },
+      },
+    }));
+  };
+
+  const getPersistableLayer = (layer: LoadedMapLayer) => {
+    if (!layer.collection) return layer;
+
+    const addedColumns = new Set(draftFeatureColumns[layer.id] ?? []);
+    const addedRows = new Set(draftFeatureRows[layer.id] ?? []);
+    const columnsWithData = new Set(
+      [...addedColumns].filter((column) =>
+        layer.collection?.features.some(
+          (feature) =>
+            String(feature.properties?.[column] ?? "").trim().length > 0,
+        ),
+      ),
+    );
+    const propertyKeys = (layer.property_keys ?? []).filter(
+      (column) => !addedColumns.has(column) || columnsWithData.has(column),
+    );
+    const features = layer.collection.features
+      .filter(
+        (feature, index) =>
+          !addedRows.has(index) ||
+          Object.values(feature.properties ?? {}).some(
+            (value) => String(value ?? "").trim().length > 0,
+          ),
+      )
+      .map((feature) => ({
+        ...feature,
+        properties: Object.fromEntries(
+          Object.entries(feature.properties ?? {}).filter(
+            ([column]) =>
+              !addedColumns.has(column) || columnsWithData.has(column),
+          ),
+        ),
+      }));
+
+    return {
+      ...layer,
+      property_keys: propertyKeys,
+      feature_count: features.length,
+      collection: { ...layer.collection, features },
+    };
   };
 
   const toggleSelectedFeatureRow = (rowIndex: number) => {
@@ -4267,13 +5144,19 @@ export default function MapDataset({
       type: "application/geo+json",
     });
 
+    const extension = layer.source_path.split(".").pop() || "geojson";
+    const pathWithoutExtension = layer.source_path.replace(/\.[^./]+$/, "");
+    const nextPath = `${pathWithoutExtension}-edit-${getUploadTimestamp()}.${extension}`;
+
     await uploadGeoJson(
-      layer.source_path,
+      nextPath,
       blob,
       mapDatasetId
         ? { mapDatasetId, permission: "edit" }
         : undefined,
     );
+
+    return nextPath;
   };
 
   const refreshMapDatasetSummary = async (
@@ -4307,37 +5190,172 @@ export default function MapDataset({
   const saveFeatureEdits = async () => {
     if (!mapDatasetId) return;
 
+    for (const [draftKey, draftValue] of Object.entries(featureHeaderDrafts)) {
+      const separatorIndex = draftKey.indexOf(":");
+      const layerId = draftKey.slice(0, separatorIndex);
+      const currentColumn = draftKey.slice(separatorIndex + 1);
+      const nextColumn = draftValue.trim();
+      const layer = layers.find((item) => item.id === layerId);
+
+      if (!nextColumn) {
+        setMessage("Nama header tidak boleh kosong.");
+        setAlert("invalid");
+        return;
+      }
+
+      if (
+        nextColumn !== currentColumn &&
+        (layer?.property_keys ?? []).includes(nextColumn)
+      ) {
+        setMessage(`Nama kolom "${nextColumn}" sudah digunakan.`);
+        setAlert("invalid");
+        return;
+      }
+    }
+
+    for (const layer of layers) {
+      const configuredTypes = mapConfig.layerColumnTypes[layer.id] ?? {};
+
+      for (const [column, columnType] of Object.entries(configuredTypes)) {
+        if (columnType !== "number" || !(layer.property_keys ?? []).includes(column)) {
+          continue;
+        }
+
+        const invalidRowIndex = (layer.collection?.features ?? []).findIndex(
+          (feature) => {
+            const value = String(feature.properties?.[column] ?? "").trim();
+            return value.length > 0 && !Number.isFinite(Number(value));
+          },
+        );
+
+        if (invalidRowIndex >= 0) {
+          setMessage(
+            `Nilai pada kolom "${column}" baris ${invalidRowIndex + 1} harus berupa angka.`,
+          );
+          setAlert("invalid");
+          return;
+        }
+      }
+
+      if (layer.geometry_type !== "point" || !layer.collection) continue;
+
+      const longitudeColumn = (layer.property_keys ?? []).find(
+        (column) =>
+          getCoordinatePropertyAxis(layer, column) === "longitude",
+      );
+      const latitudeColumn = (layer.property_keys ?? []).find(
+        (column) => getCoordinatePropertyAxis(layer, column) === "latitude",
+      );
+
+      for (const rowIndex of draftFeatureRows[layer.id] ?? []) {
+        const feature = layer.collection.features[rowIndex];
+        const properties = feature?.properties ?? {};
+        const rowHasData = Object.values(properties).some(
+          (value) => String(value ?? "").trim().length > 0,
+        );
+
+        // Completely empty draft rows are discarded during save and do not
+        // need coordinate validation.
+        if (!rowHasData) continue;
+
+        const hasValidLongitude =
+          Boolean(longitudeColumn) &&
+          isValidLongitude(properties[longitudeColumn as string]);
+        const hasValidLatitude =
+          Boolean(latitudeColumn) &&
+          isValidLatitude(properties[latitudeColumn as string]);
+
+        if (!hasValidLongitude || !hasValidLatitude) {
+          setMessage(
+            `Baris baru ${rowIndex + 1} wajib memiliki nilai latitude dan longitude yang valid.`,
+          );
+          setAlert("invalid");
+          return;
+        }
+      }
+    }
+
     setSaving(true);
 
     try {
+      const persistableLayers = layers.map(getPersistableLayer);
+      const persistedMapConfig: MapConfig = {
+        ...mapConfig,
+        layerColumnTypes: Object.fromEntries(
+          persistableLayers.map((layer) => {
+            const availableColumns = new Set(layer.property_keys ?? []);
+            return [
+              layer.id,
+              Object.fromEntries(
+                Object.entries(mapConfig.layerColumnTypes[layer.id] ?? {}).filter(
+                  ([column]) => availableColumns.has(column),
+                ),
+              ),
+            ];
+          }),
+        ),
+      };
+
       await Promise.all(
-        layers
+        persistableLayers
           .filter((layer) => Boolean(layer.collection))
           .map(async (layer) => {
-            await uploadLayerCollection(
+            const nextSourcePath = await uploadLayerCollection(
               layer,
               layer.collection as FeatureCollection,
             );
             const { error } = await supabase
               .from("map_layers")
-              .update({ property_keys: layer.property_keys })
+              .update({
+                property_keys: layer.property_keys,
+                feature_count: layer.collection?.features.length ?? 0,
+                source_path: nextSourcePath,
+              })
               .eq("id", layer.id);
 
             if (error) throw error;
           }),
       );
 
+      await refreshMapDatasetSummary(persistableLayers, mapDatasetId);
+
       const nextLabel = label.trim();
-      if (nextLabel && nextLabel !== dataset?.label) {
+      const hasColumnConfigChanges =
+        Object.values(draftFeatureColumns).some(
+          (columns) => columns.length > 0,
+        ) ||
+        Object.values(featureColumnOperations).some(
+          (operations) => operations.length > 0,
+        );
+
+      if (
+        (nextLabel && nextLabel !== dataset?.label) ||
+        editedFeatureHeaders.length > 0 ||
+        hasColumnConfigChanges
+      ) {
         const { error } = await supabase
           .from("map_datasets")
-          .update({ label: nextLabel, slug: toSlug(nextLabel) })
+          .update({
+            ...(nextLabel && nextLabel !== dataset?.label
+              ? { label: nextLabel, slug: toSlug(nextLabel) }
+              : {}),
+            ...(editedFeatureHeaders.length > 0 || hasColumnConfigChanges
+              ? { map_config: persistedMapConfig }
+              : {}),
+          })
           .eq("id", mapDatasetId);
 
         if (error) throw error;
       }
 
       setEditedFeatureCells([]);
+      setEditedFeatureHeaders([]);
+      setFeatureHeaderDrafts({});
+      setDraftFeatureRows({});
+      setDraftFeatureColumns({});
+      setDeletedFeatureRowOperations({});
+      setFeatureColumnOperations({});
+      clearMapEditSession();
       setAlert("success");
       await fetchMapDataset();
     } catch (error) {
@@ -4391,7 +5409,10 @@ export default function MapDataset({
           ),
         };
 
-        await uploadLayerCollection(selectedLayer, nextCollection);
+        const nextSourcePath = await uploadLayerCollection(
+          selectedLayer,
+          nextCollection,
+        );
 
         const nextPropertyKeys = getFeaturePropertyKeys(nextCollection);
         const { error: updateLayerError } = await supabase
@@ -4399,6 +5420,7 @@ export default function MapDataset({
           .update({
             feature_count: nextCollection.features.length,
             property_keys: nextPropertyKeys,
+            source_path: nextSourcePath,
           })
           .eq("id", selectedLayer.id);
 
@@ -4466,6 +5488,85 @@ export default function MapDataset({
   }, [action, requestDeleteConfirmation, saveData, saveFeatureEdits, view]);
 
   const renderFeatureHeaderMenu = (column: string, columnIndex: number) => {
+    if (action === "edit" && selectedLayer) {
+      const draftKey = `${selectedLayer.id}:${column}`;
+      const isNewColumn = (draftFeatureColumns[selectedLayer.id] ?? []).includes(
+        column,
+      );
+      const columnType =
+        mapConfig.layerColumnTypes[selectedLayer.id]?.[column] ?? "text";
+
+      return (
+        <div className="flex items-start gap-1 px-2">
+          <div className="flex min-w-32 flex-1 flex-col gap-1">
+            <input
+            type="text"
+            value={featureHeaderDrafts[draftKey] ?? column}
+            onChange={(event) =>
+              setFeatureHeaderDrafts((current) => ({
+                ...current,
+                [draftKey]: event.target.value,
+              }))
+            }
+            onBlur={(event) =>
+              renameFeatureColumn(selectedLayer.id, column, event.target.value)
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
+            }}
+            aria-label={`Nama header ${column}`}
+              className="w-full rounded-md border border-gray-400 bg-white px-2 py-1 text-center font-semibold text-stone-800 focus:border-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+            {isNewColumn && (
+              <div className="grid grid-cols-2 gap-1">
+                {(["text", "number"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() =>
+                      setMapConfig((current) => ({
+                        ...current,
+                        layerColumnTypes: {
+                          ...current.layerColumnTypes,
+                          [selectedLayer.id]: {
+                            ...(current.layerColumnTypes[selectedLayer.id] ?? {}),
+                            [column]: type,
+                          },
+                        },
+                      }))
+                    }
+                    className={`rounded border px-2 py-1 text-xs font-medium transition ${
+                      columnType === type
+                        ? "border-sky-700 bg-sky-700 text-white"
+                        : "border-gray-300 bg-white text-stone-700 hover:bg-sky-50"
+                    }`}
+                  >
+                    {type === "text" ? "Text" : "Angka"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {!isCoordinatePropertyColumn(selectedLayer, column) && (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => deleteFeatureColumnInEdit(selectedLayer.id, column)}
+              aria-label={`Hapus kolom ${column}`}
+              title={`Hapus kolom ${column}`}
+              className="shrink-0 rounded-md p-1.5 text-rose-700 transition hover:bg-rose-100"
+            >
+              <Delete className="size-4" />
+            </button>
+          )}
+        </div>
+      );
+    }
+
     const options = featureFilterOptions[column] ?? [];
     const selectedValues = featureFilters[column] ?? options;
     const allSelected =
@@ -4698,6 +5799,45 @@ export default function MapDataset({
     }));
   };
 
+  const updateLayerPointBuffer = (
+    layerId: string,
+    legendValue: string,
+    changes: Partial<{
+      radius: number;
+      unit: "m" | "km";
+      color: string;
+      opacity: number;
+    }>,
+  ) => {
+    setMapConfig((current) => ({
+      ...current,
+      layerPointBuffers: {
+        ...current.layerPointBuffers,
+        [layerId]: {
+          ...(current.layerPointBuffers[layerId] ?? {}),
+          [legendValue]: {
+            radius:
+              changes.radius ??
+              current.layerPointBuffers[layerId]?.[legendValue]?.radius ??
+              0,
+            unit:
+              changes.unit ??
+              current.layerPointBuffers[layerId]?.[legendValue]?.unit ??
+              "km",
+            color:
+              changes.color ??
+              current.layerPointBuffers[layerId]?.[legendValue]?.color ??
+              "#0EA5E9",
+            opacity:
+              changes.opacity ??
+              current.layerPointBuffers[layerId]?.[legendValue]?.opacity ??
+              0.15,
+          },
+        },
+      },
+    }));
+  };
+
   const addMapLink = () => {
     const link: MapLink = {
       id: crypto.randomUUID(),
@@ -4785,6 +5925,7 @@ export default function MapDataset({
 
       updateLayerLegend(layerId, legendValue, {
         iconPath: attachment.path,
+        pointSize: 14,
       });
     } catch (error) {
       console.error("Failed to upload legend icon:", error);
@@ -5564,6 +6705,18 @@ export default function MapDataset({
                         {renderFeatureHeaderMenu(column, columnIndex)}
                       </th>
                     ))}
+
+                    {action === "edit" && selectedLayer && (
+                      <th className="w-36 min-w-36 border border-gray-400 bg-stone-50 px-2 py-2 align-middle">
+                        <button
+                          type="button"
+                          onClick={addFeatureColumn}
+                          className="w-full rounded-md border border-sky-700 bg-white px-3 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-50"
+                        >
+                          + Tambah Kolom
+                        </button>
+                      </th>
+                    )}
                   </tr>
                 </thead>
 
@@ -5589,6 +6742,13 @@ export default function MapDataset({
                         >
                           {action === "edit" && selectedLayer ? (
                             <input
+                              type={
+                                mapConfig.layerColumnTypes[selectedLayer.id]?.[
+                                  column
+                                ] === "number"
+                                  ? "number"
+                                  : "text"
+                              }
                               value={String(feature.properties?.[column] ?? "")}
                               onChange={(event) =>
                                 updateFeatureCell(
@@ -5605,11 +6765,43 @@ export default function MapDataset({
                           )}
                         </td>
                       ))}
+
+                      {action === "edit" && selectedLayer && (
+                        <td className="border border-gray-400 bg-stone-50 px-2 py-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              deleteFeatureRowInEdit(selectedLayer.id, index)
+                            }
+                            aria-label={`Hapus baris ${index + 1}`}
+                            title={`Hapus baris ${index + 1}`}
+                            className="rounded-md p-2 text-rose-700 transition hover:bg-rose-100"
+                          >
+                            <Delete className="size-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {action === "edit" && selectedLayer && (
+              <div className="border-t border-gray-300 bg-stone-50 p-3">
+                <button
+                  type="button"
+                  onClick={addFeatureRow}
+                  className="w-full rounded-md border border-sky-700 bg-white px-4 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-50"
+                >
+                  + Tambah Baris
+                </button>
+                <p className="mt-2 text-center text-xs text-stone-500">
+                  Baris atau kolom baru hanya disimpan jika setidaknya satu sel
+                  berisi data.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -6267,16 +7459,14 @@ export default function MapDataset({
                                             <span className="flex items-center justify-between gap-3">
                                               Ukuran
                                               <span className="text-xs text-stone-500">
-                                                {item.style.iconPath
-                                                  ? `${item.style.pointSize}px`
-                                                  : `${item.style.pointSize} km`}
+                                                {item.style.pointSize}px
                                               </span>
                                             </span>
                                             <input
                                               type="range"
-                                              min={item.style.iconPath ? 4 : 0.1}
-                                              max={item.style.iconPath ? 64 : 100}
-                                              step={item.style.iconPath ? 1 : 0.1}
+                                              min={1}
+                                              max={64}
+                                              step={1}
                                               value={item.style.pointSize}
                                               onChange={(event) =>
                                                 updateGlobalLegendItemStyle(
@@ -6292,6 +7482,94 @@ export default function MapDataset({
                                               }
                                               className="w-full accent-sky-800"
                                             />
+                                            <span className="mt-2 text-xs font-medium text-stone-600">
+                                              Buffer / Radius
+                                            </span>
+                                            <div className="flex gap-2">
+                                              <input
+                                                type="number"
+                                                min={0}
+                                                step="any"
+                                                value={item.style.bufferRadius}
+                                                onChange={(event) =>
+                                                  updateGlobalLegendItemStyle(
+                                                    group.id,
+                                                    geometryType,
+                                                    item.id,
+                                                    {
+                                                      bufferRadius: Math.max(
+                                                        0,
+                                                        Number(event.target.value) || 0,
+                                                      ),
+                                                    },
+                                                  )
+                                                }
+                                                className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2"
+                                              />
+                                              <select
+                                                value={item.style.bufferUnit}
+                                                onChange={(event) =>
+                                                  updateGlobalLegendItemStyle(
+                                                    group.id,
+                                                    geometryType,
+                                                    item.id,
+                                                    {
+                                                      bufferUnit: event.target.value as "m" | "km",
+                                                    },
+                                                  )
+                                                }
+                                                className="rounded-md border border-stone-300 bg-white px-3 py-2"
+                                              >
+                                                <option value="m">m</option>
+                                                <option value="km">km</option>
+                                              </select>
+                                            </div>
+                                            {item.style.bufferRadius > 0 && (
+                                              <>
+                                                <label className="flex items-center justify-between gap-3 rounded-md border border-stone-300 bg-white px-3 py-2">
+                                                  <span>Warna Radius</span>
+                                                  <span
+                                                    className="h-5 w-5 rounded border border-stone-300"
+                                                    style={{ backgroundColor: item.style.bufferColor }}
+                                                  />
+                                                  <input
+                                                    type="color"
+                                                    value={item.style.bufferColor}
+                                                    onChange={(event) =>
+                                                      updateGlobalLegendItemStyle(
+                                                        group.id,
+                                                        geometryType,
+                                                        item.id,
+                                                        { bufferColor: event.target.value },
+                                                      )
+                                                    }
+                                                    className="sr-only"
+                                                  />
+                                                </label>
+                                                <span className="flex items-center justify-between gap-3">
+                                                  Transparansi Radius
+                                                  <span className="text-xs text-stone-500">
+                                                    {Math.round((1 - item.style.bufferOpacity) * 100)}%
+                                                  </span>
+                                                </span>
+                                                <input
+                                                  type="range"
+                                                  min={0}
+                                                  max={1}
+                                                  step={0.05}
+                                                  value={1 - item.style.bufferOpacity}
+                                                  onChange={(event) =>
+                                                    updateGlobalLegendItemStyle(
+                                                      group.id,
+                                                      geometryType,
+                                                      item.id,
+                                                      { bufferOpacity: 1 - Number(event.target.value) },
+                                                    )
+                                                  }
+                                                  className="w-full accent-sky-800"
+                                                />
+                                              </>
+                                            )}
                                           </label>
                                         )}
                                       </div>
@@ -7176,16 +8454,14 @@ export default function MapDataset({
                                 <span className="flex items-center justify-between gap-3">
                                   Ukuran
                                   <span className="text-xs text-stone-500">
-                                    {isPointImageMode
-                                      ? `${legend.pointSize}px`
-                                      : `${legend.pointSize} km`}
+                                    {legend.pointSize}px
                                   </span>
                                 </span>
                                 <input
                                   type="range"
-                                  min={isPointImageMode ? 4 : 0.1}
-                                  max={isPointImageMode ? 64 : 100}
-                                  step={isPointImageMode ? 1 : 0.1}
+                                  min={1}
+                                  max={64}
+                                  step={1}
                                   value={legend.pointSize}
                                   onChange={(event) =>
                                     updateLayerLegend(layer.id, legend.value, {
@@ -7194,6 +8470,123 @@ export default function MapDataset({
                                   }
                                   className="w-full accent-sky-800"
                                 />
+                                <span className="mt-2 text-xs font-medium text-stone-600">
+                                  Buffer / Radius
+                                </span>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step="any"
+                                    value={
+                                      mapConfig.layerPointBuffers[layer.id]?.[
+                                        legend.value
+                                      ]?.radius ?? 0
+                                    }
+                                    onChange={(event) =>
+                                      updateLayerPointBuffer(
+                                        layer.id,
+                                        legend.value,
+                                        {
+                                          radius: Math.max(
+                                            0,
+                                            Number(event.target.value) || 0,
+                                          ),
+                                        },
+                                      )
+                                    }
+                                    className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2"
+                                  />
+                                  <select
+                                    value={
+                                      mapConfig.layerPointBuffers[layer.id]?.[
+                                        legend.value
+                                      ]?.unit ?? "km"
+                                    }
+                                    onChange={(event) =>
+                                      updateLayerPointBuffer(
+                                        layer.id,
+                                        legend.value,
+                                        {
+                                          unit: event.target.value as "m" | "km",
+                                        },
+                                      )
+                                    }
+                                    className="rounded-md border border-stone-300 bg-white px-3 py-2"
+                                  >
+                                    <option value="m">m</option>
+                                    <option value="km">km</option>
+                                  </select>
+                                </div>
+                                {(mapConfig.layerPointBuffers[layer.id]?.[
+                                  legend.value
+                                ]?.radius ?? 0) > 0 && (
+                                  <>
+                                    <label className="flex items-center justify-between gap-3 rounded-md border border-stone-300 bg-white px-3 py-2">
+                                      <span>Warna Radius</span>
+                                      <span
+                                        className="h-5 w-5 rounded border border-stone-300"
+                                        style={{
+                                          backgroundColor:
+                                            mapConfig.layerPointBuffers[layer.id]?.[
+                                              legend.value
+                                            ]?.color ?? legend.fillColor,
+                                        }}
+                                      />
+                                      <input
+                                        type="color"
+                                        value={
+                                          mapConfig.layerPointBuffers[layer.id]?.[
+                                            legend.value
+                                          ]?.color ?? legend.fillColor
+                                        }
+                                        onChange={(event) =>
+                                          updateLayerPointBuffer(
+                                            layer.id,
+                                            legend.value,
+                                            { color: event.target.value },
+                                          )
+                                        }
+                                        className="sr-only"
+                                      />
+                                    </label>
+                                    <span className="flex items-center justify-between gap-3">
+                                      Transparansi Radius
+                                      <span className="text-xs text-stone-500">
+                                        {Math.round(
+                                          (1 -
+                                            (mapConfig.layerPointBuffers[layer.id]?.[
+                                              legend.value
+                                            ]?.opacity ?? 0.15)) *
+                                            100,
+                                        )}%
+                                      </span>
+                                    </span>
+                                    <input
+                                      type="range"
+                                      min={0}
+                                      max={1}
+                                      step={0.05}
+                                      value={
+                                        1 -
+                                        (mapConfig.layerPointBuffers[layer.id]?.[
+                                          legend.value
+                                        ]?.opacity ?? 0.15)
+                                      }
+                                      onChange={(event) =>
+                                        updateLayerPointBuffer(
+                                          layer.id,
+                                          legend.value,
+                                          {
+                                            opacity:
+                                              1 - Number(event.target.value),
+                                          },
+                                        )
+                                      }
+                                      className="w-full accent-sky-800"
+                                    />
+                                  </>
+                                )}
                               </label>
 
                             <div className="flex min-w-0 grow flex-col gap-2 text-sm">
@@ -8636,6 +10029,7 @@ export default function MapDataset({
 
                   <div className="min-w-0">
                     <MapPreviewDynamic
+                      key={`map-visualization-preview-${previewInstance}`}
                       layers={previewLayers}
                       mapConfig={previewMapConfig}
                       bounds={previewBounds}

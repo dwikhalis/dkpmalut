@@ -140,7 +140,7 @@ const BarCharts = forwardRef<ChartJS<"bar"> | undefined, BarChartProps>(
 
     return (
       <div
-        className={`relative mb-6 w-full overflow-x-auto overflow-y-hidden ${heightClassName}`}
+        className={`relative w-full overflow-visible ${heightClassName}`}
       >
         <div className="absolute inset-0">
           <Bar ref={ref} data={data} options={options} />

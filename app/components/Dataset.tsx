@@ -827,6 +827,7 @@ export default function Dataset({
             onChangeCountChange={onChangeCountChange}
             datasetId={datasetId}
             columns={columns}
+            onColumnsChange={setColumns}
             filters={filters}
             defaultSortKey={defaultSortKey}
             duplicateKeys={duplicateKeys}
