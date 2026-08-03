@@ -152,7 +152,7 @@ type AppliedMapPreview = {
 type Props = {
   mapDatasetId: string | null;
   ownerId: string | null;
-  role: "admin" | "partner" | null;
+  role: "admin" | "partner" | "kadis" | "sekdis" | null;
   view: MapDatasetView;
   action?: "list" | "add" | "edit" | "delete";
   saveData?: number;

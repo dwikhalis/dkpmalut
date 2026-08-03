@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import type { ColumnConfig } from "./DatasetTable";
 import SpinnerLoading from "./SpinnerLoading";
 import { DownChevron } from "@/public/icons/iconSets";
+import { PARTNER_EQUIVALENT_ROLES } from "@/lib/utils/roles";
 
 type Partner = {
   id: string;
@@ -93,7 +94,7 @@ export default function DatasetConfiguration({
             supabase
               .from("users")
               .select("id, username, organization, email")
-              .eq("role", "partner")
+              .in("role", [...PARTNER_EQUIVALENT_ROLES])
               .order("organization"),
             showValidation
               ? supabase
@@ -366,7 +367,7 @@ export default function DatasetConfiguration({
         <div>
           <h4 className="font-semibold">Hak Akses</h4>
           <p className="text-sm text-gray-500">
-            Pilih partner dan tindakan yang diperbolehkan.
+            Pilih Partner, Kadis, atau Sekdis dan tindakan yang diperbolehkan.
           </p>
         </div>
 
@@ -376,7 +377,7 @@ export default function DatasetConfiguration({
 
         <div className="space-y-3">
           {partners.length === 0 && (
-            <p className="text-sm text-gray-500">Belum ada akun partner.</p>
+            <p className="text-sm text-gray-500">Belum ada akun Partner, Kadis, atau Sekdis.</p>
           )}
           {partners.map((partner) => {
             const grant = grants[partner.id];

@@ -14,6 +14,7 @@ import DatasetConfigAdd from "./DatasetConfigAdd";
 import DatasetConfigDelete from "./DatasetConfigDelete";
 import DatasetConfigEdit from "./DatasetConfigEdit";
 import SpinnerLoading from "./SpinnerLoading";
+import { canManageData, isPartnerRole, PARTNER_EQUIVALENT_ROLES } from "@/lib/utils/roles";
 
 const Papa = (await import("papaparse")).default;
 
@@ -258,7 +259,7 @@ export default function DatasetConfig({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHandledSave = useRef(saveData);
 
-  const isPartner = userRole === "partner";
+  const isPartner = isPartnerRole(userRole);
   const isAdmin = userRole === "admin";
   const targetOwnerId =
     isAdmin && action !== "add" ? (scopedOwnerId ?? userId) : userId;
@@ -451,7 +452,7 @@ export default function DatasetConfig({
       let usersQuery = supabase
         .from("users")
         .select("id, username, organization, role")
-        .in("role", ["admin", "partner"])
+        .in("role", ["admin", ...PARTNER_EQUIVALENT_ROLES])
         .order("organization", { ascending: true });
 
       let datasetQuery = supabase
@@ -737,7 +738,7 @@ export default function DatasetConfig({
       return false;
     }
 
-    if (!data || (data.role !== "admin" && data.role !== "partner")) {
+    if (!data || !canManageData(data.role)) {
       setAlertType("no-access");
       return false;
     }

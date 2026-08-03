@@ -19,6 +19,7 @@ import {
   isFeatureCollection,
 } from "@/lib/utils/mapConfig";
 import { useCollapsibleMount } from "@/lib/hooks/useCollapsibleMount";
+import { canManageData, isPartnerRole, PARTNER_EQUIVALENT_ROLES } from "@/lib/utils/roles";
 import {
   getDatasetListCache,
   setDatasetListCache,
@@ -346,7 +347,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
       role === "admin" || ownsSelectedDataset || grantedAccess?.can_delete,
   };
   const isSharedPartnerDataset =
-    role === "partner" && Boolean(selectedDataset) && !ownsSelectedDataset;
+    isPartnerRole(role) && Boolean(selectedDataset) && !ownsSelectedDataset;
   const detailPageLabel = isMapDetail
     ? action === "add" || detailView === "mapadd"
       ? "Tambah Layer"
@@ -568,7 +569,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     if (
       !selectedDataset ||
       selectedDataset.kind !== "dataset" ||
-      role !== "partner" ||
+      !isPartnerRole(role) ||
       ownsSelectedDataset
     ) {
       setGrantedAccess(null);
@@ -633,7 +634,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
 
   useEffect(() => {
     if (loading || !userId) return;
-    if (role !== "admin" && role !== "partner") return;
+    if (!canManageData(role)) return;
 
     const cacheScope = `${role}:${role === "admin" ? "all" : userId}`;
 
@@ -661,7 +662,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
           (dataset) => dataset.kind === "dataset" || dataset.kind === "link",
         );
 
-        if (role === "partner") {
+        if (isPartnerRole(role)) {
           const { data: grantRows, error: grantError } = await supabase
             .from("dataset_access_grants")
             .select("dataset_id")
@@ -830,7 +831,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
         const ownersQuery = supabase
           .from("users")
           .select("id, username, organization, role")
-          .in("role", ["admin", "partner"])
+          .in("role", ["admin", ...PARTNER_EQUIVALENT_ROLES])
           .order("organization", { ascending: true });
 
         const { data: owners, error: ownersError } = await ownersQuery;
@@ -969,7 +970,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
     );
   }
 
-  if (!userId || (role !== "admin" && role !== "partner")) {
+  if (!userId || !canManageData(role)) {
     return null;
   }
 
@@ -1880,7 +1881,7 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                   Peta
                 </Button>
 
-                {role !== "partner" && (
+                {!isPartnerRole(role) && (
                   <>
                     <Button
                       variant={mainPage === "linkadd" ? "outline" : "primary"}

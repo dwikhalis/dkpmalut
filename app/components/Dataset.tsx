@@ -182,7 +182,7 @@ export default function Dataset({
   saveData: number;
   onSignalAction: (signal: string) => void;
   onChangeCountChange?: (count: number) => void;
-  role: "admin" | "partner" | null;
+  role: "admin" | "partner" | "kadis" | "sekdis" | null;
   canAdd?: boolean;
   previewOnly?: boolean;
   linkMode?: boolean;

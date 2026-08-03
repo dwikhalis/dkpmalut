@@ -8,6 +8,7 @@ import DashProfile from "../components/Dashboard/DashProfile";
 import { useRouter } from "next/navigation";
 import AuthAdminAccess from "../Auth/AuthAdminAccess";
 import SpinnerLoading from "../components/SpinnerLoading";
+import { isPartnerRole } from "@/lib/utils/roles";
 
 export default function Page() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function Page() {
             <DashStats />
           </AuthAdminAccess>
         )}
-        {role === "partner" && <DashProfile />}
+        {isPartnerRole(role) && <DashProfile />}
         {role === "user" && <DashProfile />}
       </div>
     </div>

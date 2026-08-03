@@ -15,6 +15,7 @@ import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 import Link from "next/link";
 import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+import { isPartnerRole, roleLabel } from "@/lib/utils/roles";
 
 const PROFILE_CACHE_TTL = 2 * 60 * 1000;
 
@@ -585,9 +586,9 @@ export default function DashProfile() {
       <div className="flex w-full max-w-4xl flex-col items-center">
         {!editMode && (
           <div className="relative flex w-full flex-col items-center rounded-2xl border border-stone-200 bg-white p-6 shadow-xl md:p-10">
-            {profile?.role === "partner" && (
+            {isPartnerRole(profile?.role) && (
               <span className="absolute left-3 top-3 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200">
-                Mitra
+                {roleLabel(profile?.role)}
               </span>
             )}
 
@@ -689,9 +690,9 @@ export default function DashProfile() {
             className="relative flex w-full flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-xl md:p-10"
             onSubmit={handleSubmit}
           >
-            {profile?.role === "partner" && (
+            {isPartnerRole(profile?.role) && (
               <span className="absolute left-3 top-3 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200">
-                Mitra
+                {roleLabel(profile?.role)}
               </span>
             )}
 

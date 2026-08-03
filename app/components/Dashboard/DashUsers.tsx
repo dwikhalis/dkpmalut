@@ -8,6 +8,7 @@ import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 import AuthAdminAccess from "@/app/Auth/AuthAdminAccess";
 import { getSessionCache, setSessionCache } from "@/lib/utils/sessionCache";
+import { roleLabel } from "@/lib/utils/roles";
 
 const USERS_CACHE_KEY = "dashboard-users";
 const USERS_CACHE_TTL = 2 * 60 * 1000;
@@ -63,7 +64,7 @@ type PendingRoleChange = {
 
 const DEFAULT_PROFILE_IMAGE = "/assets/icon_profile_u.png";
 
-const roleOptions = ["partner", "user"];
+const roleOptions = ["partner", "kadis", "sekdis", "user"];
 
 const filterOptions: { label: string; value: FilterKey }[] = [
   { label: "Semua Kolom", value: "all" },
@@ -611,7 +612,7 @@ export default function DashUsers() {
 
                         {roleOptions.map((role) => (
                           <option key={role} value={role}>
-                            {role}
+                            {roleLabel(role)}
                           </option>
                         ))}
                       </select>

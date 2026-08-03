@@ -127,7 +127,7 @@ export default function LinkDataset({
   onSaved,
 }: {
   datasetId: string;
-  role: "admin" | "partner" | null;
+  role: "admin" | "partner" | "kadis" | "sekdis" | null;
   onSaved?: () => void;
 }) {
   const router = useRouter();

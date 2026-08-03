@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
+import { canManageData, isPartnerRole } from "@/lib/utils/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (
-    profileError ||
-    (profile?.role !== "admin" && profile?.role !== "partner")
+    profileError || !canManageData(profile?.role)
   ) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
   if (
     hasSafePath &&
-    profile.role === "partner" &&
+    isPartnerRole(profile.role) &&
     ownerId !== user.id &&
     typeof mapDatasetId === "string"
   ) {
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
   if (
     !hasSafePath ||
-    (profile.role === "partner" &&
+    (isPartnerRole(profile.role) &&
       ownerId !== user.id &&
       !sharedMapAllowed)
   ) {

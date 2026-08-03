@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import { useUrlTableState } from "@/lib/hooks/useUrlTableState";
 import AlertNotif from "./AlertNotif";
 import { useDataEditStore } from "@/app/Stores/dataEditStores";
+import { isPartnerRole } from "@/lib/utils/roles";
 import SpinnerLoading from "./SpinnerLoading";
 import {
   DownChevron,
@@ -164,7 +165,7 @@ interface Props {
   filters?: FilterConfig[];
   defaultSortKey?: string;
   duplicateKeys?: string[];
-  role?: "admin" | "partner" | null;
+  role?: "admin" | "partner" | "kadis" | "sekdis" | null;
   canAdd?: boolean;
 }
 
@@ -1499,7 +1500,7 @@ export default function DatasetTable({
     if (role === "admin") return true;
 
     return (
-      role === "partner" &&
+      isPartnerRole(role) &&
       canAdd &&
       Boolean(currentUserId) &&
       createdBy === currentUserId

@@ -11,6 +11,7 @@ import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 import { clearSessionCaches } from "@/lib/utils/sessionCache";
 import { invalidateDatasetListCache } from "@/lib/utils/datasetListCache";
+import { isPartnerRole } from "@/lib/utils/roles";
 
 interface Props {
   slug: string;
@@ -267,7 +268,7 @@ export default function DashSideMenu({
                 </>
               )}
 
-              {userRole === "partner" && (
+              {isPartnerRole(userRole) && (
                 <>
                   <Link href="/profile">
                     <span

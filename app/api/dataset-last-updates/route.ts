@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
+import { canManageData } from "@/lib/utils/roles";
 
 type Resource = { id: string; kind: "dataset" | "map" };
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role !== "admin" && profile?.role !== "partner") {
+  if (!canManageData(profile?.role)) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
