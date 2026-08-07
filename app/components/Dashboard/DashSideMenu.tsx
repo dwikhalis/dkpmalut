@@ -11,7 +11,7 @@ import AlertNotif from "../AlertNotif";
 import SpinnerLoading from "../SpinnerLoading";
 import { clearSessionCaches } from "@/lib/utils/sessionCache";
 import { invalidateDatasetListCache } from "@/lib/utils/datasetListCache";
-import { isPartnerRole } from "@/lib/utils/roles";
+import { isPartnerRole, isPublicationApproverRole } from "@/lib/utils/roles";
 
 interface Props {
   slug: string;
@@ -109,7 +109,7 @@ export default function DashSideMenu({
   }, [setUnreadMessageCount, userRole]);
 
   useEffect(() => {
-    if (userRole !== "admin") {
+    if (!isPublicationApproverRole(userRole)) {
       setPendingPublicationCount(0);
       return;
     }
@@ -117,34 +117,26 @@ export default function DashSideMenu({
     let active = true;
 
     const refreshPendingPublicationCount = async () => {
-      const [datasetResult, mapResult, dashboardResult] = await Promise.all([
+      const [datasetResult, mapResult] = await Promise.all([
         supabase
           .from("datasets")
           .select("id", { count: "exact", head: true })
-          .in("kind", ["dataset", "link"])
           .eq("published", "requested"),
         supabase
           .from("map_datasets")
           .select("id", { count: "exact", head: true })
           .eq("published", "requested"),
-        supabase
-          .from("datasets")
-          .select("id", { count: "exact", head: true })
-          .eq("kind", "dashboard")
-          .eq("published", "requested"),
       ]);
 
-      if (datasetResult.error) {
-        console.warn("Gagal menghitung publikasi dataset tertunda:", datasetResult.error);
+      const error = datasetResult.error ?? mapResult.error;
+      if (error) {
+        console.warn("Gagal memverifikasi publikasi tertunda:", error);
+        return;
       }
-      if (mapResult.error) {
-        console.warn("Gagal menghitung publikasi peta tertunda:", mapResult.error);
-      }
-      if (dashboardResult.error) console.warn("Gagal menghitung publikasi dashboard tertunda:", dashboardResult.error);
 
       if (active) {
         setPendingPublicationCount(
-          (datasetResult.count ?? 0) + (mapResult.count ?? 0) + (dashboardResult.count ?? 0),
+          (datasetResult.count ?? 0) + (mapResult.count ?? 0),
         );
       }
     };
@@ -152,31 +144,26 @@ export default function DashSideMenu({
     void refreshPendingPublicationCount();
 
     const datasetChannel = supabase
-      .channel("dash-side-menu:dataset-publications")
+      .channel("dash-side-menu:publication-approvals")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "datasets" },
+        { event: "*", schema: "public", table: "publication_approvals" },
+        () => void refreshPendingPublicationCount(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "datasets" },
+        () => void refreshPendingPublicationCount(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "map_datasets" },
         () => void refreshPendingPublicationCount(),
       )
       .subscribe();
-    const mapChannel = supabase
-      .channel("dash-side-menu:map-publications")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "map_datasets" },
-        () => void refreshPendingPublicationCount(),
-      )
-      .subscribe();
-    const dashboardChannel = supabase
-      .channel("dash-side-menu:dashboard-publications")
-      .on("postgres_changes", { event: "*", schema: "public", table: "datasets" }, () => void refreshPendingPublicationCount())
-      .subscribe();
-
     return () => {
       active = false;
       void supabase.removeChannel(datasetChannel);
-      void supabase.removeChannel(mapChannel);
-      void supabase.removeChannel(dashboardChannel);
     };
   }, [userRole]);
 
@@ -214,7 +201,7 @@ export default function DashSideMenu({
             {unreadMessageCount}
           </span>
         )}
-        {userRole === "admin" &&
+        {isPublicationApproverRole(userRole) &&
           menu.slug === "data" &&
           pendingPublicationCount > 0 && (
             <span

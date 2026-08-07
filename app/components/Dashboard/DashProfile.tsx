@@ -172,6 +172,7 @@ function StatBlock({ label, value }: { label: [string, string]; value: number })
 
 export default function DashProfile() {
   const authStoreUserId = useAuthStore((state) => state.userId);
+  const authStoreRole = useAuthStore((state) => state.role);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const actionMenuRef = useRef<HTMLDivElement | null>(null);
@@ -252,7 +253,7 @@ export default function DashProfile() {
             PROFILE_CACHE_TTL,
           );
 
-          if (cached) {
+          if (cached && cached.profile.role === authStoreRole) {
             let uploaded = cached.uploaded;
             let published = cached.published;
 
@@ -360,7 +361,7 @@ export default function DashProfile() {
     };
 
     fetchProfile();
-  }, [authStoreUserId]);
+  }, [authStoreRole, authStoreUserId]);
 
   useEffect(() => {
     return () => {

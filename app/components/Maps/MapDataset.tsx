@@ -54,6 +54,9 @@ import { useMapVisualizationStore } from "@/app/Stores/mapVisualizationStores";
 import { useDataEditStore } from "@/app/Stores/dataEditStores";
 import AlertNotif from "../AlertNotif";
 import Button from "../Button";
+import PublicationApprovalChips, { isApprovalRole } from "../PublicationApprovalChips";
+import PublicationReviewControls from "../PublicationReviewControls";
+import { usePublicationApprovals } from "@/lib/hooks/usePublicationApprovals";
 import SpinnerLoading from "../SpinnerLoading";
 import MapPreviewDynamic from "./MapPreviewDynamic";
 import type { MapLegendItem, MapPreviewLayer } from "./MapPreview";
@@ -84,7 +87,6 @@ type MapDatasetView =
   | "mappreview"
   | "publication";
 type PublicationStatus = null | "requested" | "approved" | "rejected" | string;
-type EditablePublicationStatus = "requested" | "approved" | "rejected";
 
 type MapDatasetRow = {
   id: string;
@@ -1814,8 +1816,11 @@ export default function MapDataset({
   );
   const [mapConfirmAction, setMapConfirmAction] =
     useState<MapConfirmAction | null>(null);
-  const [pendingPublicationStatus, setPendingPublicationStatus] =
-    useState<EditablePublicationStatus | null>(null);
+  const { approvals, approvalMessages, refreshApprovals } = usePublicationApprovals(
+    "map",
+    mapDatasetId,
+  );
+  const isReadOnlyReviewer = role === "kadis" || role === "sekdis";
   const [draftMapDatasetId, setDraftMapDatasetId] = useState<string | null>(
     null,
   );
@@ -6102,50 +6107,26 @@ export default function MapDataset({
     }
   };
 
-  const requestPublicationStatusChange = (
-    nextStatus: EditablePublicationStatus,
+  const submitReviewDecision = async (
+    status: "pending" | "approved" | "rejected",
+    reviewMessage: string,
   ) => {
-    if (nextStatus === publicationStatus) return;
-
-    setPendingPublicationStatus(nextStatus);
-  };
-
-  const handleConfirmPublicationStatusChange = async (
-    confirmation?: boolean,
-  ) => {
-    if (confirmation === false) {
-      setPendingPublicationStatus(null);
-      return;
-    }
-
-    if (!pendingPublicationStatus || !mapDatasetId) {
-      setPendingPublicationStatus(null);
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const { error } = await supabase
-        .from("map_datasets")
-        .update({
-          published: pendingPublicationStatus,
-        })
-        .eq("id", mapDatasetId);
-
-      if (error) throw error;
-
-      setPublicationStatus(pendingPublicationStatus);
-      setPendingPublicationStatus(null);
-      setMessage("Status publikasi berhasil diubah.");
-      setAlert("success");
-    } catch (error) {
-      console.error("Failed to update map publication status:", error);
+    if (!mapDatasetId) return;
+    const { data, error } = await supabase.rpc("set_publication_approval", {
+      p_resource_kind: "map",
+      p_resource_id: mapDatasetId,
+      p_status: status,
+      p_message: reviewMessage,
+    });
+    if (error) {
       setMessage("Gagal mengubah status publikasi.");
       setAlert("failed");
-    } finally {
-      setSaving(false);
+      throw error;
     }
+    setPublicationStatus(typeof data === "string" ? data : "requested");
+    await refreshApprovals();
+    setMessage("Status publikasi berhasil diubah.");
+    setAlert("success");
   };
 
   useEffect(() => {
@@ -6217,6 +6198,11 @@ export default function MapDataset({
         .eq("id", mapDatasetId);
 
       if (error) throw error;
+      const { error: reviewError } = await supabase.rpc(
+        "request_publication_review",
+        { p_resource_kind: "map", p_resource_id: mapDatasetId },
+      );
+      if (reviewError) throw reviewError;
 
       setPublicationImagePath(imagePath ?? null);
       setPublicationImageFile(null);
@@ -6233,6 +6219,7 @@ export default function MapDataset({
         ),
       );
       setPublicationStatus("requested");
+      await refreshApprovals();
       setShowPublicationForm(true);
       setAlert("success");
     } catch (error) {
@@ -6808,6 +6795,7 @@ export default function MapDataset({
 
       {(view === "mapvisualization" || view === "maplegend") && (
         <div className="flex w-full min-w-0 flex-col gap-6 lg:flex-row">
+          {role !== "kadis" && role !== "sekdis" && (
           <div className="flex w-full min-w-0 flex-col gap-6 lg:w-[35%]">
             <section
               ref={legendSectionRef}
@@ -9816,8 +9804,9 @@ export default function MapDataset({
               </Button>
             </div>
           </div>
+          )}
 
-          <div className="w-full min-w-0 lg:w-[65%]">
+          <div className={`w-full min-w-0 ${role === "kadis" || role === "sekdis" ? "" : "lg:w-[65%]"}`}>
             <section className="rounded-lg border border-stone-200 bg-white shadow-md">
               <div className="flex w-full items-center justify-between rounded-t-lg bg-sky-800 px-3 py-2 text-left text-sm font-semibold text-white">
                 <span>Preview</span>
@@ -10141,7 +10130,7 @@ export default function MapDataset({
                   : "border-yellow-200 bg-yellow-50 text-yellow-700"
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span>
                 {publicationStatus === "approved"
                   ? "Peta telah dipublikasikan."
@@ -10152,35 +10141,13 @@ export default function MapDataset({
                       : "Peta belum dipublikasikan."}
               </span>
 
-              {role === "admin" && publicationStatus !== null && (
-                <select
-                  value={
-                    publicationStatus === "requested" ||
-                    publicationStatus === "approved" ||
-                    publicationStatus === "rejected"
-                      ? publicationStatus
-                      : ""
-                  }
-                  disabled={saving}
-                  onChange={(event) =>
-                    requestPublicationStatusChange(
-                      event.target.value as EditablePublicationStatus,
-                    )
-                  }
-                  className="ml-2 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-black disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="" disabled>
-                    Pilih Status
-                  </option>
-                  <option value="requested">Tangguhkan</option>
-                  <option value="approved">Setujui</option>
-                  <option value="rejected">Tolak</option>
-                </select>
-              )}
             </div>
+            {publicationStatus !== null && (
+              <div className="mt-3"><PublicationApprovalChips approvals={approvals} messages={approvalMessages} /></div>
+            )}
           </div>
 
-          {!showPublicationForm && publicationStatus === null && (
+          {!isReadOnlyReviewer && !showPublicationForm && publicationStatus === null && (
             <Button
               type="button"
               onClick={() => setShowPublicationForm(true)}
@@ -10211,6 +10178,7 @@ export default function MapDataset({
                   type="file"
                   accept="image/png,image/jpeg"
                   className="hidden"
+                  disabled={isReadOnlyReviewer}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
 
@@ -10218,7 +10186,7 @@ export default function MapDataset({
                   }}
                 />
 
-                <div className="flex flex-wrap gap-3">
+                {!isReadOnlyReviewer && <div className="flex flex-wrap gap-3">
                   <Button
                     variant="outline"
                     onClick={() => publicationImageInputRef.current?.click()}
@@ -10236,9 +10204,19 @@ export default function MapDataset({
                   >
                     Refresh
                   </Button>
-                </div>
+                </div>}
               </div>
 
+              {isReadOnlyReviewer ? (
+                <div className="space-y-4 text-sm">
+                  <div><p className="font-medium">Judul Peta</p><p className="mt-1 text-gray-700">{label || "-"}</p></div>
+                  <div><p className="font-medium">Tag Data</p><p className="mt-1 text-gray-700">{publicationTags.map((value) => TAG_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Wilayah Administratif — Kabupaten / Kota</p><p className="mt-1 text-gray-700">{publicationDataRegencies.map((value) => DATA_REGENCY_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Kawasan Konservasi — KKD</p><p className="mt-1 text-gray-700">{publicationDataKkpd.map((value) => DATA_KKPD_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Wilayah Perikanan — Sub-WPP</p><p className="mt-1 text-gray-700">{publicationDataSubWpp.map((value) => DATA_SUBWPP_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Deskripsi</p><p className="mt-1 whitespace-pre-wrap text-gray-700">{publicationDescription || "-"}</p></div>
+                </div>
+              ) : <>
               <label className="flex flex-col gap-2 text-sm">
                 Judul Peta
                 <input
@@ -10426,7 +10404,11 @@ export default function MapDataset({
               >
                 {publicationButtonLabel}
               </Button>
+              </>}
             </div>
+          )}
+          {publicationStatus !== null && isApprovalRole(role) && (
+            <PublicationReviewControls role={role} currentStatus={approvals[role]} disabled={saving} onDecision={submitReviewDecision} />
           )}
         </section>
       )}
@@ -10477,17 +10459,6 @@ export default function MapDataset({
         />
       )}
 
-      {pendingPublicationStatus && (
-        <AlertNotif
-          type="double"
-          msg="Ubah status publikasi?"
-          yesText="Ya"
-          noText="Tidak"
-          icon="warning"
-          loading={saving}
-          confirm={handleConfirmPublicationStatusChange}
-        />
-      )}
 
       {alert !== "none" && (
         <AlertNotif

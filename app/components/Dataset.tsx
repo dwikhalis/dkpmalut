@@ -30,6 +30,9 @@ import DatasetConfiguration from "./DatasetConfiguration";
 import DataChart from "./DataChart";
 import AlertNotif from "./AlertNotif";
 import Button from "./Button";
+import PublicationApprovalChips, { isApprovalRole } from "./PublicationApprovalChips";
+import PublicationReviewControls from "./PublicationReviewControls";
+import { usePublicationApprovals } from "@/lib/hooks/usePublicationApprovals";
 import {
   DATA_KKPD_OPTIONS,
   DATA_REGENCY_OPTIONS,
@@ -44,7 +47,6 @@ type PublicationAlertType =
   | "none"
   | "confirm-submit"
   | "confirm-image-change"
-  | "confirm-status-change"
   | "success-submit"
   | "success-table-config"
   | "success-chart-config"
@@ -52,7 +54,6 @@ type PublicationAlertType =
   | "invalid-form"
   | "failed";
 
-type EditablePublicationStatus = "requested" | "approved" | "rejected";
 type DatasetView =
   | "dataset"
   | "visualization"
@@ -245,8 +246,10 @@ export default function Dataset({
   >(null);
   const [publicationAlert, setPublicationAlert] =
     useState<PublicationAlertType>("none");
-  const [pendingPublicationStatus, setPendingPublicationStatus] =
-    useState<EditablePublicationStatus | null>(null);
+  const { approvals, approvalMessages, refreshApprovals } = usePublicationApprovals(
+    "dataset",
+    datasetId || null,
+  );
 
   const fetchImageUrl = useCallback(async (path: string | null) => {
     if (!path) {
@@ -479,7 +482,6 @@ export default function Dataset({
         .eq("id", datasetId);
 
       if (error) throw error;
-
       setPublishedConfig(nextPublishedConfig);
       setTableConfig(nextTableConfig);
       setPublicationImagePath(imagePath ?? null);
@@ -697,9 +699,15 @@ export default function Dataset({
         .eq("id", datasetId);
 
       if (error) throw error;
+      const { error: reviewError } = await supabase.rpc(
+        "request_publication_review",
+        { p_resource_kind: "dataset", p_resource_id: datasetId },
+      );
+      if (reviewError) throw reviewError;
 
       setOriginalLabel(publicationTitle.trim());
       setPublicationStatus("requested");
+      await refreshApprovals();
       setPublicationImagePath(imagePath ?? null);
       setPublicationImageEditing(false);
       setPublicationImageFile(null);
@@ -744,53 +752,29 @@ export default function Dataset({
     setPublicationAlert("none");
   };
 
-  const requestPublicationStatusChange = (
-    nextStatus: EditablePublicationStatus,
-  ) => {
-    if (nextStatus === publicationStatus) return;
-
-    setPendingPublicationStatus(nextStatus);
-    setPublicationAlert("confirm-status-change");
-  };
-
-  const handleConfirmPublicationStatusChange = async (
-    confirmation?: boolean,
-  ) => {
-    if (confirmation === false) {
-      setPendingPublicationStatus(null);
-      setPublicationAlert("none");
-      return;
-    }
-
-    if (!pendingPublicationStatus) {
-      setPublicationAlert("none");
-      return;
-    }
-
-    setPublicationSaving(true);
-
-    try {
-      const { error } = await supabase
-        .from("datasets")
-        .update({
-          published: pendingPublicationStatus,
-        })
-        .eq("id", datasetId);
-
-      if (error) throw error;
-
-      setPublicationStatus(pendingPublicationStatus);
-      setPendingPublicationStatus(null);
-      setPublicationAlert("success-status-change");
-    } catch (error) {
-      console.error("Failed to update publication status:", error);
-      setPublicationAlert("failed");
-    } finally {
-      setPublicationSaving(false);
-    }
-  };
 
   const statusBar = getStatusBar(publicationStatus);
+  const isReadOnlyReviewer = role === "kadis" || role === "sekdis";
+
+  const submitReviewDecision = async (
+    status: "pending" | "approved" | "rejected",
+    message: string,
+  ) => {
+    const { data, error } = await supabase.rpc("set_publication_approval", {
+      p_resource_kind: "dataset",
+      p_resource_id: datasetId,
+      p_status: status,
+      p_message: message,
+    });
+    if (error) {
+      console.error("Failed to update publication status:", error);
+      setPublicationAlert("failed");
+      throw error;
+    }
+    setPublicationStatus(typeof data === "string" ? data : "requested");
+    await refreshApprovals();
+    setPublicationAlert("success-status-change");
+  };
 
   if (loading) {
     return (
@@ -866,10 +850,10 @@ export default function Dataset({
         />
       )}
 
-      {activeView === "publication" && !previewOnly && (
+      {activeView === "publication" && (!previewOnly || isApprovalRole(role)) && (
         <div className="min-h-[70vh] space-y-4">
           <div className={`rounded border p-3 text-sm ${statusBar.className}`}>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span>
                 {publicationStatus === "rejected" ? (
                   <>
@@ -883,35 +867,13 @@ export default function Dataset({
                 )}
               </span>
 
-              {role === "admin" && publicationStatus !== null && (
-                <select
-                  value={
-                    publicationStatus === "requested" ||
-                    publicationStatus === "approved" ||
-                    publicationStatus === "rejected"
-                      ? publicationStatus
-                      : ""
-                  }
-                  disabled={publicationSaving}
-                  onChange={(event) =>
-                    requestPublicationStatusChange(
-                      event.target.value as EditablePublicationStatus,
-                    )
-                  }
-                  className="ml-2 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-black disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="" disabled>
-                    Pilih Status
-                  </option>
-                  <option value="requested">Tangguhkan</option>
-                  <option value="approved">Setujui</option>
-                  <option value="rejected">Tolak</option>
-                </select>
-              )}
             </div>
+            {publicationStatus !== null && (
+              <div className="mt-3"><PublicationApprovalChips approvals={approvals} messages={approvalMessages} /></div>
+            )}
           </div>
 
-          {!showPublicationForm && publicationStatus === null && (
+          {!isReadOnlyReviewer && !showPublicationForm && publicationStatus === null && (
             <Button
               type="button"
               onClick={() => setShowPublicationForm(true)}
@@ -934,6 +896,7 @@ export default function Dataset({
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDropImage}
                 onClick={() => {
+                  if (isReadOnlyReviewer) return;
                   if (linkMode) {
                     fileInputRef.current?.click();
                     return;
@@ -958,6 +921,7 @@ export default function Dataset({
                       : "image/*"
                   }
                   className="hidden"
+                  disabled={isReadOnlyReviewer}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
 
@@ -995,7 +959,7 @@ export default function Dataset({
                 )}
               </div>
 
-              {!linkMode && publicationImageUrl && (
+              {!isReadOnlyReviewer && !linkMode && publicationImageUrl && (
                 <Button
                   type="button"
                   onClick={() => {
@@ -1014,6 +978,17 @@ export default function Dataset({
                 </Button>
               )}
 
+              {isReadOnlyReviewer ? (
+                <div className="space-y-4 text-sm">
+                  <div><p className="font-medium">{linkMode ? "Judul Link" : "Judul Dataset"}</p><p className="mt-1 text-gray-700">{publicationTitle || "-"}</p></div>
+                  {linkMode && <div><p className="font-medium">Link</p><p className="mt-1 break-all text-gray-700">{publicationLink || "-"}</p></div>}
+                  <div><p className="font-medium">Tag Data</p><p className="mt-1 text-gray-700">{publicationTags.map((value) => TAG_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Wilayah Administratif — Kabupaten / Kota</p><p className="mt-1 text-gray-700">{publicationDataRegencies.map((value) => DATA_REGENCY_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Kawasan Konservasi — KKD</p><p className="mt-1 text-gray-700">{publicationDataKkpd.map((value) => DATA_KKPD_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Wilayah Perikanan — Sub-WPP</p><p className="mt-1 text-gray-700">{publicationDataSubWpp.map((value) => DATA_SUBWPP_OPTIONS.find((option) => option.value === value)?.label ?? value).join(", ") || "-"}</p></div>
+                  <div><p className="font-medium">Deskripsi</p><p className="mt-1 whitespace-pre-wrap text-gray-700">{publicationDescription || "-"}</p></div>
+                </div>
+              ) : <>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-medium">
                   {linkMode ? "Judul Link" : "Judul Dataset"}
@@ -1252,7 +1227,16 @@ export default function Dataset({
                   ? "Update Publikasi"
                   : "Ajukan Publikasi"}
               </Button>
+              </>}
             </div>
+          )}
+          {publicationStatus !== null && isApprovalRole(role) && (
+            <PublicationReviewControls
+              role={role}
+              currentStatus={approvals[role]}
+              disabled={publicationSaving}
+              onDecision={submitReviewDecision}
+            />
           )}
         </div>
       )}
@@ -1287,7 +1271,7 @@ export default function Dataset({
       {publicationAlert === "success-submit" && (
         <AlertNotif
           type="single"
-          msg="Publikasi berhasil diajukan dan menunggu persetujuan admin."
+          msg="Publikasi berhasil diajukan dan menunggu persetujuan Admin, Kadis, dan Sekdis."
           yesText="OK"
           icon="success"
           confirm={() => {
@@ -1338,18 +1322,6 @@ export default function Dataset({
           yesText="OK"
           icon="failed"
           confirm={() => setPublicationAlert("none")}
-        />
-      )}
-
-      {publicationAlert === "confirm-status-change" && (
-        <AlertNotif
-          type="double"
-          msg="Ubah status publikasi?"
-          yesText="Ya"
-          noText="Tidak"
-          icon="warning"
-          loading={publicationSaving}
-          confirm={handleConfirmPublicationStatusChange}
         />
       )}
 

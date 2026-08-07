@@ -33,7 +33,9 @@ export default function Page() {
   return (
     <div
       className={`flex min-h-[70vh] min-w-0 flex-1 items-stretch gap-3 p-8 lg:px-12 ${
-        slug === "app-cms" ? "overflow-visible" : "overflow-hidden"
+        slug === "app-cms" || slug === "data"
+          ? "overflow-visible"
+          : "overflow-hidden"
       }`}
     >
       <DashSideMenu slug={slug} userRole={role} />

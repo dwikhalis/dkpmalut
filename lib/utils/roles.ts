@@ -10,6 +10,11 @@ export const isPartnerRole = (
 export const canManageData = (role: string | null | undefined) =>
   role === "admin" || isPartnerRole(role);
 
+export const isPublicationApproverRole = (
+  role: string | null | undefined,
+): role is "admin" | "kadis" | "sekdis" =>
+  role === "admin" || role === "kadis" || role === "sekdis";
+
 export const roleLabel = (role: string | null | undefined) => {
   if (role === "kadis") return "Kadis";
   if (role === "sekdis") return "Sekdis";

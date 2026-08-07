@@ -18,7 +18,7 @@ type AppLabels = Record<string, string>;
 
 const navbarFallbackLabels: AppLabels = {
   nav_org_logo: "/assets/logo_malut.png",
-  nav_org_name_main: "Dinas Kelautan dan Perikanan",
+  nav_org_name_main: "Platform Data DKP",
   nav_org_name_sub: "Provinsi Maluku Utara",
 
   nav_menu_data: "Data",

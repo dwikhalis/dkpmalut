@@ -220,6 +220,7 @@ export default function DashUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingRole, setSavingRole] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   const [sortKey, setSortKey] = useUrlQueryState<SortKey>(
     "sort",
@@ -330,6 +331,15 @@ export default function DashUsers() {
       });
     }
 
+    const normalizedSearch = userSearch.trim().toLocaleLowerCase("id-ID");
+    if (normalizedSearch) {
+      result = result.filter((user) => {
+        const username = user.username?.toLocaleLowerCase("id-ID") ?? "";
+        const email = user.email?.toLocaleLowerCase("id-ID") ?? "";
+        return username.includes(normalizedSearch) || email.includes(normalizedSearch);
+      });
+    }
+
     result.sort((a, b) => {
       const aValue = getSortableValue(a, field);
       const bValue = getSortableValue(b, field);
@@ -344,7 +354,26 @@ export default function DashUsers() {
     });
 
     return result;
-  }, [users, sortKey, filterKey, filterValue]);
+  }, [users, sortKey, filterKey, filterValue, userSearch]);
+
+  const hasKadis = users.some((user) => user.role === "kadis");
+  const hasSekdis = users.some((user) => user.role === "sekdis");
+  const userGroups = useMemo(
+    () => [
+      { label: "Kadis", role: "kadis", users: visibleUsers.filter((user) => user.role === "kadis") },
+      { label: "Sekdis", role: "sekdis", users: visibleUsers.filter((user) => user.role === "sekdis") },
+      { label: "Mitra", role: "partner", users: visibleUsers.filter((user) => user.role === "partner") },
+      { label: "Pengguna Publik", role: "user", users: visibleUsers.filter((user) => user.role === "user") },
+    ],
+    [visibleUsers],
+  );
+  const displayedUserGroups = useMemo(
+    () =>
+      userSearch.trim()
+        ? userGroups.filter((group) => group.users.length > 0)
+        : userGroups,
+    [userGroups, userSearch],
+  );
 
   const handleRoleSelect = (
     event: ChangeEvent<HTMLSelectElement>,
@@ -486,7 +515,7 @@ export default function DashUsers() {
                 </select>
               </div>
 
-              <div className="flex flex-col">
+              {filterKey !== "all" && <div className="flex flex-col">
                 <label
                   htmlFor="filter-value"
                   className="mb-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
@@ -497,8 +526,7 @@ export default function DashUsers() {
                   id="filter-value"
                   value={filterValue}
                   onChange={(event) => setFilterValue(event.target.value)}
-                  disabled={filterKey === "all"}
-                  className="rounded-md bg-stone-100 px-3 py-2 text-[2.8vw] outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:text-stone-400 md:text-[1.5vw] lg:text-sm"
+                  className="rounded-md bg-stone-100 px-3 py-2 text-[2.8vw] outline-none focus:ring-2 focus:ring-sky-400 md:text-[1.5vw] lg:text-sm"
                 >
                   <option value="all">Semua Data</option>
 
@@ -508,6 +536,23 @@ export default function DashUsers() {
                     </option>
                   ))}
                 </select>
+              </div>}
+
+              <div className="flex flex-col">
+                <label
+                  htmlFor="user-search"
+                  className="mb-1 text-[2.8vw] md:text-[1.5vw] lg:text-sm"
+                >
+                  Cari Pengguna
+                </label>
+                <input
+                  id="user-search"
+                  type="search"
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  placeholder="Cari nama atau email"
+                  className="rounded-md bg-stone-100 px-3 py-2 text-[2.8vw] outline-none focus:ring-2 focus:ring-sky-400 md:text-[1.5vw] lg:text-sm"
+                />
               </div>
             </div>
           </div>
@@ -518,8 +563,18 @@ export default function DashUsers() {
             Tidak ada data pengguna.
           </div>
         ) : (
-          <div className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleUsers.map((user, index) => (
+          <div className="flex w-full flex-col gap-6">
+            {displayedUserGroups.map((group) => (
+              <section key={group.role} className="rounded-2xl border border-stone-200 bg-stone-50/60 p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-bold text-stone-900">{group.label}</h2>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-600 ring-1 ring-stone-200">{group.users.length}</span>
+                </div>
+                {group.users.length === 0 ? (
+                  <p className="rounded-xl bg-white px-4 py-6 text-center text-sm text-stone-500">Belum ada {group.label.toLowerCase()}.</p>
+                ) : (
+                  <div className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {group.users.map((user, index) => (
               <article
                 key={user.id}
                 className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md"
@@ -610,7 +665,13 @@ export default function DashUsers() {
                           Pilih Akses
                         </option>
 
-                        {roleOptions.map((role) => (
+                        {roleOptions
+                          .filter(
+                            (role) =>
+                              (role !== "kadis" || !hasKadis || user.role === "kadis") &&
+                              (role !== "sekdis" || !hasSekdis || user.role === "sekdis"),
+                          )
+                          .map((role) => (
                           <option key={role} value={role}>
                             {roleLabel(role)}
                           </option>
@@ -620,6 +681,10 @@ export default function DashUsers() {
                   </label>
                 </div>
               </article>
+            ))}
+                  </div>
+                )}
+              </section>
             ))}
           </div>
         )}

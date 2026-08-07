@@ -13,6 +13,7 @@ type ButtonVariant =
   | "secondary"
   | "success"
   | "danger"
+  | "warning"
   | "neutral"
   | "ghost"
   | "outline";
@@ -52,6 +53,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-green-600 text-white hover:bg-green-200 hover:text-stone-950 focus-visible:ring-green-500",
   danger:
     "bg-red-800 text-white hover:bg-red-200 hover:text-stone-950 focus-visible:ring-red-500",
+  warning:
+    "bg-amber-500 text-white hover:bg-amber-200 hover:text-stone-950 focus-visible:ring-amber-500",
   neutral:
     "bg-gray-600 text-white hover:bg-gray-200 hover:text-stone-950 focus-visible:ring-gray-500",
   ghost:
