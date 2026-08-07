@@ -830,7 +830,11 @@ export default function DashData({ onSignal = noopSignal }: Props) {
                 approval.approver_role === "kadis" ||
                 approval.approver_role === "sekdis"
               ) {
-                current[approval.approver_role] = approval.status as
+                const approverRole = approval.approver_role as
+                  | "admin"
+                  | "kadis"
+                  | "sekdis";
+                current[approverRole] = approval.status as
                   | "pending"
                   | "approved"
                   | "rejected";
