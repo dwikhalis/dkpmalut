@@ -135,7 +135,15 @@ const dateFilterFormatter = new Intl.DateTimeFormat("en-CA", {
 const LOGS_PER_PAGE = 50;
 
 function actorFilterValue(log: ActivityLog) {
-  return log.actor?.email || log.actor?.username || "__unknown";
+  return log.actor?.email || log.actor?.username || "__system";
+}
+
+function actorName(log: ActivityLog) {
+  return log.actor?.username || log.actor?.email || "System";
+}
+
+function actorRole(log: ActivityLog) {
+  return log.actor?.role || "system";
 }
 
 export default function DashActivityLog() {
@@ -194,7 +202,7 @@ export default function DashActivityLog() {
     logs.forEach((log) => {
       options.set(
         actorFilterValue(log),
-        log.actor?.username || log.actor?.email || "Pengguna",
+        actorName(log),
       );
     });
     return [...options.entries()].sort(([, a], [, b]) =>
@@ -253,7 +261,7 @@ export default function DashActivityLog() {
       <header>
         <h1 className="text-2xl font-bold text-stone-900">Log Aktivitas</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Riwayat perubahan data oleh admin dan partner.
+          Riwayat perubahan data oleh admin, partner, dan sistem.
         </p>
       </header>
 
@@ -331,10 +339,10 @@ export default function DashActivityLog() {
                   </td>
                   <td className="whitespace-nowrap p-4">
                     <span className="font-medium">
-                      {log.actor?.username || log.actor?.email || "Pengguna"}
+                      {actorName(log)}
                     </span>
                     <span className="block text-xs text-stone-500">
-                      {log.actor?.role || "-"}
+                      {actorRole(log)}
                     </span>
                   </td>
                   <td className="whitespace-nowrap p-4">
